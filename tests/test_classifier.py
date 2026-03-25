@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bash_classify.classifier import classify_expression
+from bash_classify.classifier import _is_system_path, classify_expression
 from bash_classify.models import Classification, CommandDef
 
 
@@ -406,4 +406,115 @@ class TestPushdDirectoryDetection:
 class TestTeeClassification:
     def test_tee_is_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello | tee output.txt", database=database)
+        assert result.classification == Classification.WRITE
+
+
+class TestIsSystemPath:
+    def test_etc(self) -> None:
+        assert _is_system_path("/etc") is True
+        assert _is_system_path("/etc/hosts") is True
+
+    def test_usr(self) -> None:
+        assert _is_system_path("/usr/local/bin") is True
+
+    def test_tmp_safe(self) -> None:
+        assert _is_system_path("/tmp") is False
+        assert _is_system_path("/tmp/foo") is False
+
+    def test_home_safe(self) -> None:
+        assert _is_system_path("/home/user") is False
+
+    def test_var_tmp_safe(self) -> None:
+        assert _is_system_path("/var/tmp") is False
+        assert _is_system_path("/var/tmp/test") is False
+
+    def test_var_log_system(self) -> None:
+        assert _is_system_path("/var/log") is True
+
+    def test_dev_null_safe(self) -> None:
+        assert _is_system_path("/dev/null") is False
+
+    def test_dev_sda_system(self) -> None:
+        assert _is_system_path("/dev/sda") is True
+
+    def test_relative_path(self) -> None:
+        assert _is_system_path("etc/hosts") is False
+        assert _is_system_path("./usr/bin") is False
+
+    def test_boot(self) -> None:
+        assert _is_system_path("/boot/vmlinuz") is True
+
+    def test_proc(self) -> None:
+        assert _is_system_path("/proc/1/status") is True
+
+
+class TestSystemDirectoryClassification:
+    def test_write_to_etc_is_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cp config.txt /etc/myapp/config", database=database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_write_to_usr_is_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cp binary /usr/local/bin/mybinary", database=database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_read_from_etc_is_readonly(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat /etc/hosts", database=database)
+        assert result.classification == Classification.READONLY
+
+    def test_read_from_usr_is_readonly(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("ls /usr/local/bin", database=database)
+        assert result.classification == Classification.READONLY
+
+    def test_write_to_tmp_not_elevated(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cp file /tmp/backup", database=database)
+        assert result.classification == Classification.WRITE
+
+    def test_write_to_home_not_elevated(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cp file /home/user/backup", database=database)
+        assert result.classification == Classification.WRITE
+
+    def test_write_to_var_tmp_not_elevated(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cp file /var/tmp/backup", database=database)
+        assert result.classification == Classification.WRITE
+
+    def test_write_to_var_log_is_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cp file /var/log/myapp.log", database=database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_redirect_to_etc_is_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo config > /etc/myapp.conf", database=database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_redirect_to_tmp_not_elevated(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo hello > /tmp/test.txt", database=database)
+        assert result.classification == Classification.WRITE
+
+    def test_mkdir_in_etc_is_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("mkdir /etc/myapp", database=database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_touch_in_opt_is_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("touch /opt/myapp/config", database=database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_chmod_in_usr_is_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("chmod 755 /usr/local/bin/script.sh", database=database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_rm_is_already_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("rm /etc/config", database=database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_dev_null_safe(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo hello > /dev/null", database=database)
+        assert result.classification == Classification.READONLY
+
+    def test_relative_path_not_elevated(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cp file ./etc/config", database=database)
+        assert result.classification == Classification.WRITE
+
+    def test_git_commit_with_system_path_message_not_elevated(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression('git commit -m "fix /etc/config"', database=database)
+        # -m takes_value, so "fix /etc/config" is consumed as -m's value
+        # The token "fix /etc/config" doesn't start with /, so it won't trigger
         assert result.classification == Classification.WRITE

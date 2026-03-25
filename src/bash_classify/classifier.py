@@ -16,6 +16,27 @@ from .models import (
 )
 from .parser import parse_expression
 
+_SYSTEM_DIRS = (
+    "/etc", "/lib", "/lib64", "/usr", "/bin", "/sbin", "/boot",
+    "/sys", "/proc", "/run", "/srv", "/root", "/opt", "/var", "/dev",
+)
+_SAFE_PREFIXES = (
+    "/tmp", "/var/tmp", "/home", "/dev/null", "/dev/stdin",
+    "/dev/stdout", "/dev/stderr", "/dev/fd", "/dev/tcp", "/dev/udp",
+)
+
+
+def _is_system_path(path: str) -> bool:
+    """Check if a path is a system directory that should trigger DANGEROUS when written to."""
+    if not path.startswith("/"):
+        return False
+    # Check safe prefixes first (more specific)
+    for safe in _SAFE_PREFIXES:
+        if path == safe or path.startswith(safe + "/"):
+            return False
+    # Check system dirs
+    return any(path == sysdir or path.startswith(sysdir + "/") for sysdir in _SYSTEM_DIRS)
+
 
 def classify_expression(
     expression: str,
@@ -95,13 +116,32 @@ def classify_expression(
                     else "elevated by backgrounding"
                 )
 
+        # Step 6: Elevate to DANGEROUS when writing to system directories
+        if result.classification.severity() >= Classification.WRITE.severity():
+            system_paths_found = []
+            # Check argv tokens
+            for token in invocation.argv:
+                if _is_system_path(token):
+                    system_paths_found.append(token)
+            # Check redirect targets
+            for redirect in invocation.redirects:
+                if _is_system_path(redirect.target):
+                    system_paths_found.append(redirect.target)
+
+            if system_paths_found and result.classification != Classification.DANGEROUS:
+                result.classification = Classification.DANGEROUS
+                result.classification_reason = (
+                    (result.classification_reason or "")
+                    + f"; elevated to DANGEROUS: system path {system_paths_found[0]}"
+                )
+
         command_results.append(result)
         all_redirects.extend(invocation.redirects)
 
-    # Step 6: Collect directories
+    # Step 7: Collect directories
     directories = _collect_directories(command_results)
 
-    # Step 7: Compute composite classification
+    # Step 8: Compute composite classification
     if not command_results and parse_warnings:
         overall = Classification.UNKNOWN
     elif command_results:
