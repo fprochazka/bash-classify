@@ -1,6 +1,8 @@
 # $schema: ../../../schemas/command.schema.json
 command: kubectl
 description: "Kubernetes command-line tool"
+classification: WRITE
+strict: false
 global_options:
   --context: {takes_value: true}
   --kubeconfig: {takes_value: true}
@@ -47,6 +49,12 @@ subcommands:
     classification: READONLY
 
   explain:
+    classification: READONLY
+
+  version:
+    classification: READONLY
+
+  cluster-info:
     classification: READONLY
 
   auth:

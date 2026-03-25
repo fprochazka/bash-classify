@@ -12,8 +12,10 @@ options:
   --upload-file: {takes_value: true, overrides: WRITE, aliases: [-T]}
   -X: {takes_value: true}
   --request: {takes_value: true, aliases: [-X]}
-  -d: {takes_value: true}
-  --data: {takes_value: true, aliases: [-d]}
+  -d: {takes_value: true, overrides: WRITE}
+  --data: {takes_value: true, overrides: WRITE, aliases: [-d]}
+  -F: {takes_value: true, overrides: WRITE}
+  --form: {takes_value: true, overrides: WRITE, aliases: [-F]}
   -H: {takes_value: true}
   --header: {takes_value: true, aliases: [-H]}
   -s: {}

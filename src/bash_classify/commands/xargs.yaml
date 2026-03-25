@@ -1,7 +1,7 @@
 # $schema: ../../../schemas/command.schema.json
 command: xargs
 description: "Build and execute command lines from standard input"
-classification: UNKNOWN
+classification: READONLY
 delegates_to:
   mode: rest_are_argv
 options:

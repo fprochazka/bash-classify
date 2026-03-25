@@ -35,12 +35,27 @@ subcommands:
   stats:
     classification: READONLY
     strict: false
+  top:
+    classification: READONLY
+    strict: false
+  port:
+    classification: READONLY
+    strict: false
+  diff:
+    classification: READONLY
+    strict: false
+  history:
+    classification: READONLY
+    strict: false
+  events:
+    classification: READONLY
+    strict: false
 
   run:
-    classification: WRITE
+    classification: DANGEROUS
     strict: false
   exec:
-    classification: WRITE
+    classification: DANGEROUS
     strict: false
   build:
     classification: WRITE

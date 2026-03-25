@@ -1,6 +1,7 @@
 # $schema: ../../../schemas/command.schema.json
 command: systemctl
 description: "Control the systemd system and service manager"
+classification: DANGEROUS
 strict: false
 subcommands:
   status:
@@ -34,4 +35,22 @@ subcommands:
   unmask:
     classification: WRITE
   daemon-reload:
+    classification: DANGEROUS
+  cat:
+    classification: READONLY
+  list-dependencies:
+    classification: READONLY
+  list-timers:
+    classification: READONLY
+  list-sockets:
+    classification: READONLY
+  kill:
+    classification: DANGEROUS
+  edit:
+    classification: DANGEROUS
+  poweroff:
+    classification: DANGEROUS
+  reboot:
+    classification: DANGEROUS
+  halt:
     classification: DANGEROUS

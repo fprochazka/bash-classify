@@ -431,9 +431,9 @@ class TestDefaultClassificationWhenNotSet:
         result = match_command(_make_invocation(["helm"]), database)
         assert result.classification == Classification.READONLY
 
-    def test_systemctl_bare_readonly(self, database: dict[str, CommandDef]) -> None:
+    def test_systemctl_bare_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["systemctl"]), database)
-        assert result.classification == Classification.READONLY
+        assert result.classification == Classification.DANGEROUS
 
     def test_systemctl_start_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["systemctl", "start", "nginx"]), database)

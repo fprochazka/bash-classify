@@ -10,9 +10,9 @@ options:
   --file: {takes_value: true, aliases: [-f]}
   -j: {takes_value: true}
   --jobs: {takes_value: true, aliases: [-j]}
-  -n: {}
-  --just-print: {}
-  --dry-run: {overrides: READONLY}
+  -n: {overrides: READONLY}
+  --just-print: {overrides: READONLY, aliases: [-n]}
+  --dry-run: {overrides: READONLY, aliases: [-n]}
   -k: {}
   --keep-going: {}
   -B: {}

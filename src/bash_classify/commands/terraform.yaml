@@ -1,6 +1,7 @@
 # $schema: ../../../schemas/command.schema.json
 command: terraform
 description: "Infrastructure as code tool by HashiCorp"
+classification: DANGEROUS
 strict: false
 subcommands:
   init:
@@ -52,4 +53,16 @@ subcommands:
   refresh:
     classification: WRITE
   providers:
+    classification: READONLY
+  console:
+    classification: DANGEROUS
+  taint:
+    classification: DANGEROUS
+  untaint:
+    classification: DANGEROUS
+  force-unlock:
+    classification: DANGEROUS
+  graph:
+    classification: READONLY
+  test:
     classification: READONLY

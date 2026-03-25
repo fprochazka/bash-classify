@@ -154,8 +154,8 @@ class TestStrictDefault:
     def test_strict_defaults_to_true(self, database: dict[str, CommandDef]) -> None:
         """Commands without explicit strict: false should default to strict: true."""
         kubectl = database["kubectl"]
-        # kubectl itself has no strict override, defaults to True
-        assert kubectl.strict is True
+        # kubectl itself has explicit strict: false for unknown subcommand fallback
+        assert kubectl.strict is False
         # kubectl.top has no strict: false, so it should be True (default)
         assert kubectl.subcommands["top"].strict is True
 

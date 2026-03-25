@@ -1,7 +1,7 @@
 # $schema: ../../../schemas/command.schema.json
 command: nice
 description: "Run a command with modified scheduling priority"
-classification: READONLY
+classification: WRITE
 delegates_to:
   mode: rest_are_argv
 options:

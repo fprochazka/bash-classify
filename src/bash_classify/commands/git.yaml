@@ -24,8 +24,10 @@ subcommands:
     classification: READONLY
     strict: false
   branch:
-    classification: READONLY
+    classification: WRITE
     options:
+      -l: {overrides: READONLY}
+      --list: {overrides: READONLY, aliases: [-l]}
       -d: {overrides: WRITE}
       -D: {overrides: DANGEROUS}
       --delete: {overrides: WRITE}
@@ -48,8 +50,10 @@ subcommands:
       prune:
         classification: WRITE
   tag:
-    classification: READONLY
+    classification: WRITE
     options:
+      -l: {overrides: READONLY}
+      --list: {overrides: READONLY, aliases: [-l]}
       -d: {overrides: WRITE}
       --delete: {overrides: WRITE}
       -a: {overrides: WRITE}

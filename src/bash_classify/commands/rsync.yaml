@@ -3,3 +3,8 @@ command: rsync
 description: "Fast, versatile file copying tool"
 classification: WRITE
 strict: false
+options:
+  -n: {overrides: READONLY}
+  --dry-run: {overrides: READONLY, aliases: [-n]}
+  --delete: {overrides: DANGEROUS}
+  --list-only: {overrides: READONLY}

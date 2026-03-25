@@ -2,4 +2,7 @@
 command: date
 description: "Display or set the system date and time"
 classification: READONLY
-strict: false
+strict: true
+options:
+  -s: {takes_value: true, overrides: DANGEROUS}
+  --set: {takes_value: true, overrides: DANGEROUS, aliases: [-s]}

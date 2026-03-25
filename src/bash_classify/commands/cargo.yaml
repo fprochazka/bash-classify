@@ -13,6 +13,8 @@ subcommands:
     classification: READONLY
   clippy:
     classification: READONLY
+    options:
+      --fix: {overrides: WRITE}
   fmt:
     classification: WRITE
   doc:

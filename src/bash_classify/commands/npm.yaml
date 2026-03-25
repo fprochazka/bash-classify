@@ -21,6 +21,9 @@ subcommands:
   audit:
     classification: READONLY
     strict: false
+    subcommands:
+      fix:
+        classification: WRITE
   install:
     classification: WRITE
     strict: false
@@ -47,4 +50,16 @@ subcommands:
     strict: false
   unpublish:
     classification: DANGEROUS
+    strict: false
+  config:
+    subcommands:
+      list:
+        classification: READONLY
+  whoami:
+    classification: READONLY
+  why:
+    classification: READONLY
+    strict: false
+  explain:
+    classification: READONLY
     strict: false
