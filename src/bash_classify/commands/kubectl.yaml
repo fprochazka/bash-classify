@@ -188,3 +188,19 @@ subcommands:
         classification: DANGEROUS
       delete-cluster:
         classification: DANGEROUS
+
+  diff:
+    classification: READONLY
+    strict: false
+
+  kustomize:
+    classification: READONLY
+    strict: false
+
+  events:
+    classification: READONLY
+    strict: false
+
+  wait:
+    classification: READONLY
+    strict: false

@@ -107,9 +107,9 @@ class TestBuildAndTest:
         assert result.classification == Classification.UNKNOWN
 
     def test_pytest_verbose(self, database):
-        # uv run executes arbitrary code -> DANGEROUS
+        # uv run pytest is a known safe subcommand -> WRITE
         result = classify_expression("uv run pytest -v --tb=short", database)
-        assert result.classification == Classification.DANGEROUS
+        assert result.classification == Classification.WRITE
 
     def test_npm_test(self, database):
         result = classify_expression("npm test", database)
@@ -125,8 +125,8 @@ class TestBuildAndTest:
 
     def test_ruff_check_and_format(self, database):
         result = classify_expression("ruff check --fix . && ruff format .", database)
-        # ruff is not in DB -> UNKNOWN
-        assert result.classification == Classification.UNKNOWN
+        # ruff check --fix is WRITE, ruff format is WRITE -> WRITE
+        assert result.classification == Classification.WRITE
 
     def test_make_with_target(self, database):
         result = classify_expression("make build", database)

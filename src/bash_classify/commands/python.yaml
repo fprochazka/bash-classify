@@ -3,3 +3,8 @@ command: python
 description: "Python language interpreter"
 classification: DANGEROUS
 strict: false
+options:
+  --version: {overrides: READONLY}
+  -V: {overrides: READONLY}
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}

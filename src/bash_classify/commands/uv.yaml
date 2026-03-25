@@ -6,15 +6,32 @@ subcommands:
   run:
     classification: DANGEROUS
     strict: false
+    delegates_to:
+      mode: rest_are_argv
+      strip_assignments: true
+    subcommands:
+      pytest:
+        classification: WRITE
+        strict: false
+      ruff:
+        classification: WRITE
+        strict: false
+      mypy:
+        classification: READONLY
+        strict: false
   init:
     classification: WRITE
     strict: false
   add:
     classification: WRITE
     strict: false
+    options:
+      --dry-run: {overrides: READONLY}
   remove:
     classification: WRITE
     strict: false
+    options:
+      --dry-run: {overrides: READONLY}
   version:
     classification: READONLY
     strict: false
@@ -24,6 +41,8 @@ subcommands:
   lock:
     classification: WRITE
     strict: false
+    options:
+      --check: {overrides: READONLY}
   export:
     classification: READONLY
     strict: false

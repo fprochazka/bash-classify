@@ -1,0 +1,5 @@
+# $schema: ../../../schemas/command.schema.json
+command: rg
+description: "Recursively search directories for a regex pattern"
+classification: READONLY
+strict: false

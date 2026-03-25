@@ -88,6 +88,10 @@ subcommands:
   branch:
     classification: WRITE
     options:
+      -a: {}
+      --all: {aliases: [-a]}
+      -v: {}
+      --verbose: {aliases: [-v]}
       -l: {overrides: READONLY}
       --list: {overrides: READONLY, aliases: [-l]}
       -d: {overrides: WRITE}
@@ -104,6 +108,7 @@ subcommands:
       --unset-upstream: {overrides: WRITE}
   remote:
     classification: READONLY
+    strict: false
     subcommands:
       add:
         classification: WRITE
@@ -439,3 +444,5 @@ subcommands:
   fsck:
     classification: READONLY
     strict: false
+
+  # --- Misc ---

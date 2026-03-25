@@ -66,6 +66,18 @@ subcommands:
   run:
     classification: DANGEROUS
     strict: false
+    delegates_to:
+      mode: rest_are_argv
+    subcommands:
+      pytest:
+        classification: WRITE
+        strict: false
+      ruff:
+        classification: WRITE
+        strict: false
+      mypy:
+        classification: READONLY
+        strict: false
   self:
     strict: false
     subcommands:

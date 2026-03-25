@@ -1,0 +1,5 @@
+# $schema: ../../../schemas/command.schema.json
+command: pytest
+description: "Python testing framework"
+classification: WRITE
+strict: false
