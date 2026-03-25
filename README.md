@@ -116,11 +116,15 @@ Before tagging, bump the version in both plugin manifest files:
 - `coding-agent-plugins/claude-code/.claude-plugin/plugin.json`
 - `.claude-plugin/marketplace.json`
 
-Then tag and push:
+Wait for CI to pass on master, then tag, push, and create a GitHub release:
 
 ```bash
+# Review changes since last release
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+
 git tag v<version>
 git push origin v<version>
+gh release create v<version> --title "v<version>" --notes "..."
 ```
 
 The `publish.yml` GitHub Action builds and publishes to PyPI automatically via trusted publishing.
