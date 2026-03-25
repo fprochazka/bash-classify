@@ -113,6 +113,17 @@ uv run pytest
 
 To add or modify command definitions, see [docs/classification-guidance.md](docs/classification-guidance.md). All YAML files in `src/bash_classify/commands/` are validated against a [JSON Schema](schemas/command.schema.json) — your IDE will provide autocomplete if it supports the `# $schema:` comment.
 
+## Releasing
+
+Version is derived automatically from git tags via `hatch-vcs` — no manual version bumping needed.
+
+```bash
+git tag v<version>
+git push origin v<version>
+```
+
+The `publish.yml` GitHub Action builds and publishes to PyPI automatically via trusted publishing.
+
 ## License
 
 [MIT](LICENSE)
