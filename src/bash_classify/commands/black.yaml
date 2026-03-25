@@ -1,0 +1,11 @@
+# $schema: ../../../schemas/command.schema.json
+command: black
+description: "Python code formatter"
+classification: LOCAL_EFFECTS
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+options:
+  --check: {overrides: READONLY}
+  --diff: {overrides: READONLY}
+  --version: {overrides: READONLY}

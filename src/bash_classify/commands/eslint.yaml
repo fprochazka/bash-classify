@@ -1,0 +1,12 @@
+# $schema: ../../../schemas/command.schema.json
+command: eslint
+description: "JavaScript and TypeScript linter"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+options:
+  --fix: {overrides: LOCAL_EFFECTS}
+  --fix-dry-run: {overrides: READONLY}
+  --version: {overrides: READONLY}
+  -v: {overrides: READONLY}

@@ -1,0 +1,31 @@
+# $schema: ../../../schemas/command.schema.json
+command: pipx
+description: "Install and run Python CLI tools in isolation"
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+subcommands:
+  install:
+    classification: LOCAL_EFFECTS
+    strict: false
+  uninstall:
+    classification: LOCAL_EFFECTS
+    strict: false
+  upgrade:
+    classification: LOCAL_EFFECTS
+    strict: false
+  inject:
+    classification: LOCAL_EFFECTS
+    strict: false
+  run:
+    classification: DANGEROUS
+    strict: false
+    delegates_to:
+      mode: rest_are_argv
+  list:
+    classification: READONLY
+    strict: false
+  environment:
+    classification: READONLY
+  ensurepath:
+    classification: LOCAL_EFFECTS

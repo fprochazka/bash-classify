@@ -1,0 +1,13 @@
+# $schema: ../../../schemas/command.schema.json
+command: prettier
+description: "Opinionated code formatter"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+options:
+  --write: {overrides: LOCAL_EFFECTS}
+  -w: {overrides: LOCAL_EFFECTS}
+  --check: {overrides: READONLY}
+  -c: {overrides: READONLY}
+  --version: {overrides: READONLY}

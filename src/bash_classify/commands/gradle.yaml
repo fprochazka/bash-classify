@@ -1,0 +1,58 @@
+# $schema: ../../../schemas/command.schema.json
+command: gradle
+description: "Gradle build tool"
+classification: LOCAL_EFFECTS
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  -?: {overrides: READONLY}
+  --version: {overrides: READONLY}
+options:
+  --dry-run: {overrides: READONLY}
+  -m: {overrides: READONLY}
+  --info: {}
+  -i: {}
+  --debug: {}
+  -d: {}
+  --stacktrace: {}
+  -s: {}
+  --full-stacktrace: {}
+  -S: {}
+  --no-daemon: {}
+  --daemon: {}
+  --build-cache: {}
+  --no-build-cache: {}
+  --configuration-cache: {}
+  --no-configuration-cache: {}
+  --configure-on-demand: {}
+  --no-configure-on-demand: {}
+  --continue: {}
+  --no-continue: {}
+  --parallel: {}
+  --no-parallel: {}
+  --scan: {}
+  --no-scan: {}
+  --offline: {}
+  --quiet: {}
+  -q: {}
+  --warn: {}
+  -w: {}
+  -p: {takes_value: true}
+  --project-dir: {takes_value: true, aliases: [-p]}
+  -b: {takes_value: true}
+  --build-file: {takes_value: true, aliases: [-b]}
+  -c: {takes_value: true}
+  --settings-file: {takes_value: true, aliases: [-c]}
+  -g: {takes_value: true}
+  --gradle-user-home: {takes_value: true, aliases: [-g]}
+  --console: {takes_value: true}
+  --init-script: {takes_value: true}
+  -I: {takes_value: true}
+  -D: {takes_value: true}
+  --system-prop: {takes_value: true, aliases: [-D]}
+  -P: {takes_value: true}
+  --project-prop: {takes_value: true, aliases: [-P]}
+  --max-workers: {takes_value: true}
+  -x: {takes_value: true}
+  --exclude-task: {takes_value: true, aliases: [-x]}

@@ -1,0 +1,69 @@
+# $schema: ../../../schemas/command.schema.json
+command: yarn
+description: "JavaScript package manager"
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+options:
+  --version: {overrides: READONLY}
+subcommands:
+  install:
+    classification: LOCAL_EFFECTS
+    strict: false
+  add:
+    classification: LOCAL_EFFECTS
+    strict: false
+  remove:
+    classification: LOCAL_EFFECTS
+    strict: false
+  up:
+    classification: LOCAL_EFFECTS
+    strict: false
+  upgrade:
+    classification: LOCAL_EFFECTS
+    strict: false
+  run:
+    classification: DANGEROUS
+    strict: false
+    delegates_to:
+      mode: rest_are_argv
+  exec:
+    classification: DANGEROUS
+    strict: false
+  dlx:
+    classification: DANGEROUS
+    strict: false
+  info:
+    classification: READONLY
+    strict: false
+  why:
+    classification: READONLY
+    strict: false
+  config:
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+  workspaces:
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+  publish:
+    classification: DANGEROUS
+    strict: false
+  build:
+    classification: LOCAL_EFFECTS
+    strict: false
+  test:
+    classification: LOCAL_EFFECTS
+    strict: false
+  set:
+    classification: LOCAL_EFFECTS
+    strict: false
+  pack:
+    classification: LOCAL_EFFECTS
+    strict: false
+  init:
+    classification: LOCAL_EFFECTS
+    strict: false

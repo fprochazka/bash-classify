@@ -98,13 +98,13 @@ class TestBuildAndTest:
         result = classify_expression(
             './mvnw package -DskipTests --batch-mode 2>&1 | grep -E "\\[ERROR\\]|BUILD"', database
         )
-        # ./mvnw is UNKNOWN (not in DB), grep is READONLY -> UNKNOWN overall
-        assert result.classification == Classification.UNKNOWN
+        # ./mvnw is LOCAL_EFFECTS (builds locally), grep is READONLY -> LOCAL_EFFECTS overall
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_mvnw_with_tail(self, database):
         """Maven build piped to tail — most common pattern."""
         result = classify_expression("./mvnw package --batch-mode -DskipTests=true 2>&1 | tail -30", database)
-        assert result.classification == Classification.UNKNOWN
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_pytest_verbose(self, database):
         # uv run pytest is a known safe subcommand -> LOCAL_EFFECTS

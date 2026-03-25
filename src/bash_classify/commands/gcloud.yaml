@@ -1,0 +1,654 @@
+# $schema: ../../../schemas/command.schema.json
+command: gcloud
+description: "Google Cloud CLI"
+classification: EXTERNAL_EFFECTS
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY}
+  -v: {overrides: READONLY}
+  --account: {takes_value: true}
+  --billing-project: {takes_value: true}
+  --configuration: {takes_value: true}
+  --flags-file: {takes_value: true}
+  --flatten: {takes_value: true}
+  --format: {takes_value: true}
+  --project: {takes_value: true}
+  --quiet: {}
+  -q: {}
+  --verbosity: {takes_value: true}
+  --access-token-file: {takes_value: true}
+  --impersonate-service-account: {takes_value: true}
+  --log-http: {}
+  --trace-token: {takes_value: true}
+  --no-user-output-enabled: {}
+
+subcommands:
+  # compute
+  compute:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      instances:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+          start:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          stop:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          reset:
+            classification: DANGEROUS
+            strict: false
+      disks:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      firewall-rules:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      networks:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      ssh:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      scp:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+
+  # container
+  container:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      clusters:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+          resize:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          get-credentials:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      node-pools:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      images:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+
+  # iam
+  iam:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      service-accounts:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      roles:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+
+  # storage
+  storage:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      ls:
+        classification: READONLY
+        strict: false
+      cat:
+        classification: READONLY
+        strict: false
+      cp:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      mv:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      rm:
+        classification: DANGEROUS
+        strict: false
+      buckets:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+
+  # config
+  config:
+    classification: LOCAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      get-value:
+        classification: READONLY
+        strict: false
+      set:
+        classification: LOCAL_EFFECTS
+        strict: false
+      unset:
+        classification: LOCAL_EFFECTS
+        strict: false
+      configurations:
+        classification: LOCAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: LOCAL_EFFECTS
+            strict: false
+          delete:
+            classification: LOCAL_EFFECTS
+            strict: false
+          activate:
+            classification: LOCAL_EFFECTS
+            strict: false
+
+  # auth
+  auth:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      print-access-token:
+        classification: READONLY
+        strict: false
+      print-identity-token:
+        classification: READONLY
+        strict: false
+      login:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      revoke:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      configure-docker:
+        classification: LOCAL_EFFECTS
+        strict: false
+      application-default:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          login:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          print-access-token:
+            classification: READONLY
+            strict: false
+          revoke:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+
+  # projects
+  projects:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      describe:
+        classification: READONLY
+        strict: false
+      create:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      delete:
+        classification: DANGEROUS
+        strict: false
+
+  # services
+  services:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      enable:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      disable:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+
+  # sql
+  sql:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      instances:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+          restart:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      connect:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      databases:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+
+  # app
+  app:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      describe:
+        classification: READONLY
+        strict: false
+      deploy:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      browse:
+        classification: READONLY
+        strict: false
+      logs:
+        classification: READONLY
+        strict: false
+        subcommands:
+          read:
+            classification: READONLY
+            strict: false
+          tail:
+            classification: READONLY
+            strict: false
+
+  # builds
+  builds:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      describe:
+        classification: READONLY
+        strict: false
+      log:
+        classification: READONLY
+        strict: false
+      submit:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      cancel:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+
+  # run (Cloud Run)
+  run:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      services:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      deploy:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      jobs:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+          execute:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+
+  # logging
+  logging:
+    classification: READONLY
+    strict: false
+    subcommands:
+      read:
+        classification: READONLY
+        strict: false
+      logs:
+        classification: READONLY
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+
+  # monitoring
+  monitoring:
+    classification: READONLY
+    strict: false
+    subcommands:
+      dashboards:
+        classification: READONLY
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+
+  # functions
+  functions:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      describe:
+        classification: READONLY
+        strict: false
+      deploy:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      delete:
+        classification: DANGEROUS
+        strict: false
+      call:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      logs:
+        classification: READONLY
+        strict: false
+        subcommands:
+          read:
+            classification: READONLY
+            strict: false
+
+  # pubsub
+  pubsub:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      topics:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      subscriptions:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+
+  # dns
+  dns:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      managed-zones:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      record-sets:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+
+  # info and topic (readonly)
+  info:
+    classification: READONLY
+    strict: false
+
+  topic:
+    classification: READONLY
+    strict: false
+
+  version:
+    classification: READONLY
+    strict: false
+
+  cheat-sheet:
+    classification: READONLY
+    strict: false
+
+  components:
+    classification: LOCAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      install:
+        classification: LOCAL_EFFECTS
+        strict: false
+      update:
+        classification: LOCAL_EFFECTS
+        strict: false
+      remove:
+        classification: LOCAL_EFFECTS
+        strict: false

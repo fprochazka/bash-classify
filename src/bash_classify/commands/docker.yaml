@@ -88,27 +88,47 @@ subcommands:
       logs:
         classification: READONLY
         strict: false
+      top:
+        classification: READONLY
+        strict: false
       config:
+        classification: READONLY
+        strict: false
+      images:
         classification: READONLY
         strict: false
       up:
         classification: EXTERNAL_EFFECTS
         strict: false
       down:
-        classification: DANGEROUS
-        strict: false
-      build:
         classification: EXTERNAL_EFFECTS
         strict: false
-      pull:
-        classification: EXTERNAL_EFFECTS
-      restart:
+      start:
         classification: EXTERNAL_EFFECTS
       stop:
         classification: EXTERNAL_EFFECTS
-      start:
+      restart:
         classification: EXTERNAL_EFFECTS
+      create:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      build:
+        classification: LOCAL_EFFECTS
+        strict: false
+      pull:
+        classification: LOCAL_EFFECTS
+      push:
+        classification: EXTERNAL_EFFECTS
+      exec:
+        classification: DANGEROUS
+        strict: false
+      run:
+        classification: DANGEROUS
+        strict: false
       rm:
+        classification: DANGEROUS
+        strict: false
+      kill:
         classification: DANGEROUS
         strict: false
 

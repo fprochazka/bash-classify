@@ -1,0 +1,15 @@
+# $schema: ../../../schemas/command.schema.json
+command: tsc
+description: "TypeScript compiler"
+classification: LOCAL_EFFECTS
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+options:
+  --noEmit: {overrides: READONLY}
+  --version: {overrides: READONLY}
+  -v: {overrides: READONLY}
+  --watch: {overrides: LOCAL_EFFECTS}
+  -w: {overrides: LOCAL_EFFECTS}
+  --build: {overrides: LOCAL_EFFECTS}
+  -b: {overrides: LOCAL_EFFECTS}

@@ -1,0 +1,53 @@
+# $schema: ../../../schemas/command.schema.json
+command: mvn
+description: "Apache Maven build tool"
+classification: LOCAL_EFFECTS
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY}
+  -v: {overrides: READONLY}
+options:
+  -B: {}
+  --batch-mode: {aliases: [-B]}
+  -am: {}
+  --also-make: {aliases: [-am]}
+  -amd: {}
+  --also-make-dependents: {aliases: [-amd]}
+  -pl: {takes_value: true}
+  --projects: {takes_value: true, aliases: [-pl]}
+  -T: {takes_value: true}
+  --threads: {takes_value: true, aliases: [-T]}
+  -P: {takes_value: true}
+  --activate-profiles: {takes_value: true, aliases: [-P]}
+  -f: {takes_value: true}
+  --file: {takes_value: true, aliases: [-f]}
+  -D: {takes_value: true}
+  --define: {takes_value: true, aliases: [-D]}
+  -s: {takes_value: true}
+  --settings: {takes_value: true, aliases: [-s]}
+  -gs: {takes_value: true}
+  --global-settings: {takes_value: true, aliases: [-gs]}
+  -e: {}
+  --errors: {aliases: [-e]}
+  -X: {}
+  --debug: {aliases: [-X]}
+  -q: {}
+  --quiet: {aliases: [-q]}
+  -U: {}
+  --update-snapshots: {aliases: [-U]}
+  -o: {}
+  --offline: {aliases: [-o]}
+  -N: {}
+  --non-recursive: {aliases: [-N]}
+  -nsu: {}
+  --no-snapshot-updates: {aliases: [-nsu]}
+  -C: {}
+  --strict-checksums: {aliases: [-C]}
+  -c: {}
+  --lax-checksums: {aliases: [-c]}
+  -l: {takes_value: true}
+  --log-file: {takes_value: true, aliases: [-l]}
+  -t: {takes_value: true}
+  --toolchains: {takes_value: true, aliases: [-t]}

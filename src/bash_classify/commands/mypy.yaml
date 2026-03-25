@@ -1,0 +1,9 @@
+# $schema: ../../../schemas/command.schema.json
+command: mypy
+description: "Python static type checker"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+options:
+  --version: {overrides: READONLY}

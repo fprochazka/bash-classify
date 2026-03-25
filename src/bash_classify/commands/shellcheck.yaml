@@ -1,0 +1,10 @@
+# $schema: ../../../schemas/command.schema.json
+command: shellcheck
+description: "Shell script linter"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+options:
+  --version: {overrides: READONLY}
+  -V: {overrides: READONLY}

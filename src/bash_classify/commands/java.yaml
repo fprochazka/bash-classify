@@ -1,0 +1,35 @@
+# $schema: ../../../schemas/command.schema.json
+command: java
+description: "Java runtime environment"
+classification: DANGEROUS
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -help: {overrides: READONLY}
+options:
+  --version: {overrides: READONLY}
+  -version: {overrides: READONLY}
+  -jar: {takes_value: true}
+  -cp: {takes_value: true}
+  -classpath: {takes_value: true}
+  --class-path: {takes_value: true, aliases: [-cp, -classpath]}
+  -m: {takes_value: true}
+  --module: {takes_value: true, aliases: [-m]}
+  -p: {takes_value: true}
+  --module-path: {takes_value: true, aliases: [-p]}
+  --add-modules: {takes_value: true}
+  --add-opens: {takes_value: true}
+  --add-exports: {takes_value: true}
+  --add-reads: {takes_value: true}
+  -D: {takes_value: true}
+  -X: {takes_value: true}
+  -Xmx: {takes_value: true}
+  -Xms: {takes_value: true}
+  -Xss: {takes_value: true}
+  -ea: {}
+  --enable-assertions: {aliases: [-ea]}
+  -da: {}
+  --disable-assertions: {aliases: [-da]}
+  -server: {}
+  -client: {}
+  --enable-preview: {}

@@ -1,0 +1,39 @@
+# $schema: ../../../schemas/command.schema.json
+command: javac
+description: "Java compiler"
+classification: LOCAL_EFFECTS
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -help: {overrides: READONLY}
+options:
+  --version: {overrides: READONLY}
+  -version: {overrides: READONLY}
+  -d: {takes_value: true}
+  -s: {takes_value: true}
+  -h: {takes_value: true}
+  -cp: {takes_value: true}
+  -classpath: {takes_value: true}
+  --class-path: {takes_value: true, aliases: [-cp, -classpath]}
+  -sourcepath: {takes_value: true}
+  --source-path: {takes_value: true, aliases: [-sourcepath]}
+  -p: {takes_value: true}
+  --module-path: {takes_value: true, aliases: [-p]}
+  --add-modules: {takes_value: true}
+  --add-exports: {takes_value: true}
+  --add-reads: {takes_value: true}
+  -source: {takes_value: true}
+  --source: {takes_value: true, aliases: [-source]}
+  -target: {takes_value: true}
+  --target: {takes_value: true, aliases: [-target]}
+  --release: {takes_value: true}
+  -encoding: {takes_value: true}
+  -g: {}
+  -deprecation: {}
+  -nowarn: {}
+  -verbose: {}
+  -proc: {takes_value: true}
+  -processor: {takes_value: true}
+  --enable-preview: {}
+  -Xlint: {}
+  -parameters: {}

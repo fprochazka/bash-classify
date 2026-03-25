@@ -1,0 +1,9 @@
+# $schema: ../../../schemas/command.schema.json
+command: hadolint
+description: "Dockerfile linter"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+options:
+  --version: {overrides: READONLY}

@@ -1,0 +1,13 @@
+# $schema: ../../../schemas/command.schema.json
+command: isort
+description: "Python import sorter"
+classification: LOCAL_EFFECTS
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+options:
+  --check: {overrides: READONLY}
+  --check-only: {overrides: READONLY}
+  -c: {overrides: READONLY}
+  --diff: {overrides: READONLY}
+  --version: {overrides: READONLY}
