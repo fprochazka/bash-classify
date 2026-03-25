@@ -5,7 +5,26 @@ build-backend = "hatchling.build"
 [project]
 name = "bash-classify"
 version = "0.1.0"
+description = "Classify bash commands as READONLY, WRITE, DANGEROUS, or UNKNOWN"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
+authors = [
+    {name = "Filip Prochazka", email = "mr@fprochazka.cz"}
+]
+keywords = ["bash", "classification", "security", "cli", "tree-sitter"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Shells",
+    "Typing :: Typed",
+]
 dependencies = [
     "tree-sitter>=0.24",
     "tree-sitter-bash>=0.23",
@@ -14,6 +33,12 @@ dependencies = [
 
 [project.scripts]
 bash-classify = "bash_classify.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/fprochazka/bash-classify"
+Repository = "https://github.com/fprochazka/bash-classify"
+Issues = "https://github.com/fprochazka/bash-classify/issues"
+Documentation = "https://github.com/fprochazka/bash-classify/blob/main/SPEC.md"
 
 [dependency-groups]
 dev = [
