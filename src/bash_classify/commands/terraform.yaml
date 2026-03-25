@@ -1,6 +1,6 @@
 command: terraform
 description: "Infrastructure as code tool by HashiCorp"
-classification: WRITE
+strict: false
 subcommands:
   init:
     classification: WRITE

@@ -99,7 +99,7 @@ def match_command(
     # Step 5: Determine classification
     base_classification = matched_def.classification
     if base_classification is None:
-        base_classification = Classification.UNKNOWN
+        base_classification = Classification.READONLY
 
     # Find the highest override — overrides REPLACE the base classification
     classification_reason: str | None = None

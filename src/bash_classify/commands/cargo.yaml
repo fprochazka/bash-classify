@@ -1,6 +1,6 @@
 command: cargo
 description: "Rust package manager and build tool"
-classification: WRITE
+strict: false
 subcommands:
   build:
     classification: WRITE

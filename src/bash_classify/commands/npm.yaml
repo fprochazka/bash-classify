@@ -1,5 +1,6 @@
 command: npm
 description: "Node.js package manager"
+strict: false
 subcommands:
   ls:
     classification: READONLY

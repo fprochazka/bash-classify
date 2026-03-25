@@ -1,6 +1,6 @@
 command: brew
 description: "macOS and Linux package manager"
-classification: WRITE
+strict: false
 subcommands:
   list:
     classification: READONLY

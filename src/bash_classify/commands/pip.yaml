@@ -1,5 +1,6 @@
 command: pip
 description: "Python package installer"
+strict: false
 subcommands:
   list:
     classification: READONLY

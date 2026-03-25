@@ -398,6 +398,52 @@ class TestStripQuotes:
         assert _strip_quotes("hello") == "hello"
 
 
+class TestDefaultClassificationWhenNotSet:
+    def test_command_without_classification_defaults_to_readonly(self, database: dict[str, CommandDef]) -> None:
+        """A command with no top-level classification should default to READONLY."""
+        # apt has subcommands but no top-level classification
+        result = match_command(_make_invocation(["apt"]), database)
+        assert result.classification == Classification.READONLY
+        assert result.matched_rule == "apt"
+
+    def test_apt_help_readonly(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["apt", "--help"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_apt_search_readonly(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["apt", "search", "vim"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_apt_install_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["apt", "install", "vim"]), database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_docker_bare_readonly(self, database: dict[str, CommandDef]) -> None:
+        """docker with no subcommand should be READONLY (no top-level classification)."""
+        result = match_command(_make_invocation(["docker"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_npm_bare_readonly(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["npm"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_helm_bare_readonly(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["helm"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_systemctl_bare_readonly(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["systemctl"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_systemctl_start_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["systemctl", "start", "nginx"]), database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_docker_system_prune_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["docker", "system", "prune"]), database)
+        assert result.classification == Classification.DANGEROUS
+
+
 class TestRemainingOptionsNonStrict:
     def test_remaining_options_in_non_strict_mode(self, database: dict[str, CommandDef]) -> None:
         """grep is non-strict; unknown flags should appear in remaining_options."""

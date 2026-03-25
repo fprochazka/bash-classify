@@ -1,6 +1,6 @@
 command: apt
 description: "Debian package management tool"
-classification: DANGEROUS
+strict: false
 subcommands:
   list:
     classification: READONLY

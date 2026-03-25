@@ -1,6 +1,6 @@
 command: helm
 description: "Kubernetes package manager"
-classification: WRITE
+strict: false
 subcommands:
   list:
     classification: READONLY

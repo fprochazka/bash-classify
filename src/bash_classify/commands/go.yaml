@@ -1,6 +1,6 @@
 command: go
 description: "Tool for managing Go source code"
-classification: WRITE
+strict: false
 subcommands:
   build:
     classification: WRITE

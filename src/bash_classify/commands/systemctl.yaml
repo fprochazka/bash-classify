@@ -1,6 +1,6 @@
 command: systemctl
 description: "Control the systemd system and service manager"
-classification: DANGEROUS
+strict: false
 subcommands:
   status:
     classification: READONLY
