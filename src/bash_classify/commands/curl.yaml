@@ -1,7 +1,7 @@
 # $schema: ../../../schemas/command.schema.json
 command: curl
 description: "Transfer data from or to a server"
-classification: READONLY
+classification: WRITE
 strict: false
 options:
   -o: {takes_value: true, overrides: WRITE}
