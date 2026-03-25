@@ -1,19 +1,19 @@
 {
-  "name": "bash-classify",
+  "name": "fprochazka-bash-classify",
   "description": "Bash command classifier with Claude Code plugin for auto-allowing readonly commands",
-  "metadata": {
-    "pluginRoot": "./coding-agent-plugins/claude-code"
+  "owner": {
+    "name": "Filip Procházka"
   },
   "plugins": [
     {
       "name": "bash-classify-hook",
       "description": "Auto-allows readonly bash commands in Claude Code using bash-classify",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "author": {
         "name": "Filip Procházka",
         "url": "https://github.com/fprochazka"
       },
-      "source": ".",
+      "source": "./coding-agent-plugins/claude-code",
       "category": "security",
       "homepage": "https://github.com/fprochazka/bash-classify"
     }
