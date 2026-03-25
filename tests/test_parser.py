@@ -391,6 +391,44 @@ class TestFdToFdRedirects:
         assert toplevel[0].redirects[0].affects_classification is True
 
 
+class TestAmpersandRedirects:
+    def test_ampersand_redirect_to_file(self) -> None:
+        result, _ = parse_expression("cmd &> output.txt")
+        toplevel = [r for r in result if r.context == "toplevel"]
+        assert len(toplevel) == 1
+        assert len(toplevel[0].redirects) == 1
+        assert toplevel[0].redirects[0].operator == "&>"
+        assert toplevel[0].redirects[0].affects_classification is True
+
+    def test_ampersand_append_redirect_to_file(self) -> None:
+        result, _ = parse_expression("cmd &>> output.txt")
+        toplevel = [r for r in result if r.context == "toplevel"]
+        assert len(toplevel) == 1
+        assert len(toplevel[0].redirects) == 1
+        assert toplevel[0].redirects[0].operator == "&>>"
+        assert toplevel[0].redirects[0].affects_classification is True
+
+    def test_ampersand_redirect_to_devnull(self) -> None:
+        result, _ = parse_expression("cmd &> /dev/null")
+        toplevel = [r for r in result if r.context == "toplevel"]
+        assert len(toplevel) == 1
+        assert len(toplevel[0].redirects) == 1
+        assert toplevel[0].redirects[0].operator == "&>"
+        assert toplevel[0].redirects[0].affects_classification is False
+
+
+class TestProcessSubstitutionAsRedirectTarget:
+    def test_output_process_substitution(self) -> None:
+        """When > >(tee log.txt) is used, tree-sitter treats the process substitution
+        as a redirect target string rather than extracting a nested command.
+        Verify the redirect target contains the process substitution text."""
+        result, _ = parse_expression("echo hello > >(tee log.txt)")
+        toplevel = [r for r in result if r.context == "toplevel"]
+        assert len(toplevel) == 1
+        assert len(toplevel[0].redirects) == 1
+        assert "tee" in toplevel[0].redirects[0].target
+
+
 class TestParseWarnings:
     def test_syntax_error_produces_warning(self) -> None:
         """Expressions with syntax errors should populate parse_warnings."""

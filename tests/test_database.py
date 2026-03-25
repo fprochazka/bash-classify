@@ -150,6 +150,28 @@ class TestDatabaseErrorHandling:
             load_database(tmp_path)
 
 
+class TestEmptyAndNonDictYamlFiles:
+    def test_empty_yaml_file_skipped(self, tmp_path: Path) -> None:
+        """An empty YAML file should be skipped (yaml.safe_load returns None)."""
+        empty_file = tmp_path / "empty.yaml"
+        empty_file.write_text("")
+
+        valid_file = tmp_path / "echo.yaml"
+        valid_file.write_text("command: echo\nclassification: READONLY\n")
+
+        db = load_database(tmp_path)
+        assert "echo" in db
+        assert len(db) == 1
+
+    def test_list_yaml_raises_valueerror(self, tmp_path: Path) -> None:
+        """A YAML file containing a list should raise ValueError with filename."""
+        list_file = tmp_path / "badlist.yaml"
+        list_file.write_text("- item1\n- item2\n")
+
+        with pytest.raises(ValueError, match="badlist.yaml"):
+            load_database(tmp_path)
+
+
 class TestStrictDefault:
     def test_strict_defaults_to_true(self, database: dict[str, CommandDef]) -> None:
         """Commands without explicit strict: false should default to strict: true."""

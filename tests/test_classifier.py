@@ -186,14 +186,9 @@ class TestCatDirectoryDetection:
 
 class TestBackgrounding:
     def test_background_elevates_to_write(self, database: dict[str, CommandDef]) -> None:
-        result = classify_expression("sleep 10 &", database=database)
-        # sleep is not in the database, so it's UNKNOWN
-        # backgrounding elevates to WRITE, but UNKNOWN > WRITE in severity
-        # So overall should be UNKNOWN
-        if "sleep" not in database:
-            assert result.classification == Classification.UNKNOWN
-        else:
-            assert result.classification == Classification.WRITE
+        result = classify_expression("echo hello &", database=database)
+        # echo is READONLY, backgrounding elevates to WRITE
+        assert result.classification == Classification.WRITE
 
 
 class TestEdgeCases:
@@ -390,3 +385,25 @@ class TestPathPrefixStripping:
     def test_relative_script_stays_unknown(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("./my-script.sh", database=database)
         assert result.classification == Classification.UNKNOWN
+
+
+class TestAmpersandRedirectClassification:
+    def test_ampersand_redirect_to_file_is_write(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo hello &> output.txt", database=database)
+        assert result.classification == Classification.WRITE
+
+    def test_ampersand_redirect_to_devnull_is_readonly(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo hello &> /dev/null", database=database)
+        assert result.classification == Classification.READONLY
+
+
+class TestPushdDirectoryDetection:
+    def test_pushd_directory(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("pushd /opt && ls", database=database)
+        assert "/opt" in result.directories
+
+
+class TestTeeClassification:
+    def test_tee_is_write(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo hello | tee output.txt", database=database)
+        assert result.classification == Classification.WRITE
