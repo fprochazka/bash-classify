@@ -111,9 +111,10 @@ To add or modify command definitions, see [docs/classification-guidance.md](docs
 
 Version is derived automatically from git tags via `hatch-vcs` — no manual version bumping needed.
 
-Before tagging, bump the version in the plugin manifest files:
+Before tagging, bump the version in both plugin manifest files:
 
 - `coding-agent-plugins/claude-code/.claude-plugin/plugin.json`
+- `.claude-plugin/marketplace.json`
 
 Then tag and push:
 
