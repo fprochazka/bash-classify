@@ -11,24 +11,24 @@ subcommands:
       strip_assignments: true
     subcommands:
       pytest:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       ruff:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       mypy:
         classification: READONLY
         strict: false
   init:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   add:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --dry-run: {overrides: READONLY}
   remove:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --dry-run: {overrides: READONLY}
@@ -36,10 +36,10 @@ subcommands:
     classification: READONLY
     strict: false
   sync:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   lock:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --check: {overrides: READONLY}
@@ -50,16 +50,16 @@ subcommands:
     classification: READONLY
     strict: false
   format:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   tool:
     strict: false
     subcommands:
       install:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       uninstall:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       list:
         classification: READONLY
@@ -72,10 +72,10 @@ subcommands:
     strict: false
     subcommands:
       install:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       uninstall:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       list:
         classification: READONLY
@@ -85,16 +85,16 @@ subcommands:
       dir:
         classification: READONLY
       pin:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
   pip:
     strict: false
     subcommands:
       install:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       uninstall:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       list:
         classification: READONLY
@@ -107,13 +107,13 @@ subcommands:
       check:
         classification: READONLY
       compile:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
   venv:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   build:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   publish:
     classification: DANGEROUS
@@ -122,15 +122,15 @@ subcommands:
     strict: false
     subcommands:
       clean:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       prune:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       dir:
         classification: READONLY
   self:
     strict: false
     subcommands:
       update:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
   help:
     classification: READONLY

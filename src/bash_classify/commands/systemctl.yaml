@@ -27,13 +27,13 @@ subcommands:
   reload:
     classification: DANGEROUS
   enable:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   disable:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   mask:
     classification: DANGEROUS
   unmask:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   daemon-reload:
     classification: DANGEROUS
   cat:

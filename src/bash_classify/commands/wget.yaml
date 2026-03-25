@@ -1,5 +1,5 @@
 # $schema: ../../../schemas/command.schema.json
 command: wget
 description: "Non-interactive network file downloader"
-classification: WRITE
+classification: EXTERNAL_EFFECTS
 strict: false

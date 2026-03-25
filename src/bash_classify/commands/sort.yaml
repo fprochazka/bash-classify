@@ -4,5 +4,5 @@ description: "Sort lines of text files"
 classification: READONLY
 strict: false
 options:
-  -o: {takes_value: true, overrides: WRITE}
-  --output: {takes_value: true, overrides: WRITE, aliases: [-o]}
+  -o: {takes_value: true, overrides: LOCAL_EFFECTS}
+  --output: {takes_value: true, overrides: LOCAL_EFFECTS, aliases: [-o]}

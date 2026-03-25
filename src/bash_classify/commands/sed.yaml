@@ -4,8 +4,8 @@ description: "Stream editor for filtering and transforming text"
 classification: READONLY
 strict: false
 options:
-  -i: {overrides: WRITE}
-  --in-place: {overrides: WRITE, aliases: [-i]}
+  -i: {overrides: LOCAL_EFFECTS}
+  --in-place: {overrides: LOCAL_EFFECTS, aliases: [-i]}
   -e: {takes_value: true}
   --expression: {takes_value: true, aliases: [-e]}
   -f: {takes_value: true}

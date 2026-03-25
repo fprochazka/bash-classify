@@ -108,7 +108,7 @@ class TestOptionOverrides:
 
     def test_git_push_force_with_lease(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["git", "push", "--force-with-lease"]), database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.EXTERNAL_EFFECTS
 
     def test_git_branch_d_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["git", "branch", "-D", "feature"]), database)
@@ -126,7 +126,7 @@ class TestOptionOverrides:
 
     def test_kubectl_apply_dry_run_no_unknown(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["kubectl", "apply", "--dry-run", "client"]), database)
-        # --dry-run takes_value and overrides to READONLY (true override, replaces base WRITE)
+        # --dry-run takes_value and overrides to READONLY (true override, replaces base EXTERNAL_EFFECTS)
         assert result.classification == Classification.READONLY
 
     def test_kubectl_delete_dry_run(self, database: dict[str, CommandDef]) -> None:
@@ -136,7 +136,7 @@ class TestOptionOverrides:
 
     def test_git_push_force_overrides_to_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["git", "push", "--force", "origin", "main"]), database)
-        # --force overrides base WRITE to DANGEROUS
+        # --force overrides base EXTERNAL_EFFECTS to DANGEROUS
         assert result.classification == Classification.DANGEROUS
 
 
@@ -170,7 +170,7 @@ class TestDelegationRestAreArgv:
         assert len(result.inner_commands) == 1
         inner = result.inner_commands[0]
         assert inner.argv == ["rm", "-rf", "/"]
-        # min_classification WRITE elevates, but rm is DANGEROUS anyway
+        # min_classification EXTERNAL_EFFECTS elevates, but rm is DANGEROUS anyway
         assert inner.classification == Classification.DANGEROUS
 
     def test_nice_delegates_inner_command(self, database: dict[str, CommandDef]) -> None:

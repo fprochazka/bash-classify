@@ -1,7 +1,7 @@
 # $schema: ../../../schemas/command.schema.json
 command: chmod
 description: "Change file mode bits"
-classification: WRITE
+classification: LOCAL_EFFECTS
 strict: false
 options:
   -R: {overrides: DANGEROUS}

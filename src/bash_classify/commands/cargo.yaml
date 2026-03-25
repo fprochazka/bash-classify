@@ -4,9 +4,9 @@ description: "Rust package manager and build tool"
 strict: false
 subcommands:
   build:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   test:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   run:
     classification: DANGEROUS
   check:
@@ -14,16 +14,16 @@ subcommands:
   clippy:
     classification: READONLY
     options:
-      --fix: {overrides: WRITE}
+      --fix: {overrides: LOCAL_EFFECTS}
   fmt:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   doc:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   publish:
     classification: DANGEROUS
   install:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   clean:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   update:
-    classification: WRITE
+    classification: LOCAL_EFFECTS

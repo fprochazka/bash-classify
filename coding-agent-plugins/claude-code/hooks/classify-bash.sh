@@ -39,6 +39,6 @@ if [[ "$classification" == "READONLY" ]]; then
   echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
 fi
 
-# For anything else (WRITE, DANGEROUS, UNKNOWN), output nothing
+# For anything else (LOCAL_EFFECTS, EXTERNAL_EFFECTS, DANGEROUS, UNKNOWN), output nothing
 # — this lets the normal permission flow handle it
 exit 0

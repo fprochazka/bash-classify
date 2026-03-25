@@ -67,6 +67,20 @@ class TestSpecExamples:
         assert inner.delegation_mode == "terminated_argv"
         assert inner.command == ["rm"]
 
+    def test_find_exec_grep_is_readonly(self, database: dict[str, CommandDef]) -> None:
+        r"""find -exec grep delegates classification to the inner command."""
+        result = classify_expression(
+            'find . -name "*.java" -exec grep -l "pattern" {} \\;',
+            database=database,
+        )
+        assert result.classification == Classification.READONLY
+
+        find_cmd = result.commands[0]
+        assert find_cmd.classification == Classification.READONLY
+        assert len(find_cmd.inner_commands) == 1
+        assert find_cmd.inner_commands[0].command == ["grep"]
+        assert find_cmd.inner_commands[0].classification == Classification.READONLY
+
     def test_kubectl_exec_cat(self, database: dict[str, CommandDef]) -> None:
         """kubectl exec -it my-pod -- cat /etc/config"""
         result = classify_expression(
@@ -128,7 +142,7 @@ class TestCompositeClassification:
 class TestRedirectEffects:
     def test_output_redirect_elevates_to_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello > output.txt", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_devnull_redirect_no_elevation(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello > /dev/null", database=database)
@@ -136,7 +150,7 @@ class TestRedirectEffects:
 
     def test_append_redirect_elevates_to_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello >> file.log", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_input_redirect_no_elevation(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("cat < input.txt", database=database)
@@ -149,7 +163,7 @@ class TestRedirectEffects:
         # The redirect doesn't affect because target is /dev/null
         cmds = result.commands
         assert len(cmds) == 1
-        # Check the redirect doesn't add WRITE on top
+        # Check the redirect doesn't add EXTERNAL_EFFECTS on top
         # cmd is UNKNOWN, redirect to /dev/null doesn't affect
         for r in result.redirects:
             if r.target == "/dev/null":
@@ -187,8 +201,8 @@ class TestCatDirectoryDetection:
 class TestBackgrounding:
     def test_background_elevates_to_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello &", database=database)
-        # echo is READONLY, backgrounding elevates to WRITE
-        assert result.classification == Classification.WRITE
+        # echo is READONLY, backgrounding elevates to LOCAL_EFFECTS
+        assert result.classification == Classification.LOCAL_EFFECTS
 
 
 class TestEdgeCases:
@@ -251,7 +265,7 @@ class TestBackgroundOnReadonly:
     def test_background_elevates_readonly_to_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello &", database=database)
         cmd = result.commands[0]
-        assert cmd.classification == Classification.WRITE
+        assert cmd.classification == Classification.LOCAL_EFFECTS
 
 
 class TestInputRedirectNoElevation:
@@ -279,13 +293,13 @@ class TestHeredocHerestring:
 class TestMultipleMixedCommands:
     def test_echo_redirect_then_cat(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello > file; cat file", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
 
 class TestNegativeReadonlyNotWrite:
     def test_cat_file_not_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("cat file", database=database)
-        assert result.classification != Classification.WRITE
+        assert result.classification != Classification.EXTERNAL_EFFECTS
 
     def test_cat_file_is_readonly(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("cat file", database=database)
@@ -302,7 +316,7 @@ class TestNegativeForceWithLease:
     def test_force_with_lease_not_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("git push --force-with-lease", database=database)
         assert result.classification != Classification.DANGEROUS
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.EXTERNAL_EFFECTS
 
 
 class TestReadBuiltin:
@@ -318,7 +332,7 @@ class TestFdToFdRedirectClassification:
 
     def test_stderr_to_file_elevates_to_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello 2>error.log", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
 
 class TestParseWarningsIntegration:
@@ -390,7 +404,7 @@ class TestPathPrefixStripping:
 class TestAmpersandRedirectClassification:
     def test_ampersand_redirect_to_file_is_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello &> output.txt", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_ampersand_redirect_to_devnull_is_readonly(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello &> /dev/null", database=database)
@@ -406,7 +420,7 @@ class TestPushdDirectoryDetection:
 class TestTeeClassification:
     def test_tee_is_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello | tee output.txt", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
 
 class TestIsSystemPath:
@@ -467,15 +481,15 @@ class TestSystemDirectoryClassification:
 
     def test_write_to_tmp_not_elevated(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("cp file /tmp/backup", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_write_to_home_not_elevated(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("cp file /home/user/backup", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_write_to_var_tmp_not_elevated(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("cp file /var/tmp/backup", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_write_to_var_log_is_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("cp file /var/log/myapp.log", database=database)
@@ -487,7 +501,7 @@ class TestSystemDirectoryClassification:
 
     def test_redirect_to_tmp_not_elevated(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello > /tmp/test.txt", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_mkdir_in_etc_is_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("mkdir /etc/myapp", database=database)
@@ -511,13 +525,13 @@ class TestSystemDirectoryClassification:
 
     def test_relative_path_not_elevated(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("cp file ./etc/config", database=database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_git_commit_with_system_path_message_not_elevated(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression('git commit -m "fix /etc/config"', database=database)
         # -m takes_value, so "fix /etc/config" is consumed as -m's value
         # The token "fix /etc/config" doesn't start with /, so it won't trigger
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
 
 class TestUserCommandOverride:

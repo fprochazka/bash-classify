@@ -1,5 +1,5 @@
 # $schema: ../../../schemas/command.schema.json
 command: scp
 description: "Secure copy files between hosts"
-classification: WRITE
+classification: EXTERNAL_EFFECTS
 strict: false

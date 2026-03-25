@@ -1,5 +1,5 @@
 # $schema: ../../../schemas/command.schema.json
 command: gzip
 description: "Compress or decompress files using gzip"
-classification: WRITE
+classification: LOCAL_EFFECTS
 strict: false

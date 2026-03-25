@@ -1,6 +1,6 @@
 # $schema: ../../../schemas/command.schema.json
 command: nohup
 description: "Run a command immune to hangups"
-classification: WRITE
+classification: EXTERNAL_EFFECTS
 delegates_to:
   mode: rest_are_argv

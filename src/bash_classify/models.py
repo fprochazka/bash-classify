@@ -10,14 +10,15 @@ class Classification(enum.Enum):
     """Classification levels for commands, ordered by severity."""
 
     READONLY = "READONLY"
-    WRITE = "WRITE"
+    LOCAL_EFFECTS = "LOCAL_EFFECTS"
+    EXTERNAL_EFFECTS = "EXTERNAL_EFFECTS"
     DANGEROUS = "DANGEROUS"
     UNKNOWN = "UNKNOWN"
 
     def severity(self) -> int:
         """Return the severity ordering for this classification.
 
-        DANGEROUS > UNKNOWN > WRITE > READONLY
+        DANGEROUS > UNKNOWN > EXTERNAL_EFFECTS > LOCAL_EFFECTS > READONLY
         """
         return _SEVERITY_ORDER[self]
 
@@ -31,9 +32,10 @@ class Classification(enum.Enum):
 
 _SEVERITY_ORDER: dict[Classification, int] = {
     Classification.READONLY: 0,
-    Classification.WRITE: 1,
-    Classification.UNKNOWN: 2,
-    Classification.DANGEROUS: 3,
+    Classification.LOCAL_EFFECTS: 1,
+    Classification.EXTERNAL_EFFECTS: 2,
+    Classification.UNKNOWN: 3,
+    Classification.DANGEROUS: 4,
 }
 
 

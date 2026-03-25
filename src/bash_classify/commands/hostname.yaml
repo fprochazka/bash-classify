@@ -1,5 +1,5 @@
 # $schema: ../../../schemas/command.schema.json
 command: hostname
 description: "Show or set the system hostname"
-classification: WRITE
+classification: EXTERNAL_EFFECTS
 strict: false

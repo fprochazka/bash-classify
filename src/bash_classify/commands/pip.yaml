@@ -16,14 +16,14 @@ subcommands:
   check:
     classification: READONLY
   install:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   uninstall:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   download:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
   wheel:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false

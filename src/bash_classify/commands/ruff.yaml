@@ -7,10 +7,10 @@ subcommands:
     classification: READONLY
     strict: false
     options:
-      --fix: {overrides: WRITE}
-      --fix-only: {overrides: WRITE}
+      --fix: {overrides: LOCAL_EFFECTS}
+      --fix-only: {overrides: LOCAL_EFFECTS}
   format:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --check: {overrides: READONLY}
@@ -22,4 +22,4 @@ subcommands:
   linter:
     classification: READONLY
   clean:
-    classification: WRITE
+    classification: LOCAL_EFFECTS

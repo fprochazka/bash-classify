@@ -58,27 +58,27 @@ subcommands:
     classification: DANGEROUS
     strict: false
   build:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   pull:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   push:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
   tag:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
   start:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
   stop:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
   restart:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
   create:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
   cp:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
   compose:
     subcommands:
       ps:
@@ -91,22 +91,22 @@ subcommands:
         classification: READONLY
         strict: false
       up:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
         strict: false
       down:
         classification: DANGEROUS
         strict: false
       build:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
         strict: false
       pull:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       restart:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       stop:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       start:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       rm:
         classification: DANGEROUS
         strict: false
@@ -133,7 +133,7 @@ subcommands:
       inspect:
         classification: READONLY
       create:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       rm:
         classification: DANGEROUS
       prune:
@@ -145,7 +145,7 @@ subcommands:
       inspect:
         classification: READONLY
       create:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       rm:
         classification: DANGEROUS
       prune:

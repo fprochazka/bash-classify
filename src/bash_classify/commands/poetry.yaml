@@ -23,43 +23,43 @@ subcommands:
       list:
         classification: READONLY
       use:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       remove:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
   config:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     subcommands:
       list:
         classification: READONLY
   install:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   update:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   add:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   remove:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   lock:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   build:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   init:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   new:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   shell:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   publish:
     classification: DANGEROUS
     strict: false
@@ -70,10 +70,10 @@ subcommands:
       mode: rest_are_argv
     subcommands:
       pytest:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       ruff:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       mypy:
         classification: READONLY
@@ -82,5 +82,5 @@ subcommands:
     strict: false
     subcommands:
       update:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false

@@ -1,5 +1,5 @@
 # $schema: ../../../schemas/command.schema.json
 command: cp
 description: "Copy files and directories"
-classification: WRITE
+classification: LOCAL_EFFECTS
 strict: false

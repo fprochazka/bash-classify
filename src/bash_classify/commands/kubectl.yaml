@@ -1,7 +1,7 @@
 # $schema: ../../../schemas/command.schema.json
 command: kubectl
 description: "Kubernetes command-line tool"
-classification: WRITE
+classification: EXTERNAL_EFFECTS
 strict: false
 global_options:
   --context: {takes_value: true}
@@ -62,17 +62,17 @@ subcommands:
       can-i:
         classification: READONLY
       reconcile:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
 
   apply:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       --dry-run: {takes_value: true, overrides: READONLY}
       -f: {takes_value: true}
       --filename: {takes_value: true, aliases: [-f]}
 
   create:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
     options:
       --dry-run: {takes_value: true, overrides: READONLY}
@@ -87,15 +87,15 @@ subcommands:
       --filename: {takes_value: true, aliases: [-f]}
 
   edit:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
 
   patch:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
 
   scale:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
 
   rollout:
@@ -105,16 +105,16 @@ subcommands:
       history:
         classification: READONLY
       restart:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
         strict: false
       undo:
         classification: DANGEROUS
         strict: false
       pause:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
         strict: false
       resume:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
         strict: false
 
   exec:
@@ -135,11 +135,11 @@ subcommands:
       --namespace: {takes_value: true, aliases: [-n]}
 
   port-forward:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
 
   cp:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
 
   drain:
@@ -147,23 +147,23 @@ subcommands:
     strict: false
 
   cordon:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
 
   uncordon:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
 
   taint:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
 
   label:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
 
   annotate:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
 
   config:
@@ -175,15 +175,15 @@ subcommands:
       current-context:
         classification: READONLY
       use-context:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       set:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       set-context:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       set-cluster:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       set-credentials:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       delete-context:
         classification: DANGEROUS
       delete-cluster:

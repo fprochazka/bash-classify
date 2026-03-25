@@ -86,7 +86,7 @@ subcommands:
 
   # --- Branch / tag / remote management ---
   branch:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     options:
       -a: {}
       --all: {aliases: [-a]}
@@ -94,51 +94,51 @@ subcommands:
       --verbose: {aliases: [-v]}
       -l: {overrides: READONLY}
       --list: {overrides: READONLY, aliases: [-l]}
-      -d: {overrides: WRITE}
+      -d: {overrides: LOCAL_EFFECTS}
       -D: {overrides: DANGEROUS}
-      --delete: {overrides: WRITE}
-      -m: {overrides: WRITE}
-      --move: {overrides: WRITE, aliases: [-m]}
+      --delete: {overrides: LOCAL_EFFECTS}
+      -m: {overrides: LOCAL_EFFECTS}
+      --move: {overrides: LOCAL_EFFECTS, aliases: [-m]}
       -M: {overrides: DANGEROUS}
-      -c: {overrides: WRITE}
-      --copy: {overrides: WRITE, aliases: [-c]}
+      -c: {overrides: LOCAL_EFFECTS}
+      --copy: {overrides: LOCAL_EFFECTS, aliases: [-c]}
       -C: {overrides: DANGEROUS}
-      --edit-description: {overrides: WRITE}
-      --set-upstream-to: {overrides: WRITE, takes_value: true}
-      --unset-upstream: {overrides: WRITE}
+      --edit-description: {overrides: LOCAL_EFFECTS}
+      --set-upstream-to: {overrides: LOCAL_EFFECTS, takes_value: true}
+      --unset-upstream: {overrides: LOCAL_EFFECTS}
   remote:
     classification: READONLY
     strict: false
     subcommands:
       add:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       remove:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       rename:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       set-url:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       prune:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       show:
         classification: READONLY
       get-url:
         classification: READONLY
   tag:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     options:
       -l: {overrides: READONLY}
       --list: {overrides: READONLY, aliases: [-l]}
       -v: {overrides: READONLY}
       --verify: {overrides: READONLY, aliases: [-v]}
-      -d: {overrides: WRITE}
-      --delete: {overrides: WRITE}
-      -a: {overrides: WRITE}
-      -s: {overrides: WRITE}
+      -d: {overrides: LOCAL_EFFECTS}
+      --delete: {overrides: LOCAL_EFFECTS}
+      -a: {overrides: LOCAL_EFFECTS}
+      -s: {overrides: LOCAL_EFFECTS}
 
   # --- Staging and committing ---
   add:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     options:
       -A: {}
       --all: {aliases: [-A]}
@@ -151,7 +151,7 @@ subcommands:
       -n: {}
       --dry-run: {aliases: [-n]}
   commit:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       -m: {takes_value: true}
@@ -166,7 +166,7 @@ subcommands:
       -s: {}
       --signoff: {aliases: [-s]}
   rm:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       -r: {}
@@ -174,10 +174,10 @@ subcommands:
       -f: {}
       --force: {aliases: [-f]}
   mv:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   notes:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     subcommands:
       list:
@@ -185,19 +185,19 @@ subcommands:
       show:
         classification: READONLY
       add:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       append:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       edit:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       remove:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       prune:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
 
   # --- Merging and rebasing ---
   merge:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --abort: {overrides: DANGEROUS}
@@ -208,7 +208,7 @@ subcommands:
       --no-ff: {}
       --ff-only: {}
   rebase:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --abort: {overrides: DANGEROUS}
@@ -220,14 +220,14 @@ subcommands:
       --no-autosquash: {}
       --onto: {takes_value: true}
   cherry-pick:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --abort: {overrides: DANGEROUS}
       --continue: {}
       --skip: {}
   revert:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --abort: {overrides: DANGEROUS}
@@ -235,49 +235,49 @@ subcommands:
 
   # --- Network commands ---
   push:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       --force: {overrides: DANGEROUS}
       -f: {overrides: DANGEROUS}
-      --force-with-lease: {overrides: WRITE}
+      --force-with-lease: {overrides: EXTERNAL_EFFECTS}
       --delete: {overrides: DANGEROUS}
       -u: {}
       --set-upstream: {aliases: [-u]}
   pull:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   fetch:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
-      --prune: {overrides: WRITE}
+      --prune: {overrides: LOCAL_EFFECTS}
   clone:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   init:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
 
   # --- Working tree ---
   checkout:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   switch:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   restore:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   stash:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     subcommands:
       push:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       pop:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       apply:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       list:
         classification: READONLY
       show:
@@ -287,7 +287,7 @@ subcommands:
       clear:
         classification: DANGEROUS
   reset:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --hard: {overrides: DANGEROUS}
@@ -297,46 +297,46 @@ subcommands:
     classification: DANGEROUS
     strict: false
   worktree:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     subcommands:
       list:
         classification: READONLY
         strict: false
       add:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       remove:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       prune:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       move:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       lock:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       unlock:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       repair:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
   bisect:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     subcommands:
       start:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       bad:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       new:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       good:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       old:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       skip:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       next:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       reset:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       run:
         classification: DANGEROUS
         strict: false
@@ -347,7 +347,7 @@ subcommands:
       log:
         classification: READONLY
       replay:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       terms:
         classification: READONLY
       help:
@@ -367,29 +367,29 @@ subcommands:
         classification: READONLY
         strict: false
       init:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       update:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       add:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       deinit:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       set-branch:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       set-url:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       sync:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       absorbgitdirs:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
 
   # --- Config ---
   config:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     subcommands:
       list:
@@ -399,31 +399,31 @@ subcommands:
         classification: READONLY
         strict: false
       set:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       unset:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
         strict: false
       rename-section:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       remove-section:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       edit:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
 
   # --- Patches and archives ---
   apply:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   am:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --abort: {overrides: DANGEROUS}
       --continue: {}
       --skip: {}
   format-patch:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     options:
       --stdout: {overrides: READONLY}
@@ -431,15 +431,15 @@ subcommands:
     classification: READONLY
     strict: false
     options:
-      -o: {overrides: WRITE, takes_value: true}
-      --output: {overrides: WRITE, takes_value: true, aliases: [-o]}
+      -o: {overrides: LOCAL_EFFECTS, takes_value: true}
+      --output: {overrides: LOCAL_EFFECTS, takes_value: true, aliases: [-o]}
 
   # --- Maintenance ---
   gc:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   maintenance:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   fsck:
     classification: READONLY

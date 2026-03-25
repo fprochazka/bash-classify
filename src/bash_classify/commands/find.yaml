@@ -6,22 +6,18 @@ strict: false
 options:
   -delete: {overrides: DANGEROUS}
   -exec:
-    overrides: DANGEROUS
     delegates_to:
       mode: terminated_argv
       terminator: ";"
   -execdir:
-    overrides: DANGEROUS
     delegates_to:
       mode: terminated_argv
       terminator: ";"
   -ok:
-    overrides: WRITE
     delegates_to:
       mode: terminated_argv
       terminator: ";"
   -okdir:
-    overrides: WRITE
     delegates_to:
       mode: terminated_argv
       terminator: ";"

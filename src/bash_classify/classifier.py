@@ -104,7 +104,7 @@ def classify_expression(
         # Step 4: Apply redirect classification
         for redirect in invocation.redirects:
             if redirect.affects_classification:
-                elevated = Classification.max_severity(result.classification, Classification.WRITE)
+                elevated = Classification.max_severity(result.classification, Classification.LOCAL_EFFECTS)
                 if elevated != result.classification:
                     result.classification = elevated
                     result.classification_reason = (
@@ -129,7 +129,7 @@ def classify_expression(
 
         # Step 5: Apply backgrounding
         if invocation.is_background:
-            elevated = Classification.max_severity(result.classification, Classification.WRITE)
+            elevated = Classification.max_severity(result.classification, Classification.LOCAL_EFFECTS)
             if elevated != result.classification:
                 result.classification = elevated
                 result.classification_reason = (
@@ -139,7 +139,7 @@ def classify_expression(
                 )
 
         # Step 6: Elevate to DANGEROUS when writing to system directories
-        if result.classification.severity() >= Classification.WRITE.severity():
+        if result.classification.severity() >= Classification.LOCAL_EFFECTS.severity():
             system_paths_found = []
             # Check argv tokens
             for token in invocation.argv:

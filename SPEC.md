@@ -93,15 +93,14 @@ $ echo 'find . -name "*.tmp" -exec rm -f {} \;' | bash-classify
       "argv": ["find", ".", "-name", "*.tmp", "-exec", "rm", "-f", "{}", ";"],
       "classification": "DANGEROUS",
       "matched_rule": "find",
-      "overriding_option": "-exec",
       "inner_commands": [
         {
           "delegation_mode": "terminated_argv",
           "delegation_source": "-exec",
           "command": ["rm"],
           "argv": ["rm", "-f"],
-          "classification": "UNKNOWN",
-          "matched_rule": null,
+          "classification": "DANGEROUS",
+          "matched_rule": "rm",
           "inner_commands": []
         }
       ]
@@ -196,7 +195,8 @@ $ echo 'sh -c "ls /tmp | grep log"' | bash-classify
 | Level | Meaning |
 |---|---|
 | `READONLY` | Only reads data, no side effects |
-| `WRITE` | Creates, modifies, or deletes data in a controlled way |
+| `LOCAL_EFFECTS` | Modifies local files or state only |
+| `EXTERNAL_EFFECTS` | Interacts with external systems or network |
 | `DANGEROUS` | Destructive, hard to reverse, or affects critical systems |
 | `UNKNOWN` | Command or subcommand not in database |
 
@@ -205,10 +205,10 @@ $ echo 'sh -c "ls /tmp | grep log"' | bash-classify
 The overall `classification` of a full expression is the **maximum severity** across all commands in the expression:
 
 ```
-DANGEROUS > UNKNOWN > WRITE > READONLY
+DANGEROUS > UNKNOWN > EXTERNAL_EFFECTS > LOCAL_EFFECTS > READONLY
 ```
 
-`UNKNOWN` is ranked above `WRITE` because an unrecognized command should not be silently trusted — it must be reviewed.
+`UNKNOWN` is ranked above `EXTERNAL_EFFECTS` because an unrecognized command should not be silently trusted — it must be reviewed.
 
 ## Bash Parsing
 
@@ -237,7 +237,7 @@ The parser walks the CST and extracts a list of `CommandInvocation` objects, eac
 | Subshells `(cmd)` | Inner command extracted recursively |
 | Heredocs `<<EOF` | Content captured but not parsed as commands |
 | Variable assignments `X=1 cmd` | Prefix assignments stripped, `cmd` extracted |
-| Backgrounding `cmd &` | Classified as WRITE (side effect: background process) |
+| Backgrounding `cmd &` | Classified as EXTERNAL_EFFECTS (side effect: background process) |
 
 ### Constructs that force DANGEROUS
 
@@ -352,15 +352,15 @@ subcommands:
       can-i:
         classification: READONLY
       reconcile:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
 
   apply:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       --dry-run: {overrides: READONLY}
 
   create:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   delete:
     classification: DANGEROUS
@@ -368,13 +368,13 @@ subcommands:
       --dry-run: {overrides: READONLY}
 
   edit:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   patch:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   scale:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   rollout:
     subcommands:
@@ -383,40 +383,40 @@ subcommands:
       history:
         classification: READONLY
       restart:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       undo:
         classification: DANGEROUS
       pause:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       resume:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
 
   exec:
     classification: DANGEROUS
 
   port-forward:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   cp:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   drain:
     classification: DANGEROUS
 
   cordon:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   uncordon:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   taint:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   label:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   annotate:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   config:
     subcommands:
@@ -427,15 +427,15 @@ subcommands:
       current-context:
         classification: READONLY
       use-context:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       set:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       set-context:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       set-cluster:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       set-credentials:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       delete-context:
         classification: DANGEROUS
       delete-cluster:
@@ -471,34 +471,34 @@ subcommands:
   branch:
     classification: READONLY
     options:
-      -d: {overrides: WRITE}
+      -d: {overrides: EXTERNAL_EFFECTS}
       -D: {overrides: DANGEROUS}
-      --delete: {overrides: WRITE}
-      --move: {overrides: WRITE}
-      --copy: {overrides: WRITE}
-      --edit-description: {overrides: WRITE}
-      --set-upstream-to: {overrides: WRITE, takes_value: true}
-      --unset-upstream: {overrides: WRITE}
+      --delete: {overrides: EXTERNAL_EFFECTS}
+      --move: {overrides: EXTERNAL_EFFECTS}
+      --copy: {overrides: EXTERNAL_EFFECTS}
+      --edit-description: {overrides: EXTERNAL_EFFECTS}
+      --set-upstream-to: {overrides: EXTERNAL_EFFECTS, takes_value: true}
+      --unset-upstream: {overrides: EXTERNAL_EFFECTS}
   remote:
     classification: READONLY
     subcommands:
       add:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       remove:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       rename:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       set-url:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       prune:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
   tag:
     classification: READONLY
     options:
-      -d: {overrides: WRITE}
-      --delete: {overrides: WRITE}
-      -a: {overrides: WRITE}
-      -s: {overrides: WRITE}
+      -d: {overrides: EXTERNAL_EFFECTS}
+      --delete: {overrides: EXTERNAL_EFFECTS}
+      -a: {overrides: EXTERNAL_EFFECTS}
+      -s: {overrides: EXTERNAL_EFFECTS}
   blame:
     classification: READONLY
   shortlog:
@@ -519,49 +519,49 @@ subcommands:
     classification: READONLY
 
   add:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
   commit:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
   merge:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       --abort: {overrides: DANGEROUS}
   rebase:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       --abort: {overrides: DANGEROUS}
   cherry-pick:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       --abort: {overrides: DANGEROUS}
 
   push:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       --force: {overrides: DANGEROUS}
       -f: {overrides: DANGEROUS}
-      --force-with-lease: {overrides: WRITE}
+      --force-with-lease: {overrides: EXTERNAL_EFFECTS}
       --delete: {overrides: DANGEROUS}
 
   pull:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   fetch:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
-      --prune: {overrides: WRITE}
+      --prune: {overrides: EXTERNAL_EFFECTS}
 
   checkout:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   switch:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   restore:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   stash:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     subcommands:
       list:
         classification: READONLY
@@ -573,18 +573,18 @@ subcommands:
         classification: DANGEROUS
 
   reset:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       --hard: {overrides: DANGEROUS}
 
   revert:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
 
   clean:
     classification: DANGEROUS
 
   rm:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       -r: {overrides: DANGEROUS}
 ```
@@ -598,22 +598,18 @@ strict: false  # find has too many predicates to enumerate
 options:
   -delete: {overrides: DANGEROUS}
   -exec:
-    overrides: DANGEROUS
     delegates_to:
       mode: terminated_argv
       terminator: ";"  # tokens between -exec and \; are the inner command
   -execdir:
-    overrides: DANGEROUS
     delegates_to:
       mode: terminated_argv
       terminator: ";"
   -ok:
-    overrides: WRITE
     delegates_to:
       mode: terminated_argv
       terminator: ";"
   -okdir:
-    overrides: WRITE
     delegates_to:
       mode: terminated_argv
       terminator: ";"
@@ -668,10 +664,10 @@ options:
 
 ```yaml
 command: sudo
-classification: WRITE  # sudo itself elevates privileges
+classification: EXTERNAL_EFFECTS  # sudo itself elevates privileges
 delegates_to:
   mode: rest_are_argv
-  min_classification: WRITE  # inner command is at least WRITE regardless of its own classification
+  min_classification: EXTERNAL_EFFECTS  # inner command is at least EXTERNAL_EFFECTS regardless of its own classification
 options:
   -u: {takes_value: true}
   --user: {takes_value: true, aliases: [-u]}
@@ -749,7 +745,7 @@ The `delegates_to` field defines how a command (or option like `find -exec`) han
 | `terminator` | `string` | For `terminated_argv`: the token that ends the inner argv |
 | `flag` | `string` | For `flag_value_is_expression`: which flag's value to parse |
 | `strip_assignments` | `bool` | For `rest_are_argv`: strip leading `KEY=VALUE` tokens before the inner command |
-| `min_classification` | `enum` | Floor classification for the inner command (e.g. `sudo` forces at least `WRITE`) |
+| `min_classification` | `enum` | Floor classification for the inner command (e.g. `sudo` forces at least `EXTERNAL_EFFECTS`) |
 
 ### Database field reference
 
@@ -781,13 +777,13 @@ Output redirects affect the overall classification:
 
 | Redirect | Effect |
 |---|---|
-| `> file` | Elevates to at least `WRITE` |
-| `>> file` | Elevates to at least `WRITE` |
+| `> file` | Elevates to at least `EXTERNAL_EFFECTS` |
+| `>> file` | Elevates to at least `EXTERNAL_EFFECTS` |
 | `> /dev/null` | No effect (discarding output is not a write) |
-| `2> file` / `2>> file` | Elevates to at least `WRITE` (unless `/dev/null`) |
-| `&> file` | Elevates to at least `WRITE` (unless `/dev/null`) |
+| `2> file` / `2>> file` | Elevates to at least `EXTERNAL_EFFECTS` (unless `/dev/null`) |
+| `&> file` | Elevates to at least `EXTERNAL_EFFECTS` (unless `/dev/null`) |
 | `< file` | No effect (input redirect is reading) |
-| `\| tee file` | `tee` is classified as `WRITE` via its own database entry |
+| `\| tee file` | `tee` is classified as `EXTERNAL_EFFECTS` via its own database entry |
 
 ## Directory Detection
 
@@ -829,13 +825,13 @@ The `commands` list is recursive — any command entry can contain `inner_comman
 ```json
 {
   "expression": "string — the original input",
-  "classification": "READONLY | WRITE | DANGEROUS | UNKNOWN",
+  "classification": "READONLY | LOCAL_EFFECTS | EXTERNAL_EFFECTS | DANGEROUS | UNKNOWN",
   "directories": ["string — detected directories"],
   "commands": [
     {
       "command": ["string — binary + subcommand chain (without inner command tokens)"],
       "argv": ["string — full original argv for this command"],
-      "classification": "READONLY | WRITE | DANGEROUS | UNKNOWN",
+      "classification": "READONLY | LOCAL_EFFECTS | EXTERNAL_EFFECTS | DANGEROUS | UNKNOWN",
       "matched_rule": "string — dotted path in database, or null",
       "ignored_options": ["string — global options that were stripped"],
       "remaining_options": ["string — options that were not in database"],

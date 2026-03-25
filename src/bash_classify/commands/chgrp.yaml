@@ -1,7 +1,7 @@
 # $schema: ../../../schemas/command.schema.json
 command: chgrp
 description: "Change group ownership of files"
-classification: WRITE
+classification: LOCAL_EFFECTS
 strict: false
 options:
   -R: {overrides: DANGEROUS}

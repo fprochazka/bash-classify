@@ -51,10 +51,10 @@ subcommands:
     classification: READONLY
     strict: false
   install:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
   upgrade:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
   rollback:
     classification: DANGEROUS
@@ -63,7 +63,7 @@ subcommands:
     classification: DANGEROUS
     strict: false
   repo:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
     subcommands:
       list:
@@ -90,23 +90,23 @@ subcommands:
     classification: READONLY
     strict: false
   plugin:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     subcommands:
       list:
         classification: READONLY
         strict: false
   package:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   pull:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   create:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   dependency:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
     subcommands:
       list:
@@ -116,12 +116,12 @@ subcommands:
     classification: DANGEROUS
     strict: false
   registry:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     strict: false
     subcommands:
       login:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
         strict: false
       logout:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
         strict: false

@@ -70,7 +70,7 @@ class TestCliRedirect:
         output = json.loads(proc.stdout)
         assert "redirects" in output
         assert any(r["operator"] == ">" for r in output["redirects"])
-        assert output["classification"] == "WRITE"
+        assert output["classification"] == "LOCAL_EFFECTS"
 
 
 class TestCliClassificationReason:

@@ -113,14 +113,14 @@ class TestResultToDict:
         cmd = CommandResult(
             command=["echo"],
             argv=["echo", "hello"],
-            classification=Classification.WRITE,
+            classification=Classification.EXTERNAL_EFFECTS,
             matched_rule="echo",
             inner_commands=[],
             classification_reason="elevated by output redirect",
         )
         result = ExpressionResult(
             expression="echo hello > out.txt",
-            classification=Classification.WRITE,
+            classification=Classification.EXTERNAL_EFFECTS,
             directories=[],
             commands=[cmd],
             redirects=[redirect],
@@ -128,7 +128,7 @@ class TestResultToDict:
         )
         d = _result_to_dict(result)
         assert d["expression"] == "echo hello > out.txt"
-        assert d["classification"] == "WRITE"
+        assert d["classification"] == "EXTERNAL_EFFECTS"
         assert "redirects" in d
         assert len(d["redirects"]) == 1
         assert "parse_warnings" in d

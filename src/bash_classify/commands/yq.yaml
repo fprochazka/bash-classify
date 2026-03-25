@@ -4,5 +4,5 @@ description: "Command-line YAML processor"
 classification: READONLY
 strict: false
 options:
-  -i: {overrides: WRITE}
-  --inplace: {overrides: WRITE, aliases: [-i]}
+  -i: {overrides: LOCAL_EFFECTS}
+  --inplace: {overrides: LOCAL_EFFECTS, aliases: [-i]}

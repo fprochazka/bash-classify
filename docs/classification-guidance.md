@@ -16,11 +16,17 @@ No side effects. Safe to auto-allow without user confirmation.
 
 Examples: `ls`, `cat`, `grep`, `kubectl get`, `git status`, `git log`, `docker ps`, `terraform plan`, `curl https://example.com`
 
-### WRITE
+### LOCAL_EFFECTS
 
-Creates, modifies, or deletes data in a controlled way. Requires user confirmation.
+Modifies local state only (files, git index, local config). No network or external system interaction. Requires user confirmation.
 
-Examples: `git commit`, `cp`, `touch`, `mkdir`, `kubectl apply`, `docker build`, `git push`, `curl -d '...'`
+Examples: `git add`, `git commit`, `cp`, `touch`, `mkdir`, `sed -i`, `chmod`
+
+### EXTERNAL_EFFECTS
+
+Creates, modifies, or deletes data beyond the local machine, or interacts with external systems. Requires user confirmation.
+
+Examples: `git push`, `kubectl apply`, `docker build`, `curl -d '...'`, `npm publish`
 
 ### DANGEROUS
 
@@ -35,10 +41,10 @@ Command or subcommand not in the database. Treated as requiring confirmation.
 ### Severity Ordering
 
 ```
-DANGEROUS > UNKNOWN > WRITE > READONLY
+DANGEROUS > UNKNOWN > EXTERNAL_EFFECTS > LOCAL_EFFECTS > READONLY
 ```
 
-UNKNOWN is ranked **above WRITE** because an unrecognized command should not be silently trusted -- it must be reviewed. A known WRITE command (like `git commit`) is predictable; an unknown command could do anything.
+UNKNOWN is ranked **above EXTERNAL_EFFECTS** because an unrecognized command should not be silently trusted -- it must be reviewed. A known EXTERNAL_EFFECTS command (like `git push`) is predictable; an unknown command could do anything.
 
 The overall classification of a full expression (e.g. a pipeline) is the **maximum severity** across all commands in the expression.
 
@@ -55,8 +61,8 @@ description: "Stream editor"       # (optional) short one-liner
 classification: READONLY            # (optional, default READONLY) base classification
 strict: false                       # (optional, default true) unrecognized options -> UNKNOWN?
 options:                            # options that affect classification
-  -i: {overrides: WRITE}           # -i changes classification to WRITE
-  --in-place: {overrides: WRITE, aliases: [-i]}
+  -i: {overrides: EXTERNAL_EFFECTS}           # -i changes classification to EXTERNAL_EFFECTS
+  --in-place: {overrides: EXTERNAL_EFFECTS, aliases: [-i]}
   -e: {takes_value: true}          # -e consumes the next token as its value
   --expression: {takes_value: true, aliases: [-e]}
   -f: {takes_value: true}
@@ -101,7 +107,7 @@ Add `# $schema: ../../../schemas/command.schema.json` as the first line of every
 - The command is a pure filter/transformer (`grep`, `awk`, `sed` without `-i`, `jq`, `sort` without `-o`)
 - The command queries a remote system without changing it (`kubectl get`, `curl` without `-d`/`-F`/`-o`, `dig`, `ping`)
 
-### Use WRITE when:
+### Use EXTERNAL_EFFECTS when:
 
 - The command creates or modifies files (`touch`, `cp`, `mv`, `mkdir`, `tee`)
 - The command modifies local state (`git commit`, `git checkout`, `kubectl apply`)
@@ -149,21 +155,21 @@ There are two distinct mechanisms for controlling classification — don't confu
 Each subcommand has its **own** `classification` field. It does not inherit from or override the parent — it simply IS the classification for that subcommand. No special keyword is needed.
 
 ```yaml
-# git.worktree is WRITE, but git.worktree.list is READONLY
+# git.worktree is EXTERNAL_EFFECTS, but git.worktree.list is READONLY
 # No "overrides" keyword — list has its own classification
 subcommands:
   worktree:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     subcommands:
       list:
         classification: READONLY    # independent, not an override
       add:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       remove:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
 ```
 
-The parent's classification (`WRITE`) is used only when **no subcommand matches** — e.g., bare `git worktree` or `git worktree unknown-thing`.
+The parent's classification (`EXTERNAL_EFFECTS`) is used only when **no subcommand matches** — e.g., bare `git worktree` or `git worktree unknown-thing`.
 
 ### Option overrides: replace the matched subcommand's classification
 
@@ -174,15 +180,15 @@ The `overrides` keyword is for **options** (flags) that change the classificatio
 A flag that makes a normally safe command destructive:
 
 ```yaml
-# git push is WRITE, but --force makes it DANGEROUS
+# git push is EXTERNAL_EFFECTS, but --force makes it DANGEROUS
 command: git
 subcommands:
   push:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       --force: {overrides: DANGEROUS}
       -f: {overrides: DANGEROUS}
-      --force-with-lease: {overrides: WRITE}   # safer force push stays WRITE
+      --force-with-lease: {overrides: EXTERNAL_EFFECTS}   # safer force push stays EXTERNAL_EFFECTS
 ```
 
 ```yaml
@@ -190,7 +196,7 @@ subcommands:
 command: sed
 classification: READONLY
 options:
-  -i: {overrides: WRITE}
+  -i: {overrides: EXTERNAL_EFFECTS}
 ```
 
 ### Lowering classification
@@ -198,28 +204,28 @@ options:
 A flag that makes a normally writing command safe to auto-allow:
 
 ```yaml
-# kubectl apply is WRITE, but --dry-run only prints what would happen
+# kubectl apply is EXTERNAL_EFFECTS, but --dry-run only prints what would happen
 subcommands:
   apply:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       --dry-run: {takes_value: true, overrides: READONLY}
 ```
 
 ```yaml
-# tar is WRITE (creates/extracts archives), but -t only lists contents
+# tar is EXTERNAL_EFFECTS (creates/extracts archives), but -t only lists contents
 command: tar
-classification: WRITE
+classification: EXTERNAL_EFFECTS
 options:
   -t: {overrides: READONLY}
   --list: {overrides: READONLY, aliases: [-t]}
 ```
 
 ```yaml
-# git branch is WRITE (creates branches), but -l only lists them
+# git branch is EXTERNAL_EFFECTS (creates branches), but -l only lists them
 subcommands:
   branch:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
     options:
       -l: {overrides: READONLY}
       --list: {overrides: READONLY, aliases: [-l]}
@@ -251,10 +257,10 @@ options:
 
 ```yaml
 command: sudo
-classification: WRITE
+classification: EXTERNAL_EFFECTS
 delegates_to:
   mode: rest_are_argv
-  min_classification: WRITE   # inner command is at least WRITE
+  min_classification: EXTERNAL_EFFECTS   # inner command is at least EXTERNAL_EFFECTS
 ```
 
 **env:** `env FOO=bar BAZ=1 python script.py` -- strips `FOO=bar BAZ=1`, inner command is `["python", "script.py"]`
@@ -331,7 +337,7 @@ options:
 
 ### `min_classification`
 
-Forces the inner command to be classified at least at the given level. sudo uses this to ensure that even `sudo ls` is at least WRITE -- because running anything under elevated privileges is not a no-op.
+Forces the inner command to be classified at least at the given level. sudo uses this to ensure that even `sudo ls` is at least EXTERNAL_EFFECTS -- because running anything under elevated privileges is not a no-op.
 
 ## 7. Special Cases
 
@@ -339,7 +345,7 @@ Forces the inner command to be classified at least at the given level. sudo uses
 
 Some commands default to a higher classification when used without a recognized subcommand:
 
-- **kubectl** -- base `WRITE` (bare `kubectl` without a known subcommand should not be auto-allowed)
+- **kubectl** -- base `EXTERNAL_EFFECTS` (bare `kubectl` without a known subcommand should not be auto-allowed)
 - **terraform** -- base `DANGEROUS` (unknown terraform subcommands could modify infrastructure)
 - **docker** -- no explicit base classification, so commands like `docker unknown-thing` fall through as UNKNOWN
 
@@ -367,13 +373,13 @@ The first line `# $schema: ../../../schemas/command.schema.json` is a convention
 | Pattern | Example | Classification |
 |---------|---------|---------------|
 | Pure reader | `cat`, `grep`, `ls` | READONLY |
-| Filter with in-place mode | `sed` base, `sed -i` | READONLY / WRITE |
-| File creator/modifier | `cp`, `mv`, `touch` | WRITE |
+| Filter with in-place mode | `sed` base, `sed -i` | READONLY / EXTERNAL_EFFECTS |
+| File creator/modifier | `cp`, `mv`, `touch` | EXTERNAL_EFFECTS |
 | Subcommand-driven | `git`, `kubectl` | Per subcommand |
 | Arbitrary code executor | `python`, `sh`, `eval` | DANGEROUS |
 | Wrapper/delegator | `sudo`, `xargs`, `env` | Delegation-based |
-| Lister with create mode | `git branch`, `git tag` | WRITE base, `-l` overrides to READONLY |
-| Dry-run capable | `make`, `kubectl apply` | WRITE base, `--dry-run` overrides to READONLY |
+| Lister with create mode | `git branch`, `git tag` | EXTERNAL_EFFECTS base, `-l` overrides to READONLY |
+| Dry-run capable | `make`, `kubectl apply` | EXTERNAL_EFFECTS base, `--dry-run` overrides to READONLY |
 | Network tool (read) | `curl`, `ping`, `dig` | READONLY |
-| Network tool (write) | `curl -d`, `wget` | WRITE |
+| Network tool (write) | `curl -d`, `wget` | EXTERNAL_EFFECTS |
 | System admin | `systemctl`, `kill` | DANGEROUS |

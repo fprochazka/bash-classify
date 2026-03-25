@@ -5,7 +5,7 @@ classification: DANGEROUS
 strict: false
 subcommands:
   init:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   plan:
     classification: READONLY
   apply:
@@ -28,13 +28,13 @@ subcommands:
       rm:
         classification: DANGEROUS
       pull:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       push:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
   validate:
     classification: READONLY
   fmt:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   workspace:
     classification: READONLY
     subcommands:
@@ -43,15 +43,15 @@ subcommands:
       show:
         classification: READONLY
       new:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       select:
-        classification: WRITE
+        classification: EXTERNAL_EFFECTS
       delete:
         classification: DANGEROUS
   import:
     classification: DANGEROUS
   refresh:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
   providers:
     classification: READONLY
   console:

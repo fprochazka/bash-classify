@@ -76,7 +76,7 @@ class TestGitYaml:
     def test_git_subcommand_push(self, database: dict[str, CommandDef]) -> None:
         git = database["git"]
         push = git.subcommands["push"]
-        assert push.classification == Classification.WRITE
+        assert push.classification == Classification.EXTERNAL_EFFECTS
         assert "--force" in push.options
         assert push.options["--force"].overrides == Classification.DANGEROUS
 
@@ -204,7 +204,7 @@ class TestUserCommandsDir:
         """User YAML overrides built-in command definition."""
         user_dir = tmp_path / "config" / "commands"
         user_dir.mkdir(parents=True)
-        (user_dir / "grep.yaml").write_text("command: grep\nclassification: WRITE\nstrict: false\n")
+        (user_dir / "grep.yaml").write_text("command: grep\nclassification: EXTERNAL_EFFECTS\nstrict: false\n")
 
         import os
 
@@ -212,7 +212,7 @@ class TestUserCommandsDir:
         try:
             os.environ["BASH_CLASSIFY_CONFIG_DIR"] = str(tmp_path / "config")
             db = load_database()
-            assert db["grep"].classification == Classification.WRITE  # overridden
+            assert db["grep"].classification == Classification.EXTERNAL_EFFECTS  # overridden
         finally:
             if old is None:
                 os.environ.pop("BASH_CLASSIFY_CONFIG_DIR", None)

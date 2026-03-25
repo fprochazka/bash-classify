@@ -4,7 +4,7 @@ Classify bash commands by their side-effect risk level.
 
 ## What it does
 
-bash-classify parses bash expressions using tree-sitter, classifies each command against a database of 120+ known commands, and outputs a structured JSON verdict. Commands are classified into four levels: `READONLY`, `WRITE`, `DANGEROUS`, and `UNKNOWN`.
+bash-classify parses bash expressions using tree-sitter, classifies each command against a database of 120+ known commands, and outputs a structured JSON verdict. Commands are classified into five levels: `READONLY`, `LOCAL_EFFECTS`, `EXTERNAL_EFFECTS`, `DANGEROUS`, and `UNKNOWN`.
 
 Designed primarily as a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook to automatically allow safe, read-only commands while flagging risky ones for human review.
 
@@ -53,7 +53,7 @@ claude plugin marketplace update fprochazka-bash-classify
 claude plugin update bash-classify-hook@fprochazka-bash-classify
 ```
 
-Once installed, any Bash tool call classified as `READONLY` is auto-approved — no permission prompt. Everything else (WRITE, DANGEROUS, UNKNOWN) still requires confirmation.
+Once installed, any Bash tool call classified as `READONLY` is auto-approved — no permission prompt. Everything else (LOCAL_EFFECTS, EXTERNAL_EFFECTS, DANGEROUS, UNKNOWN) still requires confirmation.
 
 ## Command database
 
@@ -66,8 +66,9 @@ The classification database includes 120+ command definitions covering common Un
 
 | Level | Description | Examples |
 |---|---|---|
-| `READONLY` | No side effects, safe to auto-approve | `ls`, `cat`, `grep`, `kubectl get` |
-| `WRITE` | Modifies local files or state | `mkdir`, `cp`, `git commit` |
+| `READONLY` | No side effects, auto-approved | `ls`, `cat`, `grep`, `kubectl get` |
+| `LOCAL_EFFECTS` | Modifies local files or state only | `git add`, `git commit`, `cp`, `mkdir`, `pytest` |
+| `EXTERNAL_EFFECTS` | Interacts with external systems | `git push`, `kubectl apply`, `curl -d` |
 | `DANGEROUS` | Destructive, system-wide, or irreversible | `rm -rf`, `git push --force`, `chmod` |
 | `UNKNOWN` | Command not in database | Any unrecognized command |
 

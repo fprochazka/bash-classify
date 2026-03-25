@@ -1,7 +1,7 @@
 # $schema: ../../../schemas/command.schema.json
 command: make
 description: "Build automation tool"
-classification: WRITE
+classification: LOCAL_EFFECTS
 strict: false
 options:
   -C: {takes_value: true, captures_directory: true}

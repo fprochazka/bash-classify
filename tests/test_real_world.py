@@ -46,21 +46,21 @@ class TestGitWorkflows:
 
     def test_git_add_and_commit(self, database):
         result = classify_expression('git add -A && git commit -m "fix: resolve issue"', database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_git_add_diff_cached(self, database):
         result = classify_expression("git add -A && git diff --cached --stat", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_git_amend_no_edit(self, database):
         result = classify_expression("git add -A && git commit --amend --no-edit", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_git_amend_and_force_push(self, database):
         result = classify_expression(
             "git add -A && git commit --amend --no-edit && git push --force-with-lease", database
         )
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.EXTERNAL_EFFECTS
 
     def test_git_push_force(self, database):
         result = classify_expression("git push --force origin main", database)
@@ -68,11 +68,11 @@ class TestGitWorkflows:
 
     def test_git_rebase_continue(self, database):
         result = classify_expression("git rebase --continue", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_git_reset_soft(self, database):
         result = classify_expression("git reset --soft HEAD~1", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_git_c_flag(self, database):
         result = classify_expression("git -C /home/user/repos/myrepo status", database)
@@ -82,12 +82,12 @@ class TestGitWorkflows:
         # GIT_EDITOR=true is a variable assignment stripped by parser;
         # git rebase --continue is now recognized
         result = classify_expression("GIT_EDITOR=true git rebase --continue", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_git_rm_during_rebase(self, database):
-        # git rm is WRITE, git rebase --continue is WRITE -> overall WRITE
+        # git rm is LOCAL_EFFECTS, git rebase --continue is LOCAL_EFFECTS -> overall LOCAL_EFFECTS
         result = classify_expression("git rm conflicted-file.txt && git rebase --continue", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
 
 class TestBuildAndTest:
@@ -107,30 +107,30 @@ class TestBuildAndTest:
         assert result.classification == Classification.UNKNOWN
 
     def test_pytest_verbose(self, database):
-        # uv run pytest is a known safe subcommand -> WRITE
+        # uv run pytest is a known safe subcommand -> LOCAL_EFFECTS
         result = classify_expression("uv run pytest -v --tb=short", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_npm_test(self, database):
         result = classify_expression("npm test", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_npm_run_build(self, database):
         result = classify_expression("npm run build", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_npm_install(self, database):
         result = classify_expression("npm install", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_ruff_check_and_format(self, database):
         result = classify_expression("ruff check --fix . && ruff format .", database)
-        # ruff check --fix is WRITE, ruff format is WRITE -> WRITE
-        assert result.classification == Classification.WRITE
+        # ruff check --fix is LOCAL_EFFECTS, ruff format is LOCAL_EFFECTS -> LOCAL_EFFECTS
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_make_with_target(self, database):
         result = classify_expression("make build", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_make_dry_run(self, database):
         result = classify_expression("make -n install", database)
@@ -200,7 +200,7 @@ class TestCommandChains:
 
     def test_and_chain_mixed(self, database):
         result = classify_expression("git add -A && git diff --cached --stat", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_or_chain_with_echo_fallback(self, database):
         result = classify_expression('cat /path/to/file || echo "file not found"', database)
@@ -224,7 +224,7 @@ class TestCommandChains:
 
     def test_mkdir_or_fallback(self, database):
         result = classify_expression("cd /nonexistent || mkdir -p /home/user/tmp/workdir", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
 
 class TestRedirects:
@@ -242,11 +242,11 @@ class TestRedirects:
 
     def test_redirect_to_file(self, database):
         result = classify_expression("echo hello > /tmp/test.txt", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_append_redirect(self, database):
         result = classify_expression("echo line >> /tmp/log.txt", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_unzip_with_fallback(self, database):
         """Extract or echo 'not found' — common inspection pattern."""
@@ -254,8 +254,8 @@ class TestRedirects:
             'unzip -p archive.jar META-INF/MANIFEST.MF 2>/dev/null || echo "not found"', database
         )
         # unzip -p is not a recognized option (only -l overrides to READONLY),
-        # so base WRITE classification applies
-        assert result.classification == Classification.WRITE
+        # so base LOCAL_EFFECTS classification applies
+        assert result.classification == Classification.LOCAL_EFFECTS
 
 
 class TestHeredocs:
@@ -271,7 +271,7 @@ EOF
 )" """,
             database,
         )
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_cat_heredoc(self, database):
         result = classify_expression(
@@ -321,7 +321,7 @@ class TestKubernetes:
 
     def test_kubectl_apply(self, database):
         result = classify_expression("kubectl apply -f deployment.yaml", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.EXTERNAL_EFFECTS
 
     def test_kubectl_apply_dry_run(self, database):
         result = classify_expression("kubectl apply --dry-run=client -f deployment.yaml", database)
@@ -381,7 +381,7 @@ class TestFileOperations:
 
     def test_cp_to_tmp(self, database):
         result = classify_expression("cp file.txt /tmp/backup.txt", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_cp_to_etc(self, database):
         result = classify_expression("cp config.txt /etc/myapp/config", database)
@@ -389,7 +389,7 @@ class TestFileOperations:
 
     def test_mkdir_p(self, database):
         result = classify_expression("mkdir -p /home/user/project/src", database)
-        assert result.classification == Classification.WRITE
+        assert result.classification == Classification.LOCAL_EFFECTS
 
 
 class TestComplexRealWorld:
@@ -425,7 +425,7 @@ class TestComplexRealWorld:
 
     def test_sudo_with_pipe(self, database):
         # sudo cat /var/log/syslog -> DANGEROUS because /var/log/syslog is a system path
-        # and sudo's min_classification is WRITE, which gets elevated to DANGEROUS
+        # and sudo's min_classification is EXTERNAL_EFFECTS, which gets elevated to DANGEROUS
         result = classify_expression("sudo cat /var/log/syslog | grep error | tail -20", database)
         assert result.classification == Classification.DANGEROUS
 

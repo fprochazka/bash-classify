@@ -4,9 +4,9 @@ description: "Query the systemd journal"
 classification: READONLY
 strict: false
 options:
-  --flush: {overrides: WRITE}
-  --rotate: {overrides: WRITE}
-  --sync: {overrides: WRITE}
+  --flush: {overrides: EXTERNAL_EFFECTS}
+  --rotate: {overrides: EXTERNAL_EFFECTS}
+  --sync: {overrides: EXTERNAL_EFFECTS}
   --vacuum-size: {takes_value: true, overrides: DANGEROUS}
   --vacuum-time: {takes_value: true, overrides: DANGEROUS}
   --vacuum-files: {takes_value: true, overrides: DANGEROUS}

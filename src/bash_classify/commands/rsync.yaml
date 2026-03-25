@@ -1,7 +1,7 @@
 # $schema: ../../../schemas/command.schema.json
 command: rsync
 description: "Fast, versatile file copying tool"
-classification: WRITE
+classification: EXTERNAL_EFFECTS
 strict: false
 options:
   -n: {overrides: READONLY}

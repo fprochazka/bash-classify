@@ -23,27 +23,27 @@ subcommands:
     strict: false
     subcommands:
       fix:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
   install:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   ci:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   run:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   test:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   build:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   uninstall:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   update:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     strict: false
   publish:
     classification: DANGEROUS

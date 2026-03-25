@@ -4,28 +4,28 @@ description: "Tool for managing Go source code"
 strict: false
 subcommands:
   build:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   test:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   run:
     classification: DANGEROUS
   install:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   get:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   mod:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
     subcommands:
       tidy:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       download:
-        classification: WRITE
+        classification: LOCAL_EFFECTS
       verify:
         classification: READONLY
       graph:
         classification: READONLY
   fmt:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   vet:
     classification: READONLY
   doc:

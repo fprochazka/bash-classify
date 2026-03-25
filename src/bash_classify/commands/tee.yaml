@@ -1,5 +1,5 @@
 # $schema: ../../../schemas/command.schema.json
 command: tee
 description: "Read from stdin and write to stdout and files"
-classification: WRITE
+classification: LOCAL_EFFECTS
 strict: false

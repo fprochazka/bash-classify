@@ -10,15 +10,15 @@ subcommands:
   search:
     classification: READONLY
   install:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   uninstall:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   update:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   upgrade:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   cleanup:
-    classification: WRITE
+    classification: LOCAL_EFFECTS
   doctor:
     classification: READONLY
   config:

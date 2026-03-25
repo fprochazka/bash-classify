@@ -1,21 +1,21 @@
 # $schema: ../../../schemas/command.schema.json
 command: curl
 description: "Transfer data from or to a server"
-classification: WRITE
+classification: EXTERNAL_EFFECTS
 strict: false
 options:
-  -o: {takes_value: true, overrides: WRITE}
-  --output: {takes_value: true, overrides: WRITE, aliases: [-o]}
-  -O: {overrides: WRITE}
-  --remote-name: {overrides: WRITE, aliases: [-O]}
-  -T: {takes_value: true, overrides: WRITE}
-  --upload-file: {takes_value: true, overrides: WRITE, aliases: [-T]}
+  -o: {takes_value: true, overrides: EXTERNAL_EFFECTS}
+  --output: {takes_value: true, overrides: EXTERNAL_EFFECTS, aliases: [-o]}
+  -O: {overrides: EXTERNAL_EFFECTS}
+  --remote-name: {overrides: EXTERNAL_EFFECTS, aliases: [-O]}
+  -T: {takes_value: true, overrides: EXTERNAL_EFFECTS}
+  --upload-file: {takes_value: true, overrides: EXTERNAL_EFFECTS, aliases: [-T]}
   -X: {takes_value: true}
   --request: {takes_value: true, aliases: [-X]}
-  -d: {takes_value: true, overrides: WRITE}
-  --data: {takes_value: true, overrides: WRITE, aliases: [-d]}
-  -F: {takes_value: true, overrides: WRITE}
-  --form: {takes_value: true, overrides: WRITE, aliases: [-F]}
+  -d: {takes_value: true, overrides: EXTERNAL_EFFECTS}
+  --data: {takes_value: true, overrides: EXTERNAL_EFFECTS, aliases: [-d]}
+  -F: {takes_value: true, overrides: EXTERNAL_EFFECTS}
+  --form: {takes_value: true, overrides: EXTERNAL_EFFECTS, aliases: [-F]}
   -H: {takes_value: true}
   --header: {takes_value: true, aliases: [-H]}
   -s: {}

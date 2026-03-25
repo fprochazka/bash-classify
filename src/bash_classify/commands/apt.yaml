@@ -16,7 +16,7 @@ subcommands:
   purge:
     classification: DANGEROUS
   update:
-    classification: WRITE
+    classification: EXTERNAL_EFFECTS
   upgrade:
     classification: DANGEROUS
   autoremove:

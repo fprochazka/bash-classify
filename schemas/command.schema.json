@@ -41,7 +41,7 @@
   "$defs": {
     "Classification": {
       "type": "string",
-      "enum": ["READONLY", "WRITE", "DANGEROUS", "UNKNOWN"],
+      "enum": ["READONLY", "LOCAL_EFFECTS", "EXTERNAL_EFFECTS", "DANGEROUS", "UNKNOWN"],
       "description": "Classification level for a command or option override"
     },
     "DelegationConfig": {
