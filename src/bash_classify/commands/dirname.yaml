@@ -3,3 +3,5 @@ command: dirname
 description: "Strip last component from file name"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

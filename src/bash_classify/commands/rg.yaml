@@ -3,3 +3,5 @@ command: rg
 description: "Recursively search directories for a regex pattern"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

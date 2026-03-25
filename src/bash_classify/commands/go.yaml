@@ -2,6 +2,8 @@
 command: go
 description: "Tool for managing Go source code"
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 subcommands:
   build:
     classification: LOCAL_EFFECTS

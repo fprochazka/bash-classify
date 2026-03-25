@@ -3,3 +3,5 @@ command: install
 description: "Copy files and set attributes"
 classification: LOCAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}

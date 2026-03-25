@@ -3,3 +3,5 @@ command: file
 description: "Determine file type"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

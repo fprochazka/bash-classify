@@ -3,6 +3,8 @@ command: date
 description: "Display or set the system date and time"
 classification: READONLY
 strict: true
+global_options:
+  --help: {overrides: READONLY}
 options:
   -s: {takes_value: true, overrides: DANGEROUS}
   --set: {takes_value: true, overrides: DANGEROUS, aliases: [-s]}

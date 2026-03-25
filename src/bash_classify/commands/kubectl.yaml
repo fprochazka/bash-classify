@@ -4,6 +4,7 @@ description: "Kubernetes command-line tool"
 classification: EXTERNAL_EFFECTS
 strict: false
 global_options:
+  --help: {overrides: READONLY}
   --context: {takes_value: true}
   --kubeconfig: {takes_value: true}
   --namespace: {takes_value: true, aliases: [-n]}

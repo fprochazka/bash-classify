@@ -3,3 +3,5 @@ command: jq
 description: "Command-line JSON processor"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

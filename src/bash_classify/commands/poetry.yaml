@@ -2,6 +2,8 @@
 command: poetry
 description: "Python dependency management and packaging"
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 subcommands:
   show:
     classification: READONLY

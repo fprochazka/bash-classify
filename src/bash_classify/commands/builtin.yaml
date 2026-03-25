@@ -2,5 +2,7 @@
 command: builtin
 description: "Execute a shell builtin command"
 classification: READONLY
+global_options:
+  --help: {overrides: READONLY}
 delegates_to:
   mode: rest_are_argv

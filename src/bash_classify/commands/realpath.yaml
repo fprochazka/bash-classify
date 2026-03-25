@@ -3,3 +3,5 @@ command: realpath
 description: "Print the resolved absolute path"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

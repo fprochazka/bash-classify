@@ -2,6 +2,8 @@
 command: git
 description: "Distributed version control system"
 global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
   -C: {takes_value: true, captures_directory: true}
   --git-dir: {takes_value: true}
   --work-tree: {takes_value: true}

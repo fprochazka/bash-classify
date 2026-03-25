@@ -3,3 +3,5 @@ command: whoami
 description: "Print effective user name"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

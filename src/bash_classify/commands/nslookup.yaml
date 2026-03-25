@@ -3,3 +3,5 @@ command: nslookup
 description: "Query Internet name servers interactively"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

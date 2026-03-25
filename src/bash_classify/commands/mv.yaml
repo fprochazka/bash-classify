@@ -3,3 +3,5 @@ command: mv
 description: "Move or rename files and directories"
 classification: LOCAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}

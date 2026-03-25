@@ -3,3 +3,5 @@ command: netstat
 description: "Print network connections and statistics"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

@@ -3,3 +3,5 @@ command: whereis
 description: "Locate the binary, source, and manual page for a command"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

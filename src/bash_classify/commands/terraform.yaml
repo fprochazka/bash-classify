@@ -3,6 +3,8 @@ command: terraform
 description: "Infrastructure as code tool by HashiCorp"
 classification: DANGEROUS
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 subcommands:
   init:
     classification: LOCAL_EFFECTS

@@ -3,3 +3,5 @@ command: gzip
 description: "Compress or decompress files using gzip"
 classification: LOCAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}

@@ -3,6 +3,8 @@ command: systemctl
 description: "Control the systemd system and service manager"
 classification: DANGEROUS
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 subcommands:
   status:
     classification: READONLY

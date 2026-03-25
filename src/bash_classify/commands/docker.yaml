@@ -3,6 +3,7 @@ command: docker
 description: "Container application platform"
 strict: false
 global_options:
+  --help: {overrides: READONLY}
   --host: {takes_value: true, aliases: [-H]}
   --config: {takes_value: true}
   --context: {takes_value: true}

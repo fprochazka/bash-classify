@@ -2,6 +2,8 @@
 command: ruff
 description: "Fast Python linter and formatter"
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 subcommands:
   check:
     classification: READONLY

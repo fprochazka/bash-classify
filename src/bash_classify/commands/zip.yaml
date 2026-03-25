@@ -3,3 +3,5 @@ command: zip
 description: "Package and compress files into ZIP archives"
 classification: LOCAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}

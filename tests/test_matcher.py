@@ -551,3 +551,49 @@ class TestShFlagEqualsValue:
             # If it doesn't work, it's a known limitation — the short flag = form
             # is not standard shell syntax anyway.
             pytest.skip("sh -c=value form not supported — known limitation")
+
+
+class TestGlobalOptionOverrides:
+    """Global options with overrides should affect classification."""
+
+    def test_help_before_subcommand(self, database):
+        """--help before subcommand is caught by global option stripping."""
+        result = match_command(_make_invocation(["kubectl", "--help"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_help_after_subcommand(self, database):
+        """--help after subcommand is caught by post-subcommand global option check."""
+        result = match_command(_make_invocation(["kubectl", "apply", "--help"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_help_on_dangerous_command(self, database):
+        """--help overrides even DANGEROUS subcommands."""
+        result = match_command(_make_invocation(["kubectl", "delete", "--help"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_h_short_flag(self, database):
+        """-h works as help for git (where it's defined as global option)."""
+        result = match_command(_make_invocation(["git", "-h"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_h_after_subcommand(self, database):
+        result = match_command(_make_invocation(["git", "push", "-h"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_help_does_not_affect_normal_usage(self, database):
+        """Without --help, normal classification applies."""
+        result = match_command(_make_invocation(["kubectl", "apply", "-f", "manifest.yaml"]), database)
+        assert result.classification == Classification.EXTERNAL_EFFECTS
+
+    def test_help_on_command_without_global_options(self, database):
+        """Commands with --help in global_options should work."""
+        result = match_command(_make_invocation(["rm", "--help"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_help_on_docker_run(self, database):
+        result = match_command(_make_invocation(["docker", "run", "--help"]), database)
+        assert result.classification == Classification.READONLY
+
+    def test_help_on_terraform_apply(self, database):
+        result = match_command(_make_invocation(["terraform", "apply", "--help"]), database)
+        assert result.classification == Classification.READONLY

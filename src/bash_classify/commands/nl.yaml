@@ -3,3 +3,5 @@ command: nl
 description: "Number lines of files"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

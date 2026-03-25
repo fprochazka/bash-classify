@@ -7,4 +7,3 @@ options:
   --version: {overrides: READONLY}
   -V: {overrides: READONLY}
   --help: {overrides: READONLY}
-  -h: {overrides: READONLY}

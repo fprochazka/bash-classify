@@ -3,3 +3,5 @@ command: node
 description: "JavaScript runtime built on V8 engine"
 classification: DANGEROUS
 strict: false
+global_options:
+  --help: {overrides: READONLY}

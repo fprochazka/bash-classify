@@ -3,3 +3,5 @@ command: pkill
 description: "Send signals to processes by name or pattern"
 classification: DANGEROUS
 strict: false
+global_options:
+  --help: {overrides: READONLY}

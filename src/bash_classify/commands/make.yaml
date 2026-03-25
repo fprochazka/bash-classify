@@ -3,6 +3,8 @@ command: make
 description: "Build automation tool"
 classification: LOCAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 options:
   -C: {takes_value: true, captures_directory: true}
   --directory: {takes_value: true, captures_directory: true, aliases: [-C]}

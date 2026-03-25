@@ -3,3 +3,5 @@ command: touch
 description: "Change file timestamps or create empty files"
 classification: LOCAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}

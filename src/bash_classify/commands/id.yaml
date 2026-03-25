@@ -3,3 +3,5 @@ command: id
 description: "Print real and effective user and group IDs"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

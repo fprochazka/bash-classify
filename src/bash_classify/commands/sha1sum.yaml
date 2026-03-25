@@ -3,3 +3,5 @@ command: sha1sum
 description: "Compute and check SHA-1 message digest"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

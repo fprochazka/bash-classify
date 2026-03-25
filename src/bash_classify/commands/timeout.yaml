@@ -2,6 +2,8 @@
 command: timeout
 description: "Run a command with a time limit"
 classification: READONLY
+global_options:
+  --help: {overrides: READONLY}
 delegates_to:
   mode: rest_are_argv
 options:

@@ -3,3 +3,5 @@ command: gawk
 description: "Pattern scanning and processing language"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

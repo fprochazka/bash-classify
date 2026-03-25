@@ -3,3 +3,5 @@ command: rm
 description: "Remove files or directories"
 classification: DANGEROUS
 strict: false
+global_options:
+  --help: {overrides: READONLY}

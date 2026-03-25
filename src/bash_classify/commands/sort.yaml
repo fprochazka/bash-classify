@@ -3,6 +3,8 @@ command: sort
 description: "Sort lines of text files"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 options:
   -o: {takes_value: true, overrides: LOCAL_EFFECTS}
   --output: {takes_value: true, overrides: LOCAL_EFFECTS, aliases: [-o]}

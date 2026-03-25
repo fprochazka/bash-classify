@@ -2,6 +2,8 @@
 command: brew
 description: "macOS and Linux package manager"
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 subcommands:
   list:
     classification: READONLY

@@ -76,7 +76,7 @@ def match_command(
     remaining = argv[1:]
 
     # Step 2: Strip global options
-    remaining, ignored_options, global_directories = _strip_global_options(remaining, command_def)
+    remaining, ignored_options, global_directories, global_overrides = _strip_global_options(remaining, command_def)
 
     # Step 3: Subcommand matching
     matched_def, command_chain, remaining = _match_subcommand(remaining, command_def)
@@ -91,6 +91,8 @@ def match_command(
         remaining_positional,
     ) = _classify_options(remaining, matched_def)
 
+    # Merge global overrides with subcommand overrides
+    all_overrides = global_overrides + overrides
     all_directories = global_directories + option_directories
 
     # Build command path
@@ -106,12 +108,12 @@ def match_command(
     classification_reason: str | None = None
     overriding_option: str | None = None
 
-    if overrides:
+    if all_overrides:
         # When any option has an override, the final classification is the max
         # of all overrides (ignoring the base). This is a true override/replace.
-        final_classification = overrides[0][1]
-        overriding_option = overrides[0][0]
-        for opt_name, override_class in overrides[1:]:
+        final_classification = all_overrides[0][1]
+        overriding_option = all_overrides[0][0]
+        for opt_name, override_class in all_overrides[1:]:
             if override_class.severity() > final_classification.severity():
                 final_classification = override_class
                 overriding_option = opt_name
@@ -119,6 +121,25 @@ def match_command(
     else:
         final_classification = base_classification
         classification_reason = f"base classification from rule {matched_rule}"
+
+    # Global options that appear after the subcommand (e.g., `kubectl apply --help`)
+    # are not caught by _strip_global_options. Check for them here and apply overrides.
+    if command_def.global_options:
+        for opt in unknown_options[:]:
+            opt_key = opt.split("=", 1)[0] if "=" in opt else opt
+            global_opt_def = command_def.global_options.get(opt_key)
+            if global_opt_def is not None:
+                unknown_options.remove(opt)
+                if global_opt_def.overrides is not None:
+                    all_overrides.append((opt_key, global_opt_def.overrides))
+                    # Re-evaluate: override replaces base
+                    final_classification = all_overrides[0][1]
+                    overriding_option = all_overrides[0][0]
+                    for o_name, o_class in all_overrides[1:]:
+                        if o_class.severity() > final_classification.severity():
+                            final_classification = o_class
+                            overriding_option = o_name
+                    classification_reason = f"overridden by option {overriding_option} to {final_classification.value}"
 
     # Strict mode: unrecognized options -> UNKNOWN
     if matched_def.strict and unknown_options:
@@ -208,21 +229,22 @@ def _handle_dangerous_builtin(invocation: CommandInvocation) -> CommandResult:
 def _strip_global_options(
     argv: list[str],
     command_def: CommandDef,
-) -> tuple[list[str], list[str], list[str]]:
+) -> tuple[list[str], list[str], list[str], list[tuple[str, Classification]]]:
     """Strip global options from argv, only before the first subcommand.
 
     Global options are consumed from the front of argv. Once a non-option token
     is encountered (potential subcommand or positional arg), stripping stops and
     all remaining tokens are passed through.
 
-    Returns (remaining_argv, ignored_options, directories).
+    Returns (remaining_argv, ignored_options, directories, overrides).
     """
     if not command_def.global_options:
-        return list(argv), [], []
+        return list(argv), [], [], []
 
     remaining: list[str] = []
     ignored: list[str] = []
     directories: list[str] = []
+    overrides: list[tuple[str, Classification]] = []
     i = 0
 
     while i < len(argv):
@@ -242,6 +264,8 @@ def _strip_global_options(
                 ignored.append(token)
                 if opt_def.captures_directory:
                     directories.append(token.split("=", 1)[1])
+                if opt_def.overrides is not None:
+                    overrides.append((key, opt_def.overrides))
                 i += 1
                 continue
 
@@ -249,6 +273,8 @@ def _strip_global_options(
         opt_def = command_def.global_options.get(token)
         if opt_def is not None:
             ignored.append(token)
+            if opt_def.overrides is not None:
+                overrides.append((token, opt_def.overrides))
             if opt_def.takes_value and i + 1 < len(argv):
                 i += 1
                 ignored.append(argv[i])
@@ -261,7 +287,7 @@ def _strip_global_options(
         remaining.append(token)
         i += 1
 
-    return remaining, ignored, directories
+    return remaining, ignored, directories, overrides
 
 
 def _match_subcommand(

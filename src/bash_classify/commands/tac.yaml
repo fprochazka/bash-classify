@@ -3,3 +3,5 @@ command: tac
 description: "Concatenate and print files in reverse"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

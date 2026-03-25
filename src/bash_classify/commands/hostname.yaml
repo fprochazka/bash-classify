@@ -3,3 +3,5 @@ command: hostname
 description: "Show or set the system hostname"
 classification: EXTERNAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}

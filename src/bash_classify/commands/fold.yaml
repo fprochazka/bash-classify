@@ -3,3 +3,5 @@ command: fold
 description: "Wrap each input line to fit in specified width"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

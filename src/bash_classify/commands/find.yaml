@@ -3,6 +3,8 @@ command: find
 description: "Search for files in a directory hierarchy"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 options:
   -delete: {overrides: DANGEROUS}
   -exec:

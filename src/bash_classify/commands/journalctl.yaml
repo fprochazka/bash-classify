@@ -3,6 +3,8 @@ command: journalctl
 description: "Query the systemd journal"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 options:
   --flush: {overrides: EXTERNAL_EFFECTS}
   --rotate: {overrides: EXTERNAL_EFFECTS}

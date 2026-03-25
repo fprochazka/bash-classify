@@ -3,3 +3,5 @@ command: which
 description: "Locate a command in the PATH"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

@@ -3,3 +3,5 @@ command: cut
 description: "Remove sections from each line of files"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

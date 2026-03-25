@@ -2,6 +2,8 @@
 command: uv
 description: "An extremely fast Python package manager"
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 subcommands:
   run:
     classification: DANGEROUS

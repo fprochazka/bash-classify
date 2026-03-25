@@ -3,6 +3,8 @@ command: chown
 description: "Change file owner and group"
 classification: LOCAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 options:
   -R: {overrides: DANGEROUS}
   --recursive: {overrides: DANGEROUS, aliases: [-R]}

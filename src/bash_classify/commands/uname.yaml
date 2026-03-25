@@ -3,3 +3,5 @@ command: uname
 description: "Print system information"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

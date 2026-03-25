@@ -3,3 +3,5 @@ command: pwd
 description: "Print name of current working directory"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

@@ -3,6 +3,8 @@ command: yq
 description: "Command-line YAML processor"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 options:
   -i: {overrides: LOCAL_EFFECTS}
   --inplace: {overrides: LOCAL_EFFECTS, aliases: [-i]}

@@ -3,3 +3,5 @@ command: diff
 description: "Compare files line by line"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

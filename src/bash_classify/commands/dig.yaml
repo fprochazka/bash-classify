@@ -3,3 +3,5 @@ command: dig
 description: "DNS lookup utility"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

@@ -2,6 +2,8 @@
 command: npm
 description: "Node.js package manager"
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 subcommands:
   ls:
     classification: READONLY

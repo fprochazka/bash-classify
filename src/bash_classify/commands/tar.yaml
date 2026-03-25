@@ -3,6 +3,8 @@ command: tar
 description: "Archive utility for creating and extracting tarballs"
 classification: LOCAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 options:
   -t: {overrides: READONLY}
   --list: {overrides: READONLY, aliases: [-t]}

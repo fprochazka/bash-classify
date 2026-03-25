@@ -3,3 +3,5 @@ command: seq
 description: "Print a sequence of numbers"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

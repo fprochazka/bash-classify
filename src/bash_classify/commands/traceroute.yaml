@@ -3,3 +3,5 @@ command: traceroute
 description: "Print the route packets take to a host"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

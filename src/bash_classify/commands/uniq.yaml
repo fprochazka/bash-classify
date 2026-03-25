@@ -3,3 +3,5 @@ command: uniq
 description: "Report or omit repeated lines"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

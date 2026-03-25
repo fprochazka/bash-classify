@@ -3,6 +3,8 @@ command: bash
 description: "GNU Bourne-Again SHell"
 classification: DANGEROUS
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 delegates_to:
   mode: flag_value_is_expression
   flag: -c

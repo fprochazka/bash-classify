@@ -3,3 +3,5 @@ command: scp
 description: "Secure copy files between hosts"
 classification: EXTERNAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}

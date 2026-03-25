@@ -3,6 +3,8 @@ command: curl
 description: "Transfer data from or to a server"
 classification: EXTERNAL_EFFECTS
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 options:
   -o: {takes_value: true, overrides: EXTERNAL_EFFECTS}
   --output: {takes_value: true, overrides: EXTERNAL_EFFECTS, aliases: [-o]}

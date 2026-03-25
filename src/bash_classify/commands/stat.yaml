@@ -3,3 +3,5 @@ command: stat
 description: "Display file or file system status"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

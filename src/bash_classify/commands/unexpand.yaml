@@ -3,3 +3,5 @@ command: unexpand
 description: "Convert spaces to tabs"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

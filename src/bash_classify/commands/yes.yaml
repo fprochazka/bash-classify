@@ -3,3 +3,5 @@ command: "yes"
 description: "Output a string repeatedly until killed"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

@@ -3,3 +3,5 @@ command: expand
 description: "Convert tabs to spaces"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

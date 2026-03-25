@@ -2,6 +2,8 @@
 command: cargo
 description: "Rust package manager and build tool"
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 subcommands:
   build:
     classification: LOCAL_EFFECTS

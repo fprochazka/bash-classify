@@ -3,3 +3,5 @@ command: type
 description: "Display information about command type"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

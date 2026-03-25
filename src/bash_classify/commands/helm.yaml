@@ -2,6 +2,8 @@
 command: helm
 description: "Kubernetes package manager"
 strict: false
+global_options:
+  --help: {overrides: READONLY}
 subcommands:
   list:
     classification: READONLY

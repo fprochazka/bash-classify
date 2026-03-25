@@ -3,3 +3,5 @@ command: du
 description: "Estimate file space usage"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

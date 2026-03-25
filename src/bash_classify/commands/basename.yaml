@@ -3,3 +3,5 @@ command: basename
 description: "Strip directory and suffix from filenames"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}

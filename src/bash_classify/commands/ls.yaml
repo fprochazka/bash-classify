@@ -3,3 +3,5 @@ command: ls
 description: "List directory contents"
 classification: READONLY
 strict: false
+global_options:
+  --help: {overrides: READONLY}
