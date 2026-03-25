@@ -95,6 +95,24 @@ def main() -> None:
         1 - parse error (invalid bash syntax)
         2 - internal error
     """
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        print("Usage: bash-classify < command")
+        print("       echo 'ls -la' | bash-classify")
+        print()
+        print("Reads a bash expression from stdin, classifies it, and outputs JSON.")
+        print()
+        print("Exit codes:")
+        print("  0  successfully classified")
+        print("  1  empty input")
+        print("  2  internal error")
+        sys.exit(0)
+
+    if len(sys.argv) > 1 and sys.argv[1] in ("-v", "--version"):
+        from importlib.metadata import version
+
+        print(f"bash-classify {version('bash-classify')}")
+        sys.exit(0)
+
     try:
         expression = sys.stdin.read().strip()
         if not expression:
