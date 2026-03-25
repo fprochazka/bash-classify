@@ -123,7 +123,7 @@ class TestSudoYaml:
         sudo = database["sudo"]
         assert sudo.delegates_to is not None
         assert sudo.delegates_to.mode == DelegationMode.REST_ARE_ARGV
-        assert sudo.delegates_to.min_classification == Classification.WRITE
+        assert sudo.delegates_to.min_classification == Classification.DANGEROUS
 
 
 class TestEnvYaml:

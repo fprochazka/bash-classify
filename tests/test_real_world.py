@@ -109,9 +109,9 @@ class TestBuildAndTest:
         assert result.classification == Classification.UNKNOWN
 
     def test_pytest_verbose(self, database):
-        # uv is UNKNOWN (not in DB)
+        # uv run executes arbitrary code -> DANGEROUS
         result = classify_expression("uv run pytest -v --tb=short", database)
-        assert result.classification == Classification.UNKNOWN
+        assert result.classification == Classification.DANGEROUS
 
     def test_npm_test(self, database):
         result = classify_expression("npm test", database)

@@ -12,6 +12,7 @@ global_options:
   --exec-path: {takes_value: true}
 
 subcommands:
+  # --- Readonly commands ---
   status:
     classification: READONLY
     strict: false
@@ -24,6 +25,66 @@ subcommands:
   diff:
     classification: READONLY
     strict: false
+  blame:
+    classification: READONLY
+    strict: false
+  shortlog:
+    classification: READONLY
+    strict: false
+  reflog:
+    classification: READONLY
+    strict: false
+  rev-parse:
+    classification: READONLY
+  ls-files:
+    classification: READONLY
+    strict: false
+  ls-remote:
+    classification: READONLY
+    strict: false
+  ls-tree:
+    classification: READONLY
+    strict: false
+  cat-file:
+    classification: READONLY
+    strict: false
+  for-each-ref:
+    classification: READONLY
+    strict: false
+  describe:
+    classification: READONLY
+    strict: false
+  rev-list:
+    classification: READONLY
+    strict: false
+  name-rev:
+    classification: READONLY
+    strict: false
+  grep:
+    classification: READONLY
+    strict: false
+  range-diff:
+    classification: READONLY
+    strict: false
+  show-branch:
+    classification: READONLY
+    strict: false
+  verify-commit:
+    classification: READONLY
+    strict: false
+  verify-tag:
+    classification: READONLY
+    strict: false
+  whatchanged:
+    classification: READONLY
+    strict: false
+  help:
+    classification: READONLY
+    strict: false
+  version:
+    classification: READONLY
+
+  # --- Branch / tag / remote management ---
   branch:
     classification: WRITE
     options:
@@ -32,8 +93,12 @@ subcommands:
       -d: {overrides: WRITE}
       -D: {overrides: DANGEROUS}
       --delete: {overrides: WRITE}
-      --move: {overrides: WRITE}
-      --copy: {overrides: WRITE}
+      -m: {overrides: WRITE}
+      --move: {overrides: WRITE, aliases: [-m]}
+      -M: {overrides: DANGEROUS}
+      -c: {overrides: WRITE}
+      --copy: {overrides: WRITE, aliases: [-c]}
+      -C: {overrides: DANGEROUS}
       --edit-description: {overrides: WRITE}
       --set-upstream-to: {overrides: WRITE, takes_value: true}
       --unset-upstream: {overrides: WRITE}
@@ -50,34 +115,23 @@ subcommands:
         classification: WRITE
       prune:
         classification: WRITE
+      show:
+        classification: READONLY
+      get-url:
+        classification: READONLY
   tag:
     classification: WRITE
     options:
       -l: {overrides: READONLY}
       --list: {overrides: READONLY, aliases: [-l]}
+      -v: {overrides: READONLY}
+      --verify: {overrides: READONLY, aliases: [-v]}
       -d: {overrides: WRITE}
       --delete: {overrides: WRITE}
       -a: {overrides: WRITE}
       -s: {overrides: WRITE}
-  blame:
-    classification: READONLY
-  shortlog:
-    classification: READONLY
-  reflog:
-    classification: READONLY
-  rev-parse:
-    classification: READONLY
-  ls-files:
-    classification: READONLY
-  ls-remote:
-    classification: READONLY
-  ls-tree:
-    classification: READONLY
-  cat-file:
-    classification: READONLY
-  for-each-ref:
-    classification: READONLY
 
+  # --- Staging and committing ---
   add:
     classification: WRITE
     options:
@@ -106,10 +160,48 @@ subcommands:
       --squash: {takes_value: true}
       -s: {}
       --signoff: {aliases: [-s]}
+  rm:
+    classification: WRITE
+    strict: false
+    options:
+      -r: {}
+      --cached: {}
+      -f: {}
+      --force: {aliases: [-f]}
+  mv:
+    classification: WRITE
+    strict: false
+  notes:
+    classification: WRITE
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      show:
+        classification: READONLY
+      add:
+        classification: WRITE
+      append:
+        classification: WRITE
+      edit:
+        classification: WRITE
+      remove:
+        classification: WRITE
+      prune:
+        classification: WRITE
+
+  # --- Merging and rebasing ---
   merge:
     classification: WRITE
+    strict: false
     options:
       --abort: {overrides: DANGEROUS}
+      --continue: {}
+      --quit: {}
+      --no-commit: {}
+      --squash: {}
+      --no-ff: {}
+      --ff-only: {}
   rebase:
     classification: WRITE
     strict: false
@@ -129,7 +221,14 @@ subcommands:
       --abort: {overrides: DANGEROUS}
       --continue: {}
       --skip: {}
+  revert:
+    classification: WRITE
+    strict: false
+    options:
+      --abort: {overrides: DANGEROUS}
+      --continue: {}
 
+  # --- Network commands ---
   push:
     classification: WRITE
     options:
@@ -137,29 +236,33 @@ subcommands:
       -f: {overrides: DANGEROUS}
       --force-with-lease: {overrides: WRITE}
       --delete: {overrides: DANGEROUS}
-
+      -u: {}
+      --set-upstream: {aliases: [-u]}
   pull:
     classification: WRITE
     strict: false
-
   fetch:
     classification: WRITE
     strict: false
     options:
       --prune: {overrides: WRITE}
+  clone:
+    classification: WRITE
+    strict: false
+  init:
+    classification: WRITE
+    strict: false
 
+  # --- Working tree ---
   checkout:
     classification: WRITE
     strict: false
-
   switch:
     classification: WRITE
     strict: false
-
   restore:
     classification: WRITE
     strict: false
-
   stash:
     classification: WRITE
     strict: false
@@ -178,7 +281,6 @@ subcommands:
         classification: DANGEROUS
       clear:
         classification: DANGEROUS
-
   reset:
     classification: WRITE
     strict: false
@@ -186,16 +288,154 @@ subcommands:
       --hard: {overrides: DANGEROUS}
       --soft: {}
       --mixed: {}
-
-  revert:
-    classification: WRITE
-
   clean:
     classification: DANGEROUS
+    strict: false
+  worktree:
+    classification: WRITE
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      add:
+        classification: WRITE
+        strict: false
+      remove:
+        classification: WRITE
+      prune:
+        classification: WRITE
+      move:
+        classification: WRITE
+      lock:
+        classification: WRITE
+      unlock:
+        classification: WRITE
+      repair:
+        classification: WRITE
+  bisect:
+    classification: WRITE
+    subcommands:
+      start:
+        classification: WRITE
+        strict: false
+      bad:
+        classification: WRITE
+      new:
+        classification: WRITE
+      good:
+        classification: WRITE
+      old:
+        classification: WRITE
+      skip:
+        classification: WRITE
+      next:
+        classification: WRITE
+      reset:
+        classification: WRITE
+      run:
+        classification: DANGEROUS
+        strict: false
+      visualize:
+        classification: READONLY
+      view:
+        classification: READONLY
+      log:
+        classification: READONLY
+      replay:
+        classification: WRITE
+      terms:
+        classification: READONLY
+      help:
+        classification: READONLY
 
-  rm:
+  # --- Submodules ---
+  submodule:
+    classification: READONLY
+    subcommands:
+      status:
+        classification: READONLY
+        strict: false
+      summary:
+        classification: READONLY
+        strict: false
+      foreach:
+        classification: READONLY
+        strict: false
+      init:
+        classification: WRITE
+      update:
+        classification: WRITE
+        strict: false
+      add:
+        classification: WRITE
+        strict: false
+      deinit:
+        classification: WRITE
+        strict: false
+      set-branch:
+        classification: WRITE
+      set-url:
+        classification: WRITE
+      sync:
+        classification: WRITE
+        strict: false
+      absorbgitdirs:
+        classification: WRITE
+
+  # --- Config ---
+  config:
+    classification: WRITE
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      get:
+        classification: READONLY
+        strict: false
+      set:
+        classification: WRITE
+        strict: false
+      unset:
+        classification: WRITE
+        strict: false
+      rename-section:
+        classification: WRITE
+      remove-section:
+        classification: WRITE
+      edit:
+        classification: WRITE
+
+  # --- Patches and archives ---
+  apply:
+    classification: WRITE
+    strict: false
+  am:
     classification: WRITE
     strict: false
     options:
-      -r: {overrides: DANGEROUS}
-      --cached: {}
+      --abort: {overrides: DANGEROUS}
+      --continue: {}
+      --skip: {}
+  format-patch:
+    classification: WRITE
+    strict: false
+    options:
+      --stdout: {overrides: READONLY}
+  archive:
+    classification: READONLY
+    strict: false
+    options:
+      -o: {overrides: WRITE, takes_value: true}
+      --output: {overrides: WRITE, takes_value: true, aliases: [-o]}
+
+  # --- Maintenance ---
+  gc:
+    classification: WRITE
+    strict: false
+  maintenance:
+    classification: WRITE
+    strict: false
+  fsck:
+    classification: READONLY
+    strict: false

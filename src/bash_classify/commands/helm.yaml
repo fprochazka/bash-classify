@@ -5,50 +5,123 @@ strict: false
 subcommands:
   list:
     classification: READONLY
+    strict: false
   status:
     classification: READONLY
+    strict: false
   get:
     classification: READONLY
+    strict: false
     subcommands:
       all:
         classification: READONLY
+        strict: false
       values:
         classification: READONLY
+        strict: false
       manifest:
         classification: READONLY
+        strict: false
       hooks:
         classification: READONLY
+        strict: false
       notes:
         classification: READONLY
+        strict: false
   history:
     classification: READONLY
+    strict: false
   show:
     classification: READONLY
+    strict: false
     subcommands:
       chart:
         classification: READONLY
+        strict: false
       readme:
         classification: READONLY
+        strict: false
       values:
         classification: READONLY
+        strict: false
       all:
         classification: READONLY
+        strict: false
   search:
     classification: READONLY
+    strict: false
   install:
     classification: WRITE
+    strict: false
   upgrade:
     classification: WRITE
+    strict: false
   rollback:
     classification: DANGEROUS
+    strict: false
   uninstall:
     classification: DANGEROUS
+    strict: false
   repo:
     classification: WRITE
+    strict: false
     subcommands:
       list:
         classification: READONLY
+        strict: false
   template:
     classification: READONLY
+    strict: false
   lint:
     classification: READONLY
+    strict: false
+  diff:
+    classification: READONLY
+    strict: false
+  env:
+    classification: READONLY
+  verify:
+    classification: READONLY
+    strict: false
+  version:
+    classification: READONLY
+    strict: false
+  completion:
+    classification: READONLY
+    strict: false
+  plugin:
+    classification: WRITE
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+  package:
+    classification: WRITE
+    strict: false
+  pull:
+    classification: WRITE
+    strict: false
+  create:
+    classification: WRITE
+    strict: false
+  dependency:
+    classification: WRITE
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+  push:
+    classification: DANGEROUS
+    strict: false
+  registry:
+    classification: WRITE
+    strict: false
+    subcommands:
+      login:
+        classification: WRITE
+        strict: false
+      logout:
+        classification: WRITE
+        strict: false

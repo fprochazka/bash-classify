@@ -1,0 +1,117 @@
+# $schema: ../../../schemas/command.schema.json
+command: uv
+description: "An extremely fast Python package manager"
+strict: false
+subcommands:
+  run:
+    classification: DANGEROUS
+    strict: false
+  init:
+    classification: WRITE
+    strict: false
+  add:
+    classification: WRITE
+    strict: false
+  remove:
+    classification: WRITE
+    strict: false
+  version:
+    classification: READONLY
+    strict: false
+  sync:
+    classification: WRITE
+    strict: false
+  lock:
+    classification: WRITE
+    strict: false
+  export:
+    classification: READONLY
+    strict: false
+  tree:
+    classification: READONLY
+    strict: false
+  format:
+    classification: WRITE
+    strict: false
+  tool:
+    strict: false
+    subcommands:
+      install:
+        classification: WRITE
+        strict: false
+      uninstall:
+        classification: WRITE
+        strict: false
+      list:
+        classification: READONLY
+      run:
+        classification: DANGEROUS
+        strict: false
+      dir:
+        classification: READONLY
+  python:
+    strict: false
+    subcommands:
+      install:
+        classification: WRITE
+        strict: false
+      uninstall:
+        classification: WRITE
+        strict: false
+      list:
+        classification: READONLY
+      find:
+        classification: READONLY
+        strict: false
+      dir:
+        classification: READONLY
+      pin:
+        classification: WRITE
+        strict: false
+  pip:
+    strict: false
+    subcommands:
+      install:
+        classification: WRITE
+        strict: false
+      uninstall:
+        classification: WRITE
+        strict: false
+      list:
+        classification: READONLY
+        strict: false
+      show:
+        classification: READONLY
+        strict: false
+      freeze:
+        classification: READONLY
+      check:
+        classification: READONLY
+      compile:
+        classification: WRITE
+        strict: false
+  venv:
+    classification: WRITE
+    strict: false
+  build:
+    classification: WRITE
+    strict: false
+  publish:
+    classification: DANGEROUS
+    strict: false
+  cache:
+    strict: false
+    subcommands:
+      clean:
+        classification: WRITE
+      prune:
+        classification: WRITE
+      dir:
+        classification: READONLY
+  self:
+    strict: false
+    subcommands:
+      update:
+        classification: WRITE
+  help:
+    classification: READONLY

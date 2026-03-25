@@ -1,10 +1,10 @@
 # $schema: ../../../schemas/command.schema.json
 command: sudo
 description: "Execute a command as another user"
-classification: WRITE
+classification: DANGEROUS
 delegates_to:
   mode: rest_are_argv
-  min_classification: WRITE
+  min_classification: DANGEROUS
 options:
   -u: {takes_value: true}
   --user: {takes_value: true, aliases: [-u]}

@@ -1,0 +1,74 @@
+# $schema: ../../../schemas/command.schema.json
+command: poetry
+description: "Python dependency management and packaging"
+strict: false
+subcommands:
+  show:
+    classification: READONLY
+    strict: false
+  version:
+    classification: READONLY
+    strict: false
+  search:
+    classification: READONLY
+    strict: false
+  check:
+    classification: READONLY
+    strict: false
+  env:
+    strict: false
+    subcommands:
+      info:
+        classification: READONLY
+      list:
+        classification: READONLY
+      use:
+        classification: WRITE
+        strict: false
+      remove:
+        classification: WRITE
+        strict: false
+  config:
+    classification: WRITE
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+  install:
+    classification: WRITE
+    strict: false
+  update:
+    classification: WRITE
+    strict: false
+  add:
+    classification: WRITE
+    strict: false
+  remove:
+    classification: WRITE
+    strict: false
+  lock:
+    classification: WRITE
+    strict: false
+  build:
+    classification: WRITE
+    strict: false
+  init:
+    classification: WRITE
+    strict: false
+  new:
+    classification: WRITE
+    strict: false
+  shell:
+    classification: WRITE
+  publish:
+    classification: DANGEROUS
+    strict: false
+  run:
+    classification: DANGEROUS
+    strict: false
+  self:
+    strict: false
+    subcommands:
+      update:
+        classification: WRITE
+        strict: false
