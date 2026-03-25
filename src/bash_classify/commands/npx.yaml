@@ -1,0 +1,42 @@
+# $schema: ../../../schemas/command.schema.json
+command: npx
+description: "Execute npm package binaries"
+classification: DANGEROUS
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  --version: {overrides: READONLY}
+delegates_to:
+  mode: rest_are_argv
+options:
+  --yes: {}
+  -y: {aliases: [--yes]}
+  --no: {}
+  --package: {takes_value: true}
+  -p: {takes_value: true, aliases: [--package]}
+  --call: {takes_value: true}
+  -c: {takes_value: true, aliases: [--call]}
+subcommands:
+  tree-sitter:
+    classification: LOCAL_EFFECTS
+    strict: false
+  prettier:
+    classification: LOCAL_EFFECTS
+    strict: false
+  eslint:
+    classification: READONLY
+    strict: false
+    options:
+      --fix: {overrides: LOCAL_EFFECTS}
+  tsc:
+    classification: READONLY
+    strict: false
+  jest:
+    classification: LOCAL_EFFECTS
+    strict: false
+  mocha:
+    classification: LOCAL_EFFECTS
+    strict: false
+  vitest:
+    classification: LOCAL_EFFECTS
+    strict: false
