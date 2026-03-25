@@ -1,0 +1,13 @@
+{
+  "name": "bash-classify",
+  "description": "Bash command classifier with Claude Code plugin for auto-allowing readonly commands",
+  "metadata": {
+    "pluginRoot": "./coding-agent-plugins/claude-code"
+  },
+  "plugins": [
+    {
+      "name": "bash-classify-hook",
+      "source": "."
+    }
+  ]
+}

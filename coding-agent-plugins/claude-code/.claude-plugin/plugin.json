@@ -1,0 +1,11 @@
+{
+  "name": "bash-classify-hook",
+  "version": "0.1.0",
+  "description": "Auto-allows readonly bash commands in Claude Code using bash-classify",
+  "author": {
+    "name": "Filip Prochazka"
+  },
+  "repository": "https://github.com/fprochazka/bash-classify",
+  "license": "MIT",
+  "keywords": ["permission", "bash", "readonly", "classification", "security"]
+}

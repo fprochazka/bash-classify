@@ -1,0 +1,18 @@
+{
+  "description": "Auto-allow readonly bash commands using bash-classify",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/classify-bash.sh",
+            "timeout": 10,
+            "statusMessage": "Classifying bash command..."
+          }
+        ]
+      }
+    ]
+  }
+}
