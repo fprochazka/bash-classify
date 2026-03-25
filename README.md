@@ -34,20 +34,22 @@ $ echo 'find . -name "*.pyc" -delete' | bash-classify | jq '.classification'
 
 ## Claude Code plugin
 
-The repo includes a Claude Code plugin that auto-allows readonly bash commands via a `PreToolUse` hook. Install it as a marketplace:
+The repo includes a Claude Code plugin that auto-allows readonly bash commands via a `PreToolUse` hook.
 
 ```bash
-# First, install the bash-classify CLI
+# Install the bash-classify CLI
 uv tool install bash-classify
 
-# Then install the plugin marketplace
-claude plugin add /path/to/bash-classify
+# Add the marketplace and install the plugin
+claude plugin marketplace add fprochazka/bash-classify
+claude plugin install bash-classify-hook@fprochazka-bash-classify
 ```
 
-Or from GitHub directly:
+To upgrade after a new release:
 
 ```bash
-claude plugin add https://github.com/fprochazka/bash-classify
+claude plugin marketplace update fprochazka-bash-classify
+claude plugin update bash-classify-hook@fprochazka-bash-classify
 ```
 
 Once installed, any Bash tool call classified as `READONLY` is auto-approved — no permission prompt. Everything else (WRITE, DANGEROUS, UNKNOWN) still requires confirmation.
