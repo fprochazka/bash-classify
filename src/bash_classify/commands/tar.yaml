@@ -1,0 +1,20 @@
+command: tar
+classification: WRITE
+strict: false
+options:
+  -t: {overrides: READONLY}
+  --list: {overrides: READONLY, aliases: [-t]}
+  -c: {}
+  --create: {aliases: [-c]}
+  -x: {}
+  --extract: {aliases: [-x]}
+  -f: {takes_value: true}
+  --file: {takes_value: true, aliases: [-f]}
+  -z: {}
+  --gzip: {aliases: [-z]}
+  -j: {}
+  --bzip2: {aliases: [-j]}
+  -v: {}
+  --verbose: {aliases: [-v]}
+  -C: {takes_value: true, captures_directory: true}
+  --directory: {takes_value: true, captures_directory: true, aliases: [-C]}

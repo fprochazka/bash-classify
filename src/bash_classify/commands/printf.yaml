@@ -1,0 +1,3 @@
+command: printf
+classification: READONLY
+strict: false

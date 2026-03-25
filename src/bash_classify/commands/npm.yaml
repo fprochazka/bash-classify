@@ -1,0 +1,47 @@
+command: npm
+subcommands:
+  ls:
+    classification: READONLY
+    strict: false
+  list:
+    classification: READONLY
+    strict: false
+  view:
+    classification: READONLY
+    strict: false
+  info:
+    classification: READONLY
+    strict: false
+  outdated:
+    classification: READONLY
+    strict: false
+  audit:
+    classification: READONLY
+    strict: false
+  install:
+    classification: WRITE
+    strict: false
+  ci:
+    classification: WRITE
+    strict: false
+  run:
+    classification: WRITE
+    strict: false
+  test:
+    classification: WRITE
+    strict: false
+  build:
+    classification: WRITE
+    strict: false
+  uninstall:
+    classification: WRITE
+    strict: false
+  update:
+    classification: WRITE
+    strict: false
+  publish:
+    classification: DANGEROUS
+    strict: false
+  unpublish:
+    classification: DANGEROUS
+    strict: false

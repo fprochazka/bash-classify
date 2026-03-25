@@ -1,0 +1,3 @@
+command: basename
+classification: READONLY
+strict: false

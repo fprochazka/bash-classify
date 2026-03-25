@@ -1,0 +1,3 @@
+command: rm
+classification: DANGEROUS
+strict: false

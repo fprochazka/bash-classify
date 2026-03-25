@@ -1,0 +1,3 @@
+command: jq
+classification: READONLY
+strict: false

@@ -1,0 +1,3 @@
+command: xmllint
+classification: READONLY
+strict: false

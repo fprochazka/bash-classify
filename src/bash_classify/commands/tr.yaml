@@ -1,0 +1,3 @@
+command: tr
+classification: READONLY
+strict: false

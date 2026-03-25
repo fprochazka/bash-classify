@@ -1,0 +1,3 @@
+command: md5sum
+classification: READONLY
+strict: false

@@ -1,0 +1,23 @@
+command: xargs
+classification: UNKNOWN
+delegates_to:
+  mode: rest_are_argv
+options:
+  -I: {takes_value: true}
+  --replace: {takes_value: true, aliases: [-I]}
+  -L: {takes_value: true}
+  --max-lines: {takes_value: true, aliases: [-L]}
+  -n: {takes_value: true}
+  --max-args: {takes_value: true, aliases: [-n]}
+  -P: {takes_value: true}
+  --max-procs: {takes_value: true, aliases: [-P]}
+  -d: {takes_value: true}
+  --delimiter: {takes_value: true, aliases: [-d]}
+  -0: {}
+  --null: {}
+  --no-run-if-empty: {}
+  -r: {}
+  -t: {}
+  --verbose: {}
+  -p: {}
+  --interactive: {}

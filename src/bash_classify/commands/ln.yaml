@@ -1,0 +1,3 @@
+command: ln
+classification: WRITE
+strict: false

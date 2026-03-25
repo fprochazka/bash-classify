@@ -1,0 +1,3 @@
+command: free
+classification: READONLY
+strict: false

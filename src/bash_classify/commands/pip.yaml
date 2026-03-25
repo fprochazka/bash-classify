@@ -1,0 +1,26 @@
+command: pip
+subcommands:
+  list:
+    classification: READONLY
+    strict: false
+  show:
+    classification: READONLY
+    strict: false
+  freeze:
+    classification: READONLY
+  search:
+    classification: READONLY
+  check:
+    classification: READONLY
+  install:
+    classification: WRITE
+    strict: false
+  uninstall:
+    classification: WRITE
+    strict: false
+  download:
+    classification: WRITE
+    strict: false
+  wheel:
+    classification: WRITE
+    strict: false

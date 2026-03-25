@@ -1,0 +1,20 @@
+command: sudo
+classification: WRITE
+delegates_to:
+  mode: rest_are_argv
+  min_classification: WRITE
+options:
+  -u: {takes_value: true}
+  --user: {takes_value: true, aliases: [-u]}
+  -g: {takes_value: true}
+  --group: {takes_value: true, aliases: [-g]}
+  -H: {}
+  --set-home: {}
+  -E: {}
+  --preserve-env: {}
+  -n: {}
+  --non-interactive: {}
+  -S: {}
+  --stdin: {}
+  -k: {}
+  --reset-timestamp: {}

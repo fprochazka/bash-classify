@@ -1,0 +1,3 @@
+command: gawk
+classification: READONLY
+strict: false

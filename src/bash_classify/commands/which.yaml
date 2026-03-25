@@ -1,0 +1,3 @@
+command: which
+classification: READONLY
+strict: false

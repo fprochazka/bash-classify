@@ -1,0 +1,3 @@
+command: id
+classification: READONLY
+strict: false

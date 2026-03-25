@@ -1,0 +1,3 @@
+command: kill
+classification: DANGEROUS
+strict: false

@@ -1,0 +1,3 @@
+command: uname
+classification: READONLY
+strict: false

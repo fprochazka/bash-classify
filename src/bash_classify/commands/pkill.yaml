@@ -1,0 +1,3 @@
+command: pkill
+classification: DANGEROUS
+strict: false

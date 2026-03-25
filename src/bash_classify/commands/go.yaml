@@ -1,0 +1,36 @@
+command: go
+classification: WRITE
+subcommands:
+  build:
+    classification: WRITE
+  test:
+    classification: WRITE
+  run:
+    classification: DANGEROUS
+  install:
+    classification: WRITE
+  get:
+    classification: WRITE
+  mod:
+    classification: WRITE
+    subcommands:
+      tidy:
+        classification: WRITE
+      download:
+        classification: WRITE
+      verify:
+        classification: READONLY
+      graph:
+        classification: READONLY
+  fmt:
+    classification: WRITE
+  vet:
+    classification: READONLY
+  doc:
+    classification: READONLY
+  version:
+    classification: READONLY
+  env:
+    classification: READONLY
+  list:
+    classification: READONLY

@@ -1,0 +1,13 @@
+command: timeout
+classification: READONLY
+delegates_to:
+  mode: rest_are_argv
+options:
+  -k: {takes_value: true}
+  --kill-after: {takes_value: true, aliases: [-k]}
+  -s: {takes_value: true}
+  --signal: {takes_value: true, aliases: [-s]}
+  --foreground: {}
+  --preserve-status: {}
+  -v: {}
+  --verbose: {}

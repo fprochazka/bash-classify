@@ -1,0 +1,3 @@
+command: cp
+classification: WRITE
+strict: false

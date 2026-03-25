@@ -1,0 +1,3 @@
+command: cat
+classification: READONLY
+strict: false

@@ -1,0 +1,3 @@
+command: sha256sum
+classification: READONLY
+strict: false

@@ -1,0 +1,3 @@
+command: netstat
+classification: READONLY
+strict: false

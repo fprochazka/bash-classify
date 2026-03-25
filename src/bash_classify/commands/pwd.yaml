@@ -1,0 +1,3 @@
+command: pwd
+classification: READONLY
+strict: false

@@ -1,0 +1,3 @@
+command: tac
+classification: READONLY
+strict: false

@@ -1,0 +1,4 @@
+command: nohup
+classification: WRITE
+delegates_to:
+  mode: rest_are_argv

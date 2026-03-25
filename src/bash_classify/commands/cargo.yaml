@@ -1,0 +1,25 @@
+command: cargo
+classification: WRITE
+subcommands:
+  build:
+    classification: WRITE
+  test:
+    classification: WRITE
+  run:
+    classification: DANGEROUS
+  check:
+    classification: READONLY
+  clippy:
+    classification: READONLY
+  fmt:
+    classification: WRITE
+  doc:
+    classification: WRITE
+  publish:
+    classification: DANGEROUS
+  install:
+    classification: WRITE
+  clean:
+    classification: WRITE
+  update:
+    classification: WRITE

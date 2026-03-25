@@ -1,0 +1,3 @@
+command: stat
+classification: READONLY
+strict: false

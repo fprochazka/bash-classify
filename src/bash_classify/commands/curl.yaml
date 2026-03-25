@@ -1,0 +1,24 @@
+command: curl
+classification: READONLY
+strict: false
+options:
+  -o: {takes_value: true, overrides: WRITE}
+  --output: {takes_value: true, overrides: WRITE, aliases: [-o]}
+  -O: {overrides: WRITE}
+  --remote-name: {overrides: WRITE, aliases: [-O]}
+  -T: {takes_value: true, overrides: WRITE}
+  --upload-file: {takes_value: true, overrides: WRITE, aliases: [-T]}
+  -X: {takes_value: true}
+  --request: {takes_value: true, aliases: [-X]}
+  -d: {takes_value: true}
+  --data: {takes_value: true, aliases: [-d]}
+  -H: {takes_value: true}
+  --header: {takes_value: true, aliases: [-H]}
+  -s: {}
+  --silent: {aliases: [-s]}
+  -f: {}
+  --fail: {aliases: [-f]}
+  -L: {}
+  --location: {aliases: [-L]}
+  -k: {}
+  --insecure: {aliases: [-k]}

@@ -1,0 +1,3 @@
+command: traceroute
+classification: READONLY
+strict: false

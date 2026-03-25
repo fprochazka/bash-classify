@@ -1,0 +1,21 @@
+command: apt
+classification: DANGEROUS
+subcommands:
+  list:
+    classification: READONLY
+  show:
+    classification: READONLY
+  search:
+    classification: READONLY
+  install:
+    classification: DANGEROUS
+  remove:
+    classification: DANGEROUS
+  purge:
+    classification: DANGEROUS
+  update:
+    classification: WRITE
+  upgrade:
+    classification: DANGEROUS
+  autoremove:
+    classification: DANGEROUS

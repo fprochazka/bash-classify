@@ -1,0 +1,3 @@
+command: test
+classification: READONLY
+strict: false

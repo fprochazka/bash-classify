@@ -1,0 +1,3 @@
+command: dirname
+classification: READONLY
+strict: false

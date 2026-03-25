@@ -1,0 +1,3 @@
+command: cut
+classification: READONLY
+strict: false

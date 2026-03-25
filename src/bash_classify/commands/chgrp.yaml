@@ -1,0 +1,6 @@
+command: chgrp
+classification: WRITE
+strict: false
+options:
+  -R: {overrides: DANGEROUS}
+  --recursive: {overrides: DANGEROUS, aliases: [-R]}

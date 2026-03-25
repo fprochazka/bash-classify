@@ -1,0 +1,3 @@
+command: gunzip
+classification: WRITE
+strict: false

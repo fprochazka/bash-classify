@@ -1,0 +1,3 @@
+command: wc
+classification: READONLY
+strict: false

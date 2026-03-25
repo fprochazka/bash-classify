@@ -1,0 +1,3 @@
+command: sha1sum
+classification: READONLY
+strict: false

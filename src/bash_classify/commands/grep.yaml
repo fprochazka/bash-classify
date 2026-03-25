@@ -1,0 +1,3 @@
+command: grep
+classification: READONLY
+strict: false

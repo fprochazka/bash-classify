@@ -1,0 +1,3 @@
+command: journalctl
+classification: READONLY
+strict: false

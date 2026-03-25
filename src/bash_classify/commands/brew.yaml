@@ -1,0 +1,23 @@
+command: brew
+classification: WRITE
+subcommands:
+  list:
+    classification: READONLY
+  info:
+    classification: READONLY
+  search:
+    classification: READONLY
+  install:
+    classification: WRITE
+  uninstall:
+    classification: WRITE
+  update:
+    classification: WRITE
+  upgrade:
+    classification: WRITE
+  cleanup:
+    classification: WRITE
+  doctor:
+    classification: READONLY
+  config:
+    classification: READONLY

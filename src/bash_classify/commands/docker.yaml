@@ -1,0 +1,134 @@
+command: docker
+global_options:
+  --host: {takes_value: true, aliases: [-H]}
+  --config: {takes_value: true}
+  --context: {takes_value: true}
+  --log-level: {takes_value: true, aliases: [-l]}
+  --tls: {}
+  --tlscacert: {takes_value: true}
+  --tlscert: {takes_value: true}
+  --tlskey: {takes_value: true}
+  --tlsverify: {}
+  -D: {}
+  --debug: {}
+
+subcommands:
+  ps:
+    classification: READONLY
+    strict: false
+  images:
+    classification: READONLY
+    strict: false
+  inspect:
+    classification: READONLY
+    strict: false
+  logs:
+    classification: READONLY
+    strict: false
+  info:
+    classification: READONLY
+  version:
+    classification: READONLY
+  stats:
+    classification: READONLY
+    strict: false
+
+  run:
+    classification: WRITE
+    strict: false
+  exec:
+    classification: WRITE
+    strict: false
+  build:
+    classification: WRITE
+    strict: false
+  pull:
+    classification: WRITE
+    strict: false
+  push:
+    classification: WRITE
+    strict: false
+  tag:
+    classification: WRITE
+  start:
+    classification: WRITE
+  stop:
+    classification: WRITE
+  restart:
+    classification: WRITE
+  create:
+    classification: WRITE
+    strict: false
+  cp:
+    classification: WRITE
+  compose:
+    subcommands:
+      ps:
+        classification: READONLY
+        strict: false
+      logs:
+        classification: READONLY
+        strict: false
+      config:
+        classification: READONLY
+        strict: false
+      up:
+        classification: WRITE
+        strict: false
+      down:
+        classification: DANGEROUS
+        strict: false
+      build:
+        classification: WRITE
+        strict: false
+      pull:
+        classification: WRITE
+      restart:
+        classification: WRITE
+      stop:
+        classification: WRITE
+      start:
+        classification: WRITE
+      rm:
+        classification: DANGEROUS
+        strict: false
+
+  rm:
+    classification: DANGEROUS
+    strict: false
+  rmi:
+    classification: DANGEROUS
+    strict: false
+  system:
+    subcommands:
+      prune:
+        classification: DANGEROUS
+        strict: false
+      df:
+        classification: READONLY
+      info:
+        classification: READONLY
+  volume:
+    subcommands:
+      ls:
+        classification: READONLY
+      inspect:
+        classification: READONLY
+      create:
+        classification: WRITE
+      rm:
+        classification: DANGEROUS
+      prune:
+        classification: DANGEROUS
+  network:
+    subcommands:
+      ls:
+        classification: READONLY
+      inspect:
+        classification: READONLY
+      create:
+        classification: WRITE
+      rm:
+        classification: DANGEROUS
+      prune:
+        classification: DANGEROUS

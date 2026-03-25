@@ -1,0 +1,7 @@
+command: nice
+classification: READONLY
+delegates_to:
+  mode: rest_are_argv
+options:
+  -n: {takes_value: true}
+  --adjustment: {takes_value: true, aliases: [-n]}

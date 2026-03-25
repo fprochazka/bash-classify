@@ -1,0 +1,3 @@
+command: join
+classification: READONLY
+strict: false

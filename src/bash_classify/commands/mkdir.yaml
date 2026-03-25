@@ -1,0 +1,3 @@
+command: mkdir
+classification: WRITE
+strict: false

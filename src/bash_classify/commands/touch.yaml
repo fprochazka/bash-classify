@@ -1,0 +1,3 @@
+command: touch
+classification: WRITE
+strict: false

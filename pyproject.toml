@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bash-classify"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "tree-sitter>=0.24",
+    "tree-sitter-bash>=0.23",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+bash-classify = "bash_classify.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bash_classify"]

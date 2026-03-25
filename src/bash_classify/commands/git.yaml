@@ -1,0 +1,165 @@
+command: git
+global_options:
+  -C: {takes_value: true, captures_directory: true}
+  --git-dir: {takes_value: true}
+  --work-tree: {takes_value: true}
+  --bare: {}
+  --no-pager: {}
+  --no-replace-objects: {}
+  -c: {takes_value: true}
+  --exec-path: {takes_value: true}
+
+subcommands:
+  status:
+    classification: READONLY
+  log:
+    classification: READONLY
+    strict: false
+  show:
+    classification: READONLY
+    strict: false
+  diff:
+    classification: READONLY
+    strict: false
+  branch:
+    classification: READONLY
+    options:
+      -d: {overrides: WRITE}
+      -D: {overrides: DANGEROUS}
+      --delete: {overrides: WRITE}
+      --move: {overrides: WRITE}
+      --copy: {overrides: WRITE}
+      --edit-description: {overrides: WRITE}
+      --set-upstream-to: {overrides: WRITE, takes_value: true}
+      --unset-upstream: {overrides: WRITE}
+  remote:
+    classification: READONLY
+    subcommands:
+      add:
+        classification: WRITE
+      remove:
+        classification: WRITE
+      rename:
+        classification: WRITE
+      set-url:
+        classification: WRITE
+      prune:
+        classification: WRITE
+  tag:
+    classification: READONLY
+    options:
+      -d: {overrides: WRITE}
+      --delete: {overrides: WRITE}
+      -a: {overrides: WRITE}
+      -s: {overrides: WRITE}
+  blame:
+    classification: READONLY
+  shortlog:
+    classification: READONLY
+  reflog:
+    classification: READONLY
+  rev-parse:
+    classification: READONLY
+  ls-files:
+    classification: READONLY
+  ls-remote:
+    classification: READONLY
+  ls-tree:
+    classification: READONLY
+  cat-file:
+    classification: READONLY
+  for-each-ref:
+    classification: READONLY
+
+  add:
+    classification: WRITE
+    options:
+      -A: {}
+      --all: {aliases: [-A]}
+      -p: {}
+      --patch: {aliases: [-p]}
+      -u: {}
+      --update: {aliases: [-u]}
+      -f: {}
+      --force: {aliases: [-f]}
+      -n: {}
+      --dry-run: {aliases: [-n]}
+  commit:
+    classification: WRITE
+    options:
+      -m: {takes_value: true}
+      --message: {takes_value: true, aliases: [-m]}
+      -a: {}
+      --all: {aliases: [-a]}
+      --amend: {}
+      --no-edit: {}
+      --allow-empty: {}
+      --fixup: {takes_value: true}
+      --squash: {takes_value: true}
+      -s: {}
+      --signoff: {aliases: [-s]}
+  merge:
+    classification: WRITE
+    options:
+      --abort: {overrides: DANGEROUS}
+  rebase:
+    classification: WRITE
+    options:
+      --abort: {overrides: DANGEROUS}
+  cherry-pick:
+    classification: WRITE
+    options:
+      --abort: {overrides: DANGEROUS}
+
+  push:
+    classification: WRITE
+    options:
+      --force: {overrides: DANGEROUS}
+      -f: {overrides: DANGEROUS}
+      --force-with-lease: {overrides: WRITE}
+      --delete: {overrides: DANGEROUS}
+
+  pull:
+    classification: WRITE
+
+  fetch:
+    classification: WRITE
+    options:
+      --prune: {overrides: WRITE}
+
+  checkout:
+    classification: WRITE
+
+  switch:
+    classification: WRITE
+
+  restore:
+    classification: WRITE
+
+  stash:
+    classification: WRITE
+    subcommands:
+      list:
+        classification: READONLY
+      show:
+        classification: READONLY
+      drop:
+        classification: DANGEROUS
+      clear:
+        classification: DANGEROUS
+
+  reset:
+    classification: WRITE
+    options:
+      --hard: {overrides: DANGEROUS}
+
+  revert:
+    classification: WRITE
+
+  clean:
+    classification: DANGEROUS
+
+  rm:
+    classification: WRITE
+    options:
+      -r: {overrides: DANGEROUS}

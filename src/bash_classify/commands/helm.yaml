@@ -1,0 +1,52 @@
+command: helm
+classification: WRITE
+subcommands:
+  list:
+    classification: READONLY
+  status:
+    classification: READONLY
+  get:
+    classification: READONLY
+    subcommands:
+      all:
+        classification: READONLY
+      values:
+        classification: READONLY
+      manifest:
+        classification: READONLY
+      hooks:
+        classification: READONLY
+      notes:
+        classification: READONLY
+  history:
+    classification: READONLY
+  show:
+    classification: READONLY
+    subcommands:
+      chart:
+        classification: READONLY
+      readme:
+        classification: READONLY
+      values:
+        classification: READONLY
+      all:
+        classification: READONLY
+  search:
+    classification: READONLY
+  install:
+    classification: WRITE
+  upgrade:
+    classification: WRITE
+  rollback:
+    classification: DANGEROUS
+  uninstall:
+    classification: DANGEROUS
+  repo:
+    classification: WRITE
+    subcommands:
+      list:
+        classification: READONLY
+  template:
+    classification: READONLY
+  lint:
+    classification: READONLY

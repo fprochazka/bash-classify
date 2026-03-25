@@ -1,0 +1,35 @@
+command: systemctl
+classification: DANGEROUS
+subcommands:
+  status:
+    classification: READONLY
+  is-active:
+    classification: READONLY
+  is-enabled:
+    classification: READONLY
+  is-failed:
+    classification: READONLY
+  list-units:
+    classification: READONLY
+  list-unit-files:
+    classification: READONLY
+  show:
+    classification: READONLY
+  start:
+    classification: DANGEROUS
+  stop:
+    classification: DANGEROUS
+  restart:
+    classification: DANGEROUS
+  reload:
+    classification: DANGEROUS
+  enable:
+    classification: WRITE
+  disable:
+    classification: WRITE
+  mask:
+    classification: DANGEROUS
+  unmask:
+    classification: WRITE
+  daemon-reload:
+    classification: DANGEROUS

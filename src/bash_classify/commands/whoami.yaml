@@ -1,0 +1,3 @@
+command: whoami
+classification: READONLY
+strict: false

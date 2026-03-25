@@ -1,0 +1,3 @@
+command: tee
+classification: WRITE
+strict: false

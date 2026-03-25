@@ -1,0 +1,3 @@
+command: ping
+classification: READONLY
+strict: false

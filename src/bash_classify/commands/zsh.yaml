@@ -1,0 +1,10 @@
+command: zsh
+classification: DANGEROUS
+delegates_to:
+  mode: flag_value_is_expression
+  flag: -c
+options:
+  -c: {takes_value: true}
+  -e: {}
+  -x: {}
+  -i: {}

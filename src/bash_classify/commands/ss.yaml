@@ -1,0 +1,3 @@
+command: ss
+classification: READONLY
+strict: false

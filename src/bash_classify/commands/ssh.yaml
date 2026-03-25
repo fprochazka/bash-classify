@@ -1,0 +1,37 @@
+command: ssh
+classification: DANGEROUS
+strict: false
+options:
+  -l: {takes_value: true}
+  -p: {takes_value: true}
+  -i: {takes_value: true}
+  -F: {takes_value: true}
+  -o: {takes_value: true}
+  -J: {takes_value: true}
+  -L: {takes_value: true}
+  -R: {takes_value: true}
+  -D: {takes_value: true}
+  -W: {takes_value: true}
+  -b: {takes_value: true}
+  -c: {takes_value: true}
+  -e: {takes_value: true}
+  -m: {takes_value: true}
+  -w: {takes_value: true}
+  -N: {}
+  -f: {}
+  -n: {}
+  -q: {}
+  -t: {}
+  -T: {}
+  -v: {}
+  -X: {}
+  -x: {}
+  -A: {}
+  -a: {}
+  -C: {}
+  -g: {}
+  -K: {}
+  -k: {}
+  -s: {}
+  -4: {}
+  -6: {}

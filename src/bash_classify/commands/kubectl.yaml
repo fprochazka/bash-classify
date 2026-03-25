@@ -1,0 +1,180 @@
+command: kubectl
+global_options:
+  --context: {takes_value: true}
+  --kubeconfig: {takes_value: true}
+  --namespace: {takes_value: true, aliases: [-n]}
+  --cluster: {takes_value: true}
+  --server: {takes_value: true, aliases: [-s]}
+  --token: {takes_value: true}
+  --as: {takes_value: true}
+  --as-group: {takes_value: true}
+  --certificate-authority: {takes_value: true}
+  --client-certificate: {takes_value: true}
+  --client-key: {takes_value: true}
+  --insecure-skip-tls-verify: {}
+  --tls-server-name: {takes_value: true}
+  --v: {takes_value: true}
+  --request-timeout: {takes_value: true}
+
+subcommands:
+  get:
+    classification: READONLY
+    strict: false
+    options:
+      -o: {takes_value: true}
+      --output: {takes_value: true, aliases: [-o]}
+
+  describe:
+    classification: READONLY
+    strict: false
+    options:
+      -o: {takes_value: true}
+      --output: {takes_value: true, aliases: [-o]}
+
+  logs:
+    classification: READONLY
+    strict: false
+
+  top:
+    classification: READONLY
+
+  api-resources:
+    classification: READONLY
+
+  api-versions:
+    classification: READONLY
+
+  explain:
+    classification: READONLY
+
+  auth:
+    subcommands:
+      can-i:
+        classification: READONLY
+      reconcile:
+        classification: WRITE
+
+  apply:
+    classification: WRITE
+    options:
+      --dry-run: {takes_value: true, overrides: READONLY}
+      -f: {takes_value: true}
+      --filename: {takes_value: true, aliases: [-f]}
+
+  create:
+    classification: WRITE
+    strict: false
+    options:
+      --dry-run: {takes_value: true, overrides: READONLY}
+      -f: {takes_value: true}
+      --filename: {takes_value: true, aliases: [-f]}
+
+  delete:
+    classification: DANGEROUS
+    options:
+      --dry-run: {takes_value: true, overrides: READONLY}
+      -f: {takes_value: true}
+      --filename: {takes_value: true, aliases: [-f]}
+
+  edit:
+    classification: WRITE
+    strict: false
+
+  patch:
+    classification: WRITE
+    strict: false
+
+  scale:
+    classification: WRITE
+    strict: false
+
+  rollout:
+    subcommands:
+      status:
+        classification: READONLY
+      history:
+        classification: READONLY
+      restart:
+        classification: WRITE
+        strict: false
+      undo:
+        classification: DANGEROUS
+        strict: false
+      pause:
+        classification: WRITE
+        strict: false
+      resume:
+        classification: WRITE
+        strict: false
+
+  exec:
+    classification: DANGEROUS
+    strict: false
+    delegates_to:
+      mode: after_separator
+      separator: "--"
+    options:
+      -it: {}
+      -i: {}
+      --stdin: {aliases: [-i]}
+      -t: {}
+      --tty: {aliases: [-t]}
+      -c: {takes_value: true}
+      --container: {takes_value: true, aliases: [-c]}
+      -n: {takes_value: true}
+      --namespace: {takes_value: true, aliases: [-n]}
+
+  port-forward:
+    classification: WRITE
+    strict: false
+
+  cp:
+    classification: WRITE
+    strict: false
+
+  drain:
+    classification: DANGEROUS
+    strict: false
+
+  cordon:
+    classification: WRITE
+    strict: false
+
+  uncordon:
+    classification: WRITE
+    strict: false
+
+  taint:
+    classification: WRITE
+    strict: false
+
+  label:
+    classification: WRITE
+    strict: false
+
+  annotate:
+    classification: WRITE
+    strict: false
+
+  config:
+    subcommands:
+      view:
+        classification: READONLY
+      get-contexts:
+        classification: READONLY
+      current-context:
+        classification: READONLY
+      use-context:
+        classification: WRITE
+      set:
+        classification: WRITE
+      set-context:
+        classification: WRITE
+      set-cluster:
+        classification: WRITE
+      set-credentials:
+        classification: WRITE
+      delete-context:
+        classification: DANGEROUS
+      delete-cluster:
+        classification: DANGEROUS

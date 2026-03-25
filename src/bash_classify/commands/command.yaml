@@ -1,0 +1,8 @@
+command: command
+classification: READONLY
+delegates_to:
+  mode: rest_are_argv
+options:
+  -v: {}
+  -V: {}
+  -p: {}

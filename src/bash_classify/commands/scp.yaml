@@ -1,0 +1,3 @@
+command: scp
+classification: WRITE
+strict: false

@@ -1,0 +1,53 @@
+command: terraform
+classification: WRITE
+subcommands:
+  init:
+    classification: WRITE
+  plan:
+    classification: READONLY
+  apply:
+    classification: DANGEROUS
+  destroy:
+    classification: DANGEROUS
+  show:
+    classification: READONLY
+  output:
+    classification: READONLY
+  state:
+    classification: READONLY
+    subcommands:
+      list:
+        classification: READONLY
+      show:
+        classification: READONLY
+      mv:
+        classification: DANGEROUS
+      rm:
+        classification: DANGEROUS
+      pull:
+        classification: WRITE
+      push:
+        classification: WRITE
+  validate:
+    classification: READONLY
+  fmt:
+    classification: WRITE
+  workspace:
+    classification: READONLY
+    subcommands:
+      list:
+        classification: READONLY
+      show:
+        classification: READONLY
+      new:
+        classification: WRITE
+      select:
+        classification: WRITE
+      delete:
+        classification: DANGEROUS
+  import:
+    classification: DANGEROUS
+  refresh:
+    classification: WRITE
+  providers:
+    classification: READONLY

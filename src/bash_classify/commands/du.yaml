@@ -1,0 +1,3 @@
+command: du
+classification: READONLY
+strict: false

@@ -1,0 +1,3 @@
+command: seq
+classification: READONLY
+strict: false

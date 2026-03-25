@@ -1,0 +1,3 @@
+command: uptime
+classification: READONLY
+strict: false

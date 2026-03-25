@@ -1,0 +1,3 @@
+command: killall
+classification: DANGEROUS
+strict: false

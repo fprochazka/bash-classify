@@ -1,0 +1,3 @@
+command: hostname
+classification: READONLY
+strict: false

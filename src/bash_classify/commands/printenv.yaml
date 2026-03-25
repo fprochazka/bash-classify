@@ -1,0 +1,3 @@
+command: printenv
+classification: READONLY
+strict: false

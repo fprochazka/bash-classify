@@ -1,0 +1,3 @@
+command: realpath
+classification: READONLY
+strict: false

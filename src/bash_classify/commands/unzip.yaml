@@ -1,0 +1,5 @@
+command: unzip
+classification: WRITE
+strict: false
+options:
+  -l: {overrides: READONLY}

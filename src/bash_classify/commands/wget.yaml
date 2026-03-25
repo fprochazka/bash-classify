@@ -1,0 +1,3 @@
+command: wget
+classification: WRITE
+strict: false

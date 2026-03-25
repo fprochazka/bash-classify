@@ -1,0 +1,3 @@
+command: groups
+classification: READONLY
+strict: false

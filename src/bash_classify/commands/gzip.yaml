@@ -1,0 +1,3 @@
+command: gzip
+classification: WRITE
+strict: false

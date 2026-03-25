@@ -1,0 +1,3 @@
+command: comm
+classification: READONLY
+strict: false
