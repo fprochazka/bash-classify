@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Mapping
 
 from .models import (
     Classification,
@@ -26,7 +27,7 @@ _ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 def match_command(
     invocation: CommandInvocation,
-    database: dict[str, CommandDef],
+    database: Mapping[str, CommandDef],
 ) -> CommandResult:
     """Match a parsed CommandInvocation against the command database.
 
@@ -532,7 +533,7 @@ def _skip_delegation_tokens(
 def _handle_delegation(
     remaining_positional: list[str],
     delegation: DelegationConfig,
-    database: dict[str, CommandDef],
+    database: Mapping[str, CommandDef],
     full_argv: list[str],
     command_def: CommandDef,
 ) -> list[InnerCommandResult]:
@@ -609,7 +610,7 @@ def _handle_option_delegation(
     option_name: str,
     delegation: DelegationConfig,
     delegation_tokens: list[str],
-    database: dict[str, CommandDef],
+    database: Mapping[str, CommandDef],
 ) -> list[InnerCommandResult]:
     """Handle option-level delegation (e.g., find -exec)."""
     if delegation.mode == DelegationMode.TERMINATED_ARGV:
@@ -629,7 +630,7 @@ def _handle_option_delegation(
 
 def _match_inner_command(
     argv: list[str],
-    database: dict[str, CommandDef],
+    database: Mapping[str, CommandDef],
     *,
     delegation_mode: str,
     delegation_source: str,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import yaml
@@ -23,35 +24,109 @@ def get_user_commands_dir() -> Path:
     return Path.home() / ".config" / "bash-classify" / "commands"
 
 
-def load_database(commands_dir: Path | None = None) -> dict[str, CommandDef]:
-    """Load command database from built-in and user directories.
+class CommandDatabase(dict[str, CommandDef]):
+    """Lazy-loading command database that behaves as a dict.
 
-    User definitions in ~/.config/bash-classify/commands/ override built-in ones.
+    YAML files are only parsed when a specific command is first accessed.
+    From the outside, this is indistinguishable from a regular dict.
+    """
+
+    def __init__(self, builtin_dir: Path, user_dir: Path | None = None):
+        super().__init__()
+        # Map command name -> yaml file path (cheap: just filename listing)
+        self._files: dict[str, Path] = {}
+
+        # Index built-in files
+        if builtin_dir.is_dir():
+            for yaml_file in builtin_dir.glob("*.yaml"):
+                name = _command_name_from_file(yaml_file)
+                self._files[name] = yaml_file
+
+        # Index user files (override built-in)
+        if user_dir and user_dir.is_dir():
+            for yaml_file in user_dir.glob("*.yaml"):
+                name = _command_name_from_file(yaml_file)
+                self._files[name] = yaml_file  # user overrides built-in
+
+    def __getitem__(self, key: str) -> CommandDef:
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            pass
+        if key not in self._files:
+            raise KeyError(key)
+        # Lazy load and cache in the underlying dict
+        command_def = _load_command_file(self._files[key])
+        super().__setitem__(key, command_def)
+        return command_def
+
+    def get(self, key: str, default: CommandDef | None = None) -> CommandDef | None:  # type: ignore[override]
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __contains__(self, key: object) -> bool:
+        return super().__contains__(key) or key in self._files
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._files)
+
+    def __len__(self) -> int:
+        return len(self._files)
+
+
+def _command_name_from_file(yaml_file: Path) -> str:
+    """Extract command name from YAML filename.
+
+    Handles special cases: true.yaml, false.yaml, yes.yaml where
+    the stem would be parsed as boolean by YAML but the filename is fine.
+    """
+    return yaml_file.stem
+
+
+def _load_command_file(yaml_file: Path) -> CommandDef:
+    """Parse a single YAML command file into a CommandDef."""
+    try:
+        with open(yaml_file) as f:
+            data = yaml.safe_load(f)
+
+        if data is None:
+            raise ValueError("Empty YAML file")
+
+        if not isinstance(data, dict):
+            raise ValueError(f"Expected a YAML mapping, got {type(data).__name__}")
+
+        command_name = _yaml_str(data["command"])
+        return _parse_command_def(data, command_name)
+    except Exception as e:
+        raise ValueError(f"Error loading {yaml_file}: {e}") from e
+
+
+def load_database(commands_dir: Path | None = None) -> CommandDatabase:
+    """Load command database with lazy per-command loading.
 
     Args:
-        commands_dir: Path to directory containing YAML command definitions.
-                      Defaults to get_default_commands_dir(). When provided,
+        commands_dir: Explicit commands directory. When provided,
                       user overrides are NOT loaded.
 
     Returns:
-        A dict mapping command names to their CommandDef definitions.
+        A CommandDatabase mapping command names to their CommandDef definitions.
     """
-    # Load built-in commands
     builtin_dir = commands_dir or get_default_commands_dir()
-    database = _load_commands_from_dir(builtin_dir)
-
-    # Load user overrides (if directory exists)
-    if commands_dir is None:  # Only load user overrides when using default
-        user_dir = get_user_commands_dir()
-        if user_dir.is_dir():
-            user_commands = _load_commands_from_dir(user_dir)
-            database.update(user_commands)  # User overrides built-in
-
-    return database
+    user_dir = None
+    if commands_dir is None:
+        candidate = get_user_commands_dir()
+        if candidate.is_dir():
+            user_dir = candidate
+    return CommandDatabase(builtin_dir, user_dir)
 
 
 def _load_commands_from_dir(commands_dir: Path) -> dict[str, CommandDef]:
     """Load all command definitions from YAML files in the given directory.
+
+    This eagerly loads all commands at once. Useful for schema validation
+    and tests that need to iterate all commands.
 
     Args:
         commands_dir: Path to directory containing YAML command definitions.

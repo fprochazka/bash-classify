@@ -136,23 +136,25 @@ class TestEnvYaml:
 
 class TestDatabaseErrorHandling:
     def test_invalid_yaml_includes_filename(self, tmp_path: Path) -> None:
-        """Loading a malformed YAML file should raise ValueError with the filename."""
+        """Accessing a malformed YAML command should raise ValueError with the filename."""
         bad_file = tmp_path / "bad.yaml"
         bad_file.write_text("command: test\nclassification: INVALID_VALUE\n")
+        db = load_database(tmp_path)
         with pytest.raises(ValueError, match="bad.yaml"):
-            load_database(tmp_path)
+            db["bad"]
 
     def test_missing_command_key_includes_filename(self, tmp_path: Path) -> None:
-        """Loading a YAML file without 'command' key should raise ValueError with the filename."""
+        """Accessing a YAML command without 'command' key should raise ValueError with the filename."""
         bad_file = tmp_path / "nocommand.yaml"
         bad_file.write_text("classification: READONLY\n")
+        db = load_database(tmp_path)
         with pytest.raises(ValueError, match="nocommand.yaml"):
-            load_database(tmp_path)
+            db["nocommand"]
 
 
 class TestEmptyAndNonDictYamlFiles:
-    def test_empty_yaml_file_skipped(self, tmp_path: Path) -> None:
-        """An empty YAML file should be skipped (yaml.safe_load returns None)."""
+    def test_empty_yaml_file_raises_on_access(self, tmp_path: Path) -> None:
+        """An empty YAML file should raise ValueError when accessed (lazy loading)."""
         empty_file = tmp_path / "empty.yaml"
         empty_file.write_text("")
 
@@ -161,15 +163,22 @@ class TestEmptyAndNonDictYamlFiles:
 
         db = load_database(tmp_path)
         assert "echo" in db
-        assert len(db) == 1
+        assert "empty" in db  # indexed by filename
+        assert len(db) == 2  # both files indexed
+        # Valid file loads fine
+        assert db["echo"].classification == Classification.READONLY
+        # Empty file raises on access
+        with pytest.raises(ValueError, match="empty.yaml"):
+            db["empty"]
 
-    def test_list_yaml_raises_valueerror(self, tmp_path: Path) -> None:
-        """A YAML file containing a list should raise ValueError with filename."""
+    def test_list_yaml_raises_valueerror_on_access(self, tmp_path: Path) -> None:
+        """A YAML file containing a list should raise ValueError when accessed."""
         list_file = tmp_path / "badlist.yaml"
         list_file.write_text("- item1\n- item2\n")
 
+        db = load_database(tmp_path)
         with pytest.raises(ValueError, match="badlist.yaml"):
-            load_database(tmp_path)
+            db["badlist"]
 
 
 class TestStrictDefault:

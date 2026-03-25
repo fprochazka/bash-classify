@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 
 from .database import load_database
 from .matcher import match_command
@@ -40,7 +41,7 @@ def _is_system_path(path: str) -> bool:
 
 def classify_expression(
     expression: str,
-    database: dict[str, CommandDef] | None = None,
+    database: Mapping[str, CommandDef] | None = None,
 ) -> ExpressionResult:
     """Classify a bash expression.
 

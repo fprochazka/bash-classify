@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from bash_classify.database import load_database
-from bash_classify.models import CommandDef
+from bash_classify.database import CommandDatabase, load_database
 
 
 @pytest.fixture(scope="session")
-def database() -> dict[str, CommandDef]:
+def database() -> CommandDatabase:
     """Load the command database once for all tests."""
     return load_database()
