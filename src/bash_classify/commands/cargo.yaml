@@ -25,7 +25,31 @@ subcommands:
     classification: DANGEROUS
   install:
     classification: LOCAL_EFFECTS
+    options:
+      --list: {overrides: READONLY}
   clean:
     classification: LOCAL_EFFECTS
   update:
+    classification: LOCAL_EFFECTS
+  search:
+    classification: READONLY
+  tree:
+    classification: READONLY
+  metadata:
+    classification: READONLY
+  verify-project:
+    classification: READONLY
+  bench:
+    classification: LOCAL_EFFECTS
+  init:
+    classification: LOCAL_EFFECTS
+  new:
+    classification: LOCAL_EFFECTS
+  fix:
+    classification: LOCAL_EFFECTS
+  add:
+    classification: LOCAL_EFFECTS
+  remove:
+    classification: LOCAL_EFFECTS
+  generate-lockfile:
     classification: LOCAL_EFFECTS
