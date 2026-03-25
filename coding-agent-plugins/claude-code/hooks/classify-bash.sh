@@ -36,7 +36,7 @@ classification=$(echo "$classification_output" | jq -r '.classification // empty
 
 if [[ "$classification" == "READONLY" ]]; then
   # Auto-allow readonly commands
-  echo '{"hookSpecificOutput":{"permissionDecision":"allow"}}'
+  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
 fi
 
 # For anything else (WRITE, DANGEROUS, UNKNOWN), output nothing
