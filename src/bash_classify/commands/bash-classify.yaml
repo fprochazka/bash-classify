@@ -1,0 +1,8 @@
+# $schema: ../../../schemas/command.schema.json
+command: bash-classify
+description: "Classify bash commands by their side-effect risk level"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  --version: {overrides: READONLY}
