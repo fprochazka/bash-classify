@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from bash_classify.database import load_database
+from bash_classify.database import get_default_commands_dir, load_database
 from bash_classify.models import Classification, CommandDef, DelegationMode
 
 
@@ -188,3 +188,85 @@ class TestStrictDefault:
     def test_strict_false_on_grep(self, database: dict[str, CommandDef]) -> None:
         grep = database["grep"]
         assert grep.strict is False
+
+
+class TestUserCommandsDir:
+    def test_user_override_replaces_builtin(self, tmp_path: Path) -> None:
+        """User YAML overrides built-in command definition."""
+        user_dir = tmp_path / "config" / "commands"
+        user_dir.mkdir(parents=True)
+        (user_dir / "grep.yaml").write_text(
+            "command: grep\nclassification: WRITE\nstrict: false\n"
+        )
+
+        import os
+
+        old = os.environ.get("BASH_CLASSIFY_CONFIG_DIR")
+        try:
+            os.environ["BASH_CLASSIFY_CONFIG_DIR"] = str(tmp_path / "config")
+            db = load_database()
+            assert db["grep"].classification == Classification.WRITE  # overridden
+        finally:
+            if old is None:
+                os.environ.pop("BASH_CLASSIFY_CONFIG_DIR", None)
+            else:
+                os.environ["BASH_CLASSIFY_CONFIG_DIR"] = old
+
+    def test_user_adds_new_command(self, tmp_path: Path) -> None:
+        """User YAML adds a command not in built-in database."""
+        user_dir = tmp_path / "config" / "commands"
+        user_dir.mkdir(parents=True)
+        (user_dir / "mycustomtool.yaml").write_text(
+            "command: mycustomtool\nclassification: READONLY\nstrict: false\n"
+        )
+
+        import os
+
+        old = os.environ.get("BASH_CLASSIFY_CONFIG_DIR")
+        try:
+            os.environ["BASH_CLASSIFY_CONFIG_DIR"] = str(tmp_path / "config")
+            db = load_database()
+            assert "mycustomtool" in db
+            assert db["mycustomtool"].classification == Classification.READONLY
+        finally:
+            if old is None:
+                os.environ.pop("BASH_CLASSIFY_CONFIG_DIR", None)
+            else:
+                os.environ["BASH_CLASSIFY_CONFIG_DIR"] = old
+
+    def test_missing_user_dir_is_silently_skipped(self, tmp_path: Path) -> None:
+        """Non-existent user config dir doesn't cause errors."""
+        import os
+
+        old = os.environ.get("BASH_CLASSIFY_CONFIG_DIR")
+        try:
+            os.environ["BASH_CLASSIFY_CONFIG_DIR"] = str(tmp_path / "nonexistent")
+            db = load_database()
+            assert len(db) > 0  # Built-in commands still loaded
+        finally:
+            if old is None:
+                os.environ.pop("BASH_CLASSIFY_CONFIG_DIR", None)
+            else:
+                os.environ["BASH_CLASSIFY_CONFIG_DIR"] = old
+
+    def test_explicit_commands_dir_skips_user_overrides(self, tmp_path: Path) -> None:
+        """When explicit commands_dir is passed, user overrides are NOT loaded."""
+        user_dir = tmp_path / "config" / "commands"
+        user_dir.mkdir(parents=True)
+        (user_dir / "grep.yaml").write_text(
+            "command: grep\nclassification: DANGEROUS\nstrict: false\n"
+        )
+
+        import os
+
+        old = os.environ.get("BASH_CLASSIFY_CONFIG_DIR")
+        try:
+            os.environ["BASH_CLASSIFY_CONFIG_DIR"] = str(tmp_path / "config")
+            # Pass explicit dir — user overrides should NOT be loaded
+            db = load_database(get_default_commands_dir())
+            assert db["grep"].classification == Classification.READONLY  # built-in, not overridden
+        finally:
+            if old is None:
+                os.environ.pop("BASH_CLASSIFY_CONFIG_DIR", None)
+            else:
+                os.environ["BASH_CLASSIFY_CONFIG_DIR"] = old

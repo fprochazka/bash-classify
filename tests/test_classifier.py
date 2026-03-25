@@ -518,3 +518,29 @@ class TestSystemDirectoryClassification:
         # -m takes_value, so "fix /etc/config" is consumed as -m's value
         # The token "fix /etc/config" doesn't start with /, so it won't trigger
         assert result.classification == Classification.WRITE
+
+
+class TestUserCommandOverride:
+    def test_custom_command_classifies_correctly(self, tmp_path: object) -> None:
+        """End-to-end: user-defined command is used in classification."""
+        from pathlib import Path
+
+        assert isinstance(tmp_path, Path)
+        user_dir = tmp_path / "config" / "commands"
+        user_dir.mkdir(parents=True)
+        (user_dir / "mycli.yaml").write_text(
+            "command: mycli\nclassification: READONLY\nstrict: false\n"
+        )
+
+        import os
+
+        old = os.environ.get("BASH_CLASSIFY_CONFIG_DIR")
+        try:
+            os.environ["BASH_CLASSIFY_CONFIG_DIR"] = str(tmp_path / "config")
+            result = classify_expression("mycli query --format json")
+            assert result.classification == Classification.READONLY
+        finally:
+            if old is None:
+                os.environ.pop("BASH_CLASSIFY_CONFIG_DIR", None)
+            else:
+                os.environ["BASH_CLASSIFY_CONFIG_DIR"] = old

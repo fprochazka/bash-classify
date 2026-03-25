@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import yaml
@@ -14,19 +15,50 @@ def get_default_commands_dir() -> Path:
     return Path(__file__).parent / "commands"
 
 
+def get_user_commands_dir() -> Path:
+    """Get the user's custom commands directory."""
+    config_dir = os.environ.get("BASH_CLASSIFY_CONFIG_DIR")
+    if config_dir:
+        return Path(config_dir) / "commands"
+    return Path.home() / ".config" / "bash-classify" / "commands"
+
+
 def load_database(commands_dir: Path | None = None) -> dict[str, CommandDef]:
-    """Load all command definitions from YAML files in the given directory.
+    """Load command database from built-in and user directories.
+
+    User definitions in ~/.config/bash-classify/commands/ override built-in ones.
 
     Args:
         commands_dir: Path to directory containing YAML command definitions.
-                      Defaults to get_default_commands_dir().
+                      Defaults to get_default_commands_dir(). When provided,
+                      user overrides are NOT loaded.
 
     Returns:
         A dict mapping command names to their CommandDef definitions.
     """
-    if commands_dir is None:
-        commands_dir = get_default_commands_dir()
+    # Load built-in commands
+    builtin_dir = commands_dir or get_default_commands_dir()
+    database = _load_commands_from_dir(builtin_dir)
 
+    # Load user overrides (if directory exists)
+    if commands_dir is None:  # Only load user overrides when using default
+        user_dir = get_user_commands_dir()
+        if user_dir.is_dir():
+            user_commands = _load_commands_from_dir(user_dir)
+            database.update(user_commands)  # User overrides built-in
+
+    return database
+
+
+def _load_commands_from_dir(commands_dir: Path) -> dict[str, CommandDef]:
+    """Load all command definitions from YAML files in the given directory.
+
+    Args:
+        commands_dir: Path to directory containing YAML command definitions.
+
+    Returns:
+        A dict mapping command names to their CommandDef definitions.
+    """
     database: dict[str, CommandDef] = {}
 
     for yaml_file in sorted(commands_dir.glob("*.yaml")):
