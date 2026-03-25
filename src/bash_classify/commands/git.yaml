@@ -14,6 +14,7 @@ global_options:
 subcommands:
   status:
     classification: READONLY
+    strict: false
   log:
     classification: READONLY
     strict: false
@@ -92,6 +93,7 @@ subcommands:
       --dry-run: {aliases: [-n]}
   commit:
     classification: WRITE
+    strict: false
     options:
       -m: {takes_value: true}
       --message: {takes_value: true, aliases: [-m]}
@@ -110,12 +112,23 @@ subcommands:
       --abort: {overrides: DANGEROUS}
   rebase:
     classification: WRITE
+    strict: false
     options:
       --abort: {overrides: DANGEROUS}
+      --continue: {}
+      --skip: {}
+      --interactive: {}
+      -i: {aliases: [--interactive]}
+      --autosquash: {}
+      --no-autosquash: {}
+      --onto: {takes_value: true}
   cherry-pick:
     classification: WRITE
+    strict: false
     options:
       --abort: {overrides: DANGEROUS}
+      --continue: {}
+      --skip: {}
 
   push:
     classification: WRITE
@@ -127,24 +140,36 @@ subcommands:
 
   pull:
     classification: WRITE
+    strict: false
 
   fetch:
     classification: WRITE
+    strict: false
     options:
       --prune: {overrides: WRITE}
 
   checkout:
     classification: WRITE
+    strict: false
 
   switch:
     classification: WRITE
+    strict: false
 
   restore:
     classification: WRITE
+    strict: false
 
   stash:
     classification: WRITE
+    strict: false
     subcommands:
+      push:
+        classification: WRITE
+      pop:
+        classification: WRITE
+      apply:
+        classification: WRITE
       list:
         classification: READONLY
       show:
@@ -156,8 +181,11 @@ subcommands:
 
   reset:
     classification: WRITE
+    strict: false
     options:
       --hard: {overrides: DANGEROUS}
+      --soft: {}
+      --mixed: {}
 
   revert:
     classification: WRITE
@@ -167,5 +195,7 @@ subcommands:
 
   rm:
     classification: WRITE
+    strict: false
     options:
       -r: {overrides: DANGEROUS}
+      --cached: {}
