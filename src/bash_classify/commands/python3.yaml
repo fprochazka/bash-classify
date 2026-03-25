@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: python3
 description: "Python 3 language interpreter"
 classification: DANGEROUS

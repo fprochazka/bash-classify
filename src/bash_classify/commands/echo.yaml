@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: echo
 description: "Display a line of text"
 classification: READONLY

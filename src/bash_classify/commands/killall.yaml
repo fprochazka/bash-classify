@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: killall
 description: "Kill processes by name"
 classification: DANGEROUS

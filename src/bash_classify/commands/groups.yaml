@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: groups
 description: "Print the groups a user is in"
 classification: READONLY

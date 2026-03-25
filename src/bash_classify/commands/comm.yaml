@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: comm
 description: "Compare two sorted files line by line"
 classification: READONLY

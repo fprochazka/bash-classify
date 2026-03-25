@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: rsync
 description: "Fast, versatile file copying tool"
 classification: WRITE

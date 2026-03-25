@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: file
 description: "Determine file type"
 classification: READONLY

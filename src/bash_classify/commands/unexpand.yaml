@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: unexpand
 description: "Convert spaces to tabs"
 classification: READONLY

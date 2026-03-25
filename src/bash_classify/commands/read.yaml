@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: read
 description: "Read a line from standard input"
 classification: READONLY

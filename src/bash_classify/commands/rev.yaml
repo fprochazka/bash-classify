@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: rev
 description: "Reverse lines character-wise"
 classification: READONLY

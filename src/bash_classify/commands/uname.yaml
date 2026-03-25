@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: uname
 description: "Print system information"
 classification: READONLY

@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: helm
 description: "Kubernetes package manager"
 strict: false

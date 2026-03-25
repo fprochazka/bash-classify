@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: uptime
 description: "Show how long the system has been running"
 classification: READONLY

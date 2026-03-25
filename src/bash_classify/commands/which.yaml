@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: which
 description: "Locate a command in the PATH"
 classification: READONLY

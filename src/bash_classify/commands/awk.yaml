@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: awk
 description: "Pattern scanning and text processing language"
 classification: READONLY

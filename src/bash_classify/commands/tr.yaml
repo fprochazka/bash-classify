@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: tr
 description: "Translate or delete characters"
 classification: READONLY

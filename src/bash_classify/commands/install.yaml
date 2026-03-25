@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: install
 description: "Copy files and set attributes"
 classification: WRITE

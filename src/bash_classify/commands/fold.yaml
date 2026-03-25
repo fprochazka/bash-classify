@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: fold
 description: "Wrap each input line to fit in specified width"
 classification: READONLY

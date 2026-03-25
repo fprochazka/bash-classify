@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: kubectl
 description: "Kubernetes command-line tool"
 global_options:

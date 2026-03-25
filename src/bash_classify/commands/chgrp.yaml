@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: chgrp
 description: "Change group ownership of files"
 classification: WRITE

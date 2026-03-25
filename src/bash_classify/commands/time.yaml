@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: time
 description: "Time a command execution"
 classification: READONLY

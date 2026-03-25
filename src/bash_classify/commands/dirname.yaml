@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: dirname
 description: "Strip last component from file name"
 classification: READONLY

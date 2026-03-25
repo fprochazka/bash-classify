@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: pwd
 description: "Print name of current working directory"
 classification: READONLY

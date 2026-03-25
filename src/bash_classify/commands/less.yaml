@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: less
 description: "View file contents with backward movement"
 classification: READONLY

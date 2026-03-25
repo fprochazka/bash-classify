@@ -1,4 +1,5 @@
-command: true
+# $schema: ../../../schemas/command.schema.json
+command: "true"
 description: "Return a successful exit status"
 classification: READONLY
 strict: false

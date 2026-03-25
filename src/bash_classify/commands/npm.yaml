@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: npm
 description: "Node.js package manager"
 strict: false

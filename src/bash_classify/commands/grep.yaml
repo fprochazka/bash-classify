@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: grep
 description: "Search for patterns in files"
 classification: READONLY

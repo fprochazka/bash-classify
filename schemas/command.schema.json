@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fprochazka/bash-classify/schemas/command.schema.json",
+  "title": "bash-classify command definition",
+  "description": "Schema for YAML command database files used by bash-classify",
+  "type": "object",
+  "required": ["command"],
+  "additionalProperties": false,
+  "properties": {
+    "command": {
+      "type": "string",
+      "description": "Binary name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description of the tool"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "strict": {
+      "type": "boolean",
+      "description": "If true (default), unrecognized options yield UNKNOWN"
+    },
+    "global_options": {
+      "$ref": "#/$defs/OptionsMap",
+      "description": "Options that appear before subcommands and are stripped before matching"
+    },
+    "options": {
+      "$ref": "#/$defs/OptionsMap",
+      "description": "Options that affect classification of this command"
+    },
+    "subcommands": {
+      "$ref": "#/$defs/SubcommandsMap",
+      "description": "Nested subcommand definitions"
+    },
+    "delegates_to": {
+      "$ref": "#/$defs/DelegationConfig"
+    }
+  },
+  "$defs": {
+    "Classification": {
+      "type": "string",
+      "enum": ["READONLY", "WRITE", "DANGEROUS", "UNKNOWN"],
+      "description": "Classification level for a command or option override"
+    },
+    "DelegationConfig": {
+      "type": "object",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["rest_are_argv", "after_separator", "terminated_argv", "flag_value_is_expression"],
+          "description": "Delegation mode"
+        },
+        "separator": {
+          "type": "string",
+          "description": "For after_separator mode: the token that separates wrapper args from inner args"
+        },
+        "terminator": {
+          "type": "string",
+          "description": "For terminated_argv mode: the token that ends the inner argv"
+        },
+        "flag": {
+          "type": "string",
+          "description": "For flag_value_is_expression mode: which flag's value to parse"
+        },
+        "strip_assignments": {
+          "type": "boolean",
+          "description": "For rest_are_argv mode: strip leading KEY=VALUE tokens before the inner command"
+        },
+        "min_classification": {
+          "$ref": "#/$defs/Classification",
+          "description": "Floor classification for the inner command"
+        }
+      }
+    },
+    "OptionDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "takes_value": {
+          "type": "boolean",
+          "description": "Whether the option consumes the next token as its value"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Alternative names for this option"
+        },
+        "overrides": {
+          "$ref": "#/$defs/Classification",
+          "description": "When this option is present, override the classification to this level"
+        },
+        "captures_directory": {
+          "type": "boolean",
+          "description": "The value of this option is a working directory"
+        },
+        "delegates_to": {
+          "$ref": "#/$defs/DelegationConfig"
+        }
+      }
+    },
+    "OptionsMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/OptionDef"
+      },
+      "description": "Map of option name to option definition"
+    },
+    "SubcommandDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "$ref": "#/$defs/Classification"
+        },
+        "strict": {
+          "type": "boolean",
+          "description": "If true (default), unrecognized options yield UNKNOWN"
+        },
+        "options": {
+          "$ref": "#/$defs/OptionsMap"
+        },
+        "subcommands": {
+          "$ref": "#/$defs/SubcommandsMap"
+        },
+        "delegates_to": {
+          "$ref": "#/$defs/DelegationConfig"
+        }
+      }
+    },
+    "SubcommandsMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/SubcommandDef"
+      },
+      "description": "Map of subcommand name to subcommand definition"
+    }
+  }
+}

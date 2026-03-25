@@ -1,3 +1,4 @@
+# $schema: ../../../schemas/command.schema.json
 command: netstat
 description: "Print network connections and statistics"
 classification: READONLY
