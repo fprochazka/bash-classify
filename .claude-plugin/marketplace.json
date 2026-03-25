@@ -8,7 +8,7 @@
     {
       "name": "bash-classify-hook",
       "description": "Auto-allows readonly bash commands in Claude Code using bash-classify",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "author": {
         "name": "Filip Procházka",
         "url": "https://github.com/fprochazka"
