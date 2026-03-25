@@ -95,6 +95,24 @@ print(result.classification)  # Classification.READONLY
 
 See [SPEC.md](SPEC.md) for the full specification.
 
+## Development
+
+```bash
+git clone https://github.com/fprochazka/bash-classify.git
+cd bash-classify
+uv sync --dev
+```
+
+Run tests and linting before committing:
+
+```bash
+uv run ruff format .
+uv run ruff check .
+uv run pytest
+```
+
+To add or modify command definitions, see [docs/classification-guidance.md](docs/classification-guidance.md). All YAML files in `src/bash_classify/commands/` are validated against a [JSON Schema](schemas/command.schema.json) — your IDE will provide autocomplete if it supports the `# $schema:` comment.
+
 ## License
 
 [MIT](LICENSE)
