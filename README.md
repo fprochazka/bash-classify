@@ -32,34 +32,25 @@ $ echo 'find . -name "*.pyc" -delete' | bash-classify | jq '.classification'
 "DANGEROUS"
 ```
 
-## Claude Code hook
+## Claude Code plugin
 
-Install as a Claude Code hook to auto-allow read-only commands and require approval for everything else:
+The repo includes a Claude Code plugin that auto-allows readonly bash commands via a `PreToolUse` hook. Install it as a marketplace:
 
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.command' | bash-classify",
-            "timeout": 5000,
-            "on_output": [
-              {
-                "matcher": "\"classification\": \"READONLY\"",
-                "action": "approve"
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  }
-}
+```bash
+# First, install the bash-classify CLI
+uv tool install bash-classify
+
+# Then install the plugin marketplace
+claude plugin add /path/to/bash-classify
 ```
+
+Or from GitHub directly:
+
+```bash
+claude plugin add https://github.com/fprochazka/bash-classify
+```
+
+Once installed, any Bash tool call classified as `READONLY` is auto-approved — no permission prompt. Everything else (WRITE, DANGEROUS, UNKNOWN) still requires confirmation.
 
 ## Command database
 
