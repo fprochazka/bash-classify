@@ -1,0 +1,354 @@
+# Classification Guidance
+
+A practical guide for contributors who want to add or review command definitions in the bash-classify database.
+
+## 1. Purpose
+
+bash-classify is a CLI tool that parses bash expressions, classifies each command against a known-command database, and outputs a structured JSON verdict. It is used as a **Claude Code PreToolUse hook** to auto-allow readonly commands while requiring user confirmation for anything that writes, deletes, or executes arbitrary code.
+
+The command database is the backbone of this system. Each YAML file describes a command's subcommands, options, and their classifications. When a user runs `kubectl get pods`, the database tells bash-classify this is READONLY and safe to auto-allow. When they run `kubectl delete namespace production`, the database tells bash-classify this is DANGEROUS and requires explicit confirmation.
+
+## 2. Classification Levels
+
+### READONLY
+
+No side effects. Safe to auto-allow without user confirmation.
+
+Examples: `ls`, `cat`, `grep`, `kubectl get`, `git status`, `git log`, `docker ps`, `terraform plan`, `curl https://example.com`
+
+### WRITE
+
+Creates, modifies, or deletes data in a controlled way. Requires user confirmation.
+
+Examples: `git commit`, `cp`, `touch`, `mkdir`, `kubectl apply`, `docker build`, `git push`, `curl -d '...'`
+
+### DANGEROUS
+
+Destructive, hard to reverse, or executes arbitrary code. Always requires confirmation.
+
+Examples: `rm -rf`, `git push --force`, `kubectl delete`, `eval`, `python`, `sh -c`, `terraform apply`, `docker run`, `git clean`
+
+### UNKNOWN
+
+Command or subcommand not in the database. Treated as requiring confirmation.
+
+### Severity Ordering
+
+```
+DANGEROUS > UNKNOWN > WRITE > READONLY
+```
+
+UNKNOWN is ranked **above WRITE** because an unrecognized command should not be silently trusted -- it must be reviewed. A known WRITE command (like `git commit`) is predictable; an unknown command could do anything.
+
+The overall classification of a full expression (e.g. a pipeline) is the **maximum severity** across all commands in the expression.
+
+## 3. Database File Format
+
+Each YAML file defines one command (binary). Files live in `src/bash_classify/commands/` and are validated against the JSON Schema at `schemas/command.schema.json`.
+
+### Annotated Example
+
+```yaml
+# $schema: ../../../schemas/command.schema.json    # IDE autocomplete support
+command: sed                        # (required) binary name
+description: "Stream editor"       # (optional) short one-liner
+classification: READONLY            # (optional, default READONLY) base classification
+strict: false                       # (optional, default true) unrecognized options -> UNKNOWN?
+options:                            # options that affect classification
+  -i: {overrides: WRITE}           # -i changes classification to WRITE
+  --in-place: {overrides: WRITE, aliases: [-i]}
+  -e: {takes_value: true}          # -e consumes the next token as its value
+  --expression: {takes_value: true, aliases: [-e]}
+  -f: {takes_value: true}
+  --file: {takes_value: true, aliases: [-f]}
+```
+
+### Field Reference
+
+#### Top-level fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `command` | string | *(required)* | Binary name (e.g. `kubectl`, `git`, `sed`) |
+| `description` | string | -- | Short one-liner describing the tool |
+| `classification` | enum | `READONLY` | Base classification when no subcommand matches |
+| `strict` | boolean | `true` | If true, unrecognized options yield UNKNOWN |
+| `global_options` | map | -- | Options stripped before subcommand matching |
+| `options` | map | -- | Options that affect classification |
+| `subcommands` | map | -- | Nested subcommand definitions (recursive) |
+| `delegates_to` | object | -- | How the command hands off to an inner command |
+
+#### Option fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `takes_value` | boolean | Whether the option consumes the next token as its value |
+| `aliases` | list | Alternative names (e.g. `-n` for `--namespace`) |
+| `overrides` | enum | When present, override classification to this level |
+| `captures_directory` | boolean | The option's value is a working directory (e.g. `git -C`) |
+| `delegates_to` | object | This option triggers delegation (e.g. `find -exec`) |
+
+#### The `# $schema:` comment
+
+Add `# $schema: ../../../schemas/command.schema.json` as the first line of every YAML file. This enables autocomplete and validation in IDEs that support JSON Schema for YAML files.
+
+## 4. Classification Philosophy / Decision Guide
+
+### Default to READONLY when:
+
+- The command only reads data and outputs to stdout (`cat`, `ls`, `head`, `tail`)
+- The command inspects system state (`ps`, `df`, `top`, `netstat`, `free`)
+- The command is a pure filter/transformer (`grep`, `awk`, `sed` without `-i`, `jq`, `sort` without `-o`)
+- The command queries a remote system without changing it (`kubectl get`, `curl` without `-d`/`-F`/`-o`, `dig`, `ping`)
+
+### Use WRITE when:
+
+- The command creates or modifies files (`touch`, `cp`, `mv`, `mkdir`, `tee`)
+- The command modifies local state (`git commit`, `git checkout`, `kubectl apply`)
+- The command downloads files (`wget`, `curl -o`)
+- The command sends data over the network (`curl -d`, `curl -F`)
+- The command wraps another command with elevated context (`sudo`, `nice`)
+- The command modifies configuration (`git config`, `kubectl config use-context`)
+
+### Use DANGEROUS when:
+
+- The command deletes data that is hard to recover (`rm`, `git clean`, `kubectl delete namespace`)
+- The command executes arbitrary code (`eval`, `python`, `sh`, `bash`, `docker run`, `docker exec`)
+- The command affects critical system state (`systemctl restart`, `kill`, `reboot`)
+- The command can cause widespread damage (`git push --force`, `chmod -R 777`)
+- The command modifies infrastructure (`terraform apply`, `terraform destroy`)
+- The command aborts an in-progress operation with potential data loss (`git rebase --abort`, `git merge --abort`)
+
+### Use `strict: false` when:
+
+- The command has too many harmless flags to enumerate (`grep`, `find`, `kubectl get`)
+- Unknown flags are almost always safe for this command
+- You want to avoid false UNKNOWN classifications for common usage
+
+```yaml
+# grep has dozens of flags like -r, -n, -l, -i, -v, etc. -- all safe
+command: grep
+classification: READONLY
+strict: false
+```
+
+### Use `strict: true` (default) when:
+
+- The command has specific flags that change its behavior significantly
+- You want to catch unrecognized options as a safety measure
+- The command is sensitive and unknown flags should be reviewed
+
+When in doubt, leave `strict` at the default (`true`). It is safer to have false UNKNOWNs (which prompt the user) than to miss a dangerous flag.
+
+## 5. Option Overrides
+
+Options can change classification in **both directions** -- they can elevate or lower it. The `overrides` field **replaces** the base classification entirely; it does not merely elevate.
+
+### Elevating classification
+
+A flag that makes a normally safe command destructive:
+
+```yaml
+# git push is WRITE, but --force makes it DANGEROUS
+command: git
+subcommands:
+  push:
+    classification: WRITE
+    options:
+      --force: {overrides: DANGEROUS}
+      -f: {overrides: DANGEROUS}
+      --force-with-lease: {overrides: WRITE}   # safer force push stays WRITE
+```
+
+```yaml
+# sed is READONLY, but -i modifies files in place
+command: sed
+classification: READONLY
+options:
+  -i: {overrides: WRITE}
+```
+
+### Lowering classification
+
+A flag that makes a normally writing command safe to auto-allow:
+
+```yaml
+# kubectl apply is WRITE, but --dry-run only prints what would happen
+subcommands:
+  apply:
+    classification: WRITE
+    options:
+      --dry-run: {takes_value: true, overrides: READONLY}
+```
+
+```yaml
+# tar is WRITE (creates/extracts archives), but -t only lists contents
+command: tar
+classification: WRITE
+options:
+  -t: {overrides: READONLY}
+  --list: {overrides: READONLY, aliases: [-t]}
+```
+
+```yaml
+# git branch is WRITE (creates branches), but -l only lists them
+subcommands:
+  branch:
+    classification: WRITE
+    options:
+      -l: {overrides: READONLY}
+      --list: {overrides: READONLY, aliases: [-l]}
+      -D: {overrides: DANGEROUS}     # force-delete is dangerous
+```
+
+## 6. Delegation
+
+Some commands do not do work themselves -- they delegate to an inner command. bash-classify models this with `delegates_to`, which tells the matcher how to extract the inner command's argv and classify it recursively.
+
+### `rest_are_argv`
+
+All remaining positional args (after the wrapper's own options) form the inner command.
+
+**xargs:** `xargs grep -r foo` -- inner command is `["grep", "-r", "foo"]`
+
+```yaml
+command: xargs
+classification: READONLY
+delegates_to:
+  mode: rest_are_argv
+options:
+  -I: {takes_value: true}
+  -n: {takes_value: true}
+  # ... other xargs options
+```
+
+**sudo:** `sudo rm -rf /tmp` -- inner command is `["rm", "-rf", "/tmp"]`
+
+```yaml
+command: sudo
+classification: WRITE
+delegates_to:
+  mode: rest_are_argv
+  min_classification: WRITE   # inner command is at least WRITE
+```
+
+**env:** `env FOO=bar BAZ=1 python script.py` -- strips `FOO=bar BAZ=1`, inner command is `["python", "script.py"]`
+
+```yaml
+command: env
+classification: READONLY
+delegates_to:
+  mode: rest_are_argv
+  strip_assignments: true     # strip leading KEY=VALUE tokens
+```
+
+### `after_separator`
+
+Everything after a separator token forms the inner command.
+
+**kubectl exec:** `kubectl exec -it my-pod -- cat /etc/config` -- inner command is `["cat", "/etc/config"]`
+
+```yaml
+subcommands:
+  exec:
+    classification: DANGEROUS
+    delegates_to:
+      mode: after_separator
+      separator: "--"
+```
+
+### `terminated_argv`
+
+Tokens after the flag up to a terminator form the inner command. Placeholder tokens like `{}` are stripped.
+
+**find -exec:** `find . -name "*.tmp" -exec rm -f {} \;` -- inner command is `["rm", "-f"]`
+
+```yaml
+command: find
+classification: READONLY
+strict: false
+options:
+  -exec:
+    overrides: DANGEROUS
+    delegates_to:
+      mode: terminated_argv
+      terminator: ";"
+```
+
+Note that `-exec` is defined as an **option** with both `overrides` (to elevate find's classification) and `delegates_to` (to extract and classify the inner command).
+
+### `flag_value_is_expression`
+
+The value of a specific flag is a complete shell expression, parsed from scratch through the bash parser.
+
+**sh -c:** `sh -c "ls /tmp | grep log"` -- the string `ls /tmp | grep log` is parsed as a full expression, producing two inner commands.
+
+```yaml
+command: sh
+classification: DANGEROUS
+delegates_to:
+  mode: flag_value_is_expression
+  flag: -c
+options:
+  -c: {takes_value: true}
+```
+
+### Delegation fields
+
+| Field | Type | Applies to | Description |
+|-------|------|-----------|-------------|
+| `mode` | enum | all | One of the four modes above |
+| `separator` | string | `after_separator` | Token that separates wrapper args from inner args |
+| `terminator` | string | `terminated_argv` | Token that ends the inner argv |
+| `flag` | string | `flag_value_is_expression` | Which flag's value to parse as an expression |
+| `strip_assignments` | boolean | `rest_are_argv` | Strip leading `KEY=VALUE` tokens before inner command |
+| `min_classification` | enum | all | Floor classification for the inner command |
+
+### `min_classification`
+
+Forces the inner command to be classified at least at the given level. sudo uses this to ensure that even `sudo ls` is at least WRITE -- because running anything under elevated privileges is not a no-op.
+
+## 7. Special Cases
+
+### Commands with non-READONLY base classification
+
+Some commands default to a higher classification when used without a recognized subcommand:
+
+- **kubectl** -- base `WRITE` (bare `kubectl` without a known subcommand should not be auto-allowed)
+- **terraform** -- base `DANGEROUS` (unknown terraform subcommands could modify infrastructure)
+- **docker** -- no explicit base classification, so commands like `docker unknown-thing` fall through as UNKNOWN
+
+### Shell builtins hardcoded in the matcher
+
+These cannot be modeled as database entries because they are shell builtins with special semantics:
+
+| Builtin | Classification | Reason |
+|---------|---------------|--------|
+| `cd`, `pushd`, `popd` | READONLY | Directory navigation only |
+| `eval` | DANGEROUS | Arbitrary code execution, argument is unparseable |
+| `source`, `.` | DANGEROUS | Executes an external script |
+| `exec` (builtin) | DANGEROUS | Replaces the current process |
+
+### Path-qualified commands
+
+Commands invoked with a full path (e.g. `/usr/bin/rm`) are resolved to their basename (`rm`) for database lookup.
+
+### The `# $schema:` comment
+
+The first line `# $schema: ../../../schemas/command.schema.json` is a convention for IDE support. It is not parsed by bash-classify itself but provides autocomplete and validation when editing YAML files in editors that support JSON Schema.
+
+## 8. Common Patterns
+
+| Pattern | Example | Classification |
+|---------|---------|---------------|
+| Pure reader | `cat`, `grep`, `ls` | READONLY |
+| Filter with in-place mode | `sed` base, `sed -i` | READONLY / WRITE |
+| File creator/modifier | `cp`, `mv`, `touch` | WRITE |
+| Subcommand-driven | `git`, `kubectl` | Per subcommand |
+| Arbitrary code executor | `python`, `sh`, `eval` | DANGEROUS |
+| Wrapper/delegator | `sudo`, `xargs`, `env` | Delegation-based |
+| Lister with create mode | `git branch`, `git tag` | WRITE base, `-l` overrides to READONLY |
+| Dry-run capable | `make`, `kubectl apply` | WRITE base, `--dry-run` overrides to READONLY |
+| Network tool (read) | `curl`, `ping`, `dig` | READONLY |
+| Network tool (write) | `curl -d`, `wget` | WRITE |
+| System admin | `systemctl`, `kill` | DANGEROUS |
