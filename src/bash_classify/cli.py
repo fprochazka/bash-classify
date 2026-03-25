@@ -113,7 +113,19 @@ def main() -> None:
         print(f"bash-classify {version('bash-classify')}")
         sys.exit(0)
 
+    if sys.stdin.isatty():
+        print("bash-classify: no input piped to stdin (use --help for usage)", file=sys.stderr)
+        sys.exit(1)
+
     try:
+        import select
+
+        # Timeout if no data arrives within 5 seconds
+        ready, _, _ = select.select([sys.stdin], [], [], 5.0)
+        if not ready:
+            print("bash-classify: timed out waiting for input on stdin", file=sys.stderr)
+            sys.exit(1)
+
         expression = sys.stdin.read().strip()
         if not expression:
             sys.exit(1)
