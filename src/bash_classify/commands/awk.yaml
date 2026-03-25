@@ -1,3 +1,4 @@
 command: awk
+description: "Pattern scanning and text processing language"
 classification: READONLY
 strict: false

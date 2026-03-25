@@ -1,3 +1,4 @@
 command: ping
+description: "Send ICMP echo requests to network hosts"
 classification: READONLY
 strict: false

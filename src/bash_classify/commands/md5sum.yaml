@@ -1,3 +1,4 @@
 command: md5sum
+description: "Compute and check MD5 message digest"
 classification: READONLY
 strict: false

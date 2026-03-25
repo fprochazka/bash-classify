@@ -1,4 +1,5 @@
 command: apt
+description: "Debian package management tool"
 classification: DANGEROUS
 subcommands:
   list:

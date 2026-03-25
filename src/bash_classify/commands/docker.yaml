@@ -1,4 +1,5 @@
 command: docker
+description: "Container application platform"
 global_options:
   --host: {takes_value: true, aliases: [-H]}
   --config: {takes_value: true}

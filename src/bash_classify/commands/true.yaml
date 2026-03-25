@@ -1,3 +1,4 @@
 command: true
+description: "Return a successful exit status"
 classification: READONLY
 strict: false

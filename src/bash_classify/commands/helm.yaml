@@ -1,4 +1,5 @@
 command: helm
+description: "Kubernetes package manager"
 classification: WRITE
 subcommands:
   list:

@@ -1,4 +1,5 @@
 command: pip
+description: "Python package installer"
 subcommands:
   list:
     classification: READONLY

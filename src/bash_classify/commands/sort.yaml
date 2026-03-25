@@ -1,3 +1,4 @@
 command: sort
+description: "Sort lines of text files"
 classification: READONLY
 strict: false

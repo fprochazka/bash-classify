@@ -1,3 +1,4 @@
 command: paste
+description: "Merge lines of files side by side"
 classification: READONLY
 strict: false

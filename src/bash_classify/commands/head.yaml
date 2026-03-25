@@ -1,3 +1,4 @@
 command: head
+description: "Output the first part of files"
 classification: READONLY
 strict: false

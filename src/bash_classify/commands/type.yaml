@@ -1,3 +1,4 @@
 command: type
+description: "Display information about command type"
 classification: READONLY
 strict: false

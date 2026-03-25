@@ -1,4 +1,5 @@
 command: curl
+description: "Transfer data from or to a server"
 classification: READONLY
 strict: false
 options:

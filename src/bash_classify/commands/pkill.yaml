@@ -1,3 +1,4 @@
 command: pkill
+description: "Send signals to processes by name or pattern"
 classification: DANGEROUS
 strict: false

@@ -1,3 +1,4 @@
 command: uptime
+description: "Show how long the system has been running"
 classification: READONLY
 strict: false

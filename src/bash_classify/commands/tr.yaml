@@ -1,3 +1,4 @@
 command: tr
+description: "Translate or delete characters"
 classification: READONLY
 strict: false

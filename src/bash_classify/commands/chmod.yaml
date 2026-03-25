@@ -1,4 +1,5 @@
 command: chmod
+description: "Change file mode bits"
 classification: WRITE
 strict: false
 options:

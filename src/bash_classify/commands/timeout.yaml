@@ -1,4 +1,5 @@
 command: timeout
+description: "Run a command with a time limit"
 classification: READONLY
 delegates_to:
   mode: rest_are_argv

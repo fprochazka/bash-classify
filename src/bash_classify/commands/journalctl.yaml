@@ -1,3 +1,4 @@
 command: journalctl
+description: "Query the systemd journal"
 classification: READONLY
 strict: false

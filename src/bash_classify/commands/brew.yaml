@@ -1,4 +1,5 @@
 command: brew
+description: "macOS and Linux package manager"
 classification: WRITE
 subcommands:
   list:

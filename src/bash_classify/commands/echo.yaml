@@ -1,3 +1,4 @@
 command: echo
+description: "Display a line of text"
 classification: READONLY
 strict: false

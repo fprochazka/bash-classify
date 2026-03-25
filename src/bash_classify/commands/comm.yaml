@@ -1,3 +1,4 @@
 command: comm
+description: "Compare two sorted files line by line"
 classification: READONLY
 strict: false

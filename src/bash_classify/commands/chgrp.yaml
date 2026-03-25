@@ -1,4 +1,5 @@
 command: chgrp
+description: "Change group ownership of files"
 classification: WRITE
 strict: false
 options:

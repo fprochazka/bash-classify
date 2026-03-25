@@ -1,4 +1,5 @@
 command: unzip
+description: "Extract files from ZIP archives"
 classification: WRITE
 strict: false
 options:

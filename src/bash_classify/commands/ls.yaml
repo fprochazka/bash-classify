@@ -1,3 +1,4 @@
 command: ls
+description: "List directory contents"
 classification: READONLY
 strict: false

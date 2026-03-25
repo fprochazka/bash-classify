@@ -1,3 +1,4 @@
 command: fmt
+description: "Simple optimal text formatter"
 classification: READONLY
 strict: false

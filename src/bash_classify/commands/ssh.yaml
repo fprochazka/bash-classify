@@ -1,4 +1,5 @@
 command: ssh
+description: "OpenSSH remote login client"
 classification: DANGEROUS
 strict: false
 options:

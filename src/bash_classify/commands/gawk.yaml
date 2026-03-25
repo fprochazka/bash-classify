@@ -1,3 +1,4 @@
 command: gawk
+description: "Pattern scanning and processing language"
 classification: READONLY
 strict: false

@@ -1,3 +1,4 @@
 command: whoami
+description: "Print effective user name"
 classification: READONLY
 strict: false

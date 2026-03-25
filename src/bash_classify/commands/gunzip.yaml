@@ -1,3 +1,4 @@
 command: gunzip
+description: "Decompress gzip compressed files"
 classification: WRITE
 strict: false

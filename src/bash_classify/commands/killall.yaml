@@ -1,3 +1,4 @@
 command: killall
+description: "Kill processes by name"
 classification: DANGEROUS
 strict: false

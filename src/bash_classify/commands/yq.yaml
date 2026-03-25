@@ -1,3 +1,4 @@
 command: yq
+description: "Command-line YAML processor"
 classification: READONLY
 strict: false

@@ -1,4 +1,5 @@
 command: git
+description: "Distributed version control system"
 global_options:
   -C: {takes_value: true, captures_directory: true}
   --git-dir: {takes_value: true}

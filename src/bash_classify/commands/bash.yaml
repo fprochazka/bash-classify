@@ -1,4 +1,5 @@
 command: bash
+description: "GNU Bourne-Again SHell"
 classification: DANGEROUS
 delegates_to:
   mode: flag_value_is_expression

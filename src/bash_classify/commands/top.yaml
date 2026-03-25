@@ -1,3 +1,4 @@
 command: top
+description: "Display Linux processes in real time"
 classification: READONLY
 strict: false

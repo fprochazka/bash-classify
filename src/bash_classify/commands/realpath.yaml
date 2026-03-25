@@ -1,3 +1,4 @@
 command: realpath
+description: "Print the resolved absolute path"
 classification: READONLY
 strict: false

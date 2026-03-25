@@ -1,4 +1,5 @@
 command: make
+description: "Build automation tool"
 classification: WRITE
 strict: false
 options:

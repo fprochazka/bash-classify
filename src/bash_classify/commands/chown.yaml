@@ -1,4 +1,5 @@
 command: chown
+description: "Change file owner and group"
 classification: WRITE
 strict: false
 options:

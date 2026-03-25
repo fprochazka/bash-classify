@@ -1,4 +1,5 @@
 command: npm
+description: "Node.js package manager"
 subcommands:
   ls:
     classification: READONLY

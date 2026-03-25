@@ -1,4 +1,5 @@
 command: systemctl
+description: "Control the systemd system and service manager"
 classification: DANGEROUS
 subcommands:
   status:

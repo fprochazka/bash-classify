@@ -1,3 +1,4 @@
 command: scp
+description: "Secure copy files between hosts"
 classification: WRITE
 strict: false

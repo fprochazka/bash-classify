@@ -1,3 +1,4 @@
 command: tee
+description: "Read from stdin and write to stdout and files"
 classification: WRITE
 strict: false

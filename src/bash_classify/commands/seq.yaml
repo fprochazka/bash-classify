@@ -1,3 +1,4 @@
 command: seq
+description: "Print a sequence of numbers"
 classification: READONLY
 strict: false

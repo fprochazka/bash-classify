@@ -1,4 +1,5 @@
 command: time
+description: "Time a command execution"
 classification: READONLY
 delegates_to:
   mode: rest_are_argv

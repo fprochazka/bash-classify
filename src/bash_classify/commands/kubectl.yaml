@@ -1,4 +1,5 @@
 command: kubectl
+description: "Kubernetes command-line tool"
 global_options:
   --context: {takes_value: true}
   --kubeconfig: {takes_value: true}

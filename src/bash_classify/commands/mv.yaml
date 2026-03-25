@@ -1,3 +1,4 @@
 command: mv
+description: "Move or rename files and directories"
 classification: WRITE
 strict: false

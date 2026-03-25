@@ -1,3 +1,4 @@
 command: basename
+description: "Strip directory and suffix from filenames"
 classification: READONLY
 strict: false

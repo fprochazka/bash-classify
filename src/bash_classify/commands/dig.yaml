@@ -1,3 +1,4 @@
 command: dig
+description: "DNS lookup utility"
 classification: READONLY
 strict: false

@@ -1,3 +1,4 @@
 command: sha256sum
+description: "Compute and check SHA-256 message digest"
 classification: READONLY
 strict: false

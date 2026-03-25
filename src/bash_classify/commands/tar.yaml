@@ -1,4 +1,5 @@
 command: tar
+description: "Archive utility for creating and extracting tarballs"
 classification: WRITE
 strict: false
 options:

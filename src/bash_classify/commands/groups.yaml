@@ -1,3 +1,4 @@
 command: groups
+description: "Print the groups a user is in"
 classification: READONLY
 strict: false

@@ -1,4 +1,5 @@
 command: xargs
+description: "Build and execute command lines from standard input"
 classification: UNKNOWN
 delegates_to:
   mode: rest_are_argv

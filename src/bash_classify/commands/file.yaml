@@ -1,3 +1,4 @@
 command: file
+description: "Determine file type"
 classification: READONLY
 strict: false

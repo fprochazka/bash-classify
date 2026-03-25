@@ -1,3 +1,4 @@
 command: gzip
+description: "Compress or decompress files using gzip"
 classification: WRITE
 strict: false

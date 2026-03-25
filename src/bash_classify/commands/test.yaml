@@ -1,3 +1,4 @@
 command: test
+description: "Evaluate conditional expressions"
 classification: READONLY
 strict: false

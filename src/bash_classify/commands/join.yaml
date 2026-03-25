@@ -1,3 +1,4 @@
 command: join
+description: "Join lines of two files on a common field"
 classification: READONLY
 strict: false

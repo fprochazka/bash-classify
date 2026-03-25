@@ -1,3 +1,4 @@
 command: df
+description: "Report file system disk space usage"
 classification: READONLY
 strict: false

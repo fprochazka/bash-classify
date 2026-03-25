@@ -1,3 +1,4 @@
 command: unexpand
+description: "Convert spaces to tabs"
 classification: READONLY
 strict: false

@@ -1,3 +1,4 @@
 command: touch
+description: "Change file timestamps or create empty files"
 classification: WRITE
 strict: false
