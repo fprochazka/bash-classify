@@ -48,7 +48,7 @@ claude plugin install bash-classify-hook@fprochazka-bash-classify
 To upgrade after a new release:
 
 ```bash
-uv tool upgrade bash-classify
+uv tool install --force bash-classify
 claude plugin marketplace update fprochazka-bash-classify
 claude plugin update bash-classify-hook@fprochazka-bash-classify
 ```
