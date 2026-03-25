@@ -103,9 +103,7 @@ class TestBuildAndTest:
 
     def test_mvnw_with_tail(self, database):
         """Maven build piped to tail — most common pattern."""
-        result = classify_expression(
-            "./mvnw package --batch-mode -DskipTests=true 2>&1 | tail -30", database
-        )
+        result = classify_expression("./mvnw package --batch-mode -DskipTests=true 2>&1 | tail -30", database)
         assert result.classification == Classification.UNKNOWN
 
     def test_pytest_verbose(self, database):
@@ -164,9 +162,7 @@ class TestPipesAndGrep:
 
     def test_grep_inverse_pipe(self, database):
         """Double grep: first match, then exclude — common for build output filtering."""
-        result = classify_expression(
-            'grep -iE "\\[WARN\\]|\\[ERROR\\]" output.log | grep -v "^\\[INFO\\]"', database
-        )
+        result = classify_expression('grep -iE "\\[WARN\\]|\\[ERROR\\]" output.log | grep -v "^\\[INFO\\]"', database)
         assert result.classification == Classification.READONLY
 
     def test_cat_pipe_head(self, database):
@@ -183,9 +179,7 @@ class TestPipesAndGrep:
 
     def test_sort_pipe_uniq_count_sort(self, database):
         """Common pattern: frequency analysis."""
-        result = classify_expression(
-            'awk "{print $1}" access.log | sort | uniq -c | sort -rn | head -20', database
-        )
+        result = classify_expression('awk "{print $1}" access.log | sort | uniq -c | sort -rn | head -20', database)
         assert result.classification == Classification.READONLY
 
     def test_ps_pipe_grep(self, database):
@@ -238,9 +232,7 @@ class TestRedirects:
 
     def test_stderr_to_stdout_pipe(self, database):
         """2>&1 piped to grep — extremely common build pattern."""
-        result = classify_expression(
-            './build.sh 2>&1 | grep -E "ERROR|FAILURE"', database
-        )
+        result = classify_expression('./build.sh 2>&1 | grep -E "ERROR|FAILURE"', database)
         # ./build.sh is UNKNOWN
         assert result.classification == Classification.UNKNOWN
 
@@ -312,15 +304,11 @@ class TestKubernetes:
     """Kubernetes patterns."""
 
     def test_kubectl_get_wide(self, database):
-        result = classify_expression(
-            "kubectl get pods --context my-cluster -n my-namespace -o wide", database
-        )
+        result = classify_expression("kubectl get pods --context my-cluster -n my-namespace -o wide", database)
         assert result.classification == Classification.READONLY
 
     def test_kubectl_get_deployment(self, database):
-        result = classify_expression(
-            "kubectl get deployment my-app --context my-cluster -o yaml", database
-        )
+        result = classify_expression("kubectl get deployment my-app --context my-cluster -o yaml", database)
         assert result.classification == Classification.READONLY
 
     def test_kubectl_logs_tail(self, database):
@@ -383,16 +371,12 @@ class TestFileOperations:
 
     def test_xargs_grep(self, database):
         """xargs with readonly inner command."""
-        result = classify_expression(
-            'find . -name "*.py" | xargs grep "TODO"', database
-        )
+        result = classify_expression('find . -name "*.py" | xargs grep "TODO"', database)
         assert result.classification == Classification.READONLY
 
     def test_xargs_rm(self, database):
         """xargs with dangerous inner command."""
-        result = classify_expression(
-            'find /tmp -name "*.tmp" | xargs rm', database
-        )
+        result = classify_expression('find /tmp -name "*.tmp" | xargs rm', database)
         assert result.classification == Classification.DANGEROUS
 
     def test_cp_to_tmp(self, database):
@@ -413,42 +397,30 @@ class TestComplexRealWorld:
 
     def test_source_and_build(self, database):
         """Source environment then build — common Java/SDK pattern."""
-        result = classify_expression(
-            'source "$HOME/.sdkman/bin/sdkman-init.sh" && make build', database
-        )
+        result = classify_expression('source "$HOME/.sdkman/bin/sdkman-init.sh" && make build', database)
         assert result.classification == Classification.DANGEROUS  # source is DANGEROUS
 
     def test_conditional_test(self, database):
         """Bash conditional — test file then cat it."""
-        result = classify_expression(
-            '[ -f "file.txt" ] && cat file.txt', database
-        )
+        result = classify_expression('[ -f "file.txt" ] && cat file.txt', database)
         assert result.classification == Classification.READONLY
 
     def test_double_bracket_test(self, database):
-        result = classify_expression(
-            '[[ -d "$dir" ]] && echo "found" || echo "not found"', database
-        )
+        result = classify_expression('[[ -d "$dir" ]] && echo "found" || echo "not found"', database)
         assert result.classification == Classification.READONLY
 
     def test_for_loop_echo(self, database):
         """For loop with echo — common inspection pattern."""
-        result = classify_expression(
-            'for f in *.txt; do echo "$f"; done', database
-        )
+        result = classify_expression('for f in *.txt; do echo "$f"; done', database)
         assert result.classification == Classification.READONLY
 
     def test_while_read_echo(self, database):
         """While read loop — common log processing pattern."""
-        result = classify_expression(
-            'while read line; do echo "$line"; done < file.txt', database
-        )
+        result = classify_expression('while read line; do echo "$line"; done < file.txt', database)
         assert result.classification == Classification.READONLY
 
     def test_if_then_cat(self, database):
-        result = classify_expression(
-            'if [ -f file.txt ]; then cat file.txt; fi', database
-        )
+        result = classify_expression("if [ -f file.txt ]; then cat file.txt; fi", database)
         assert result.classification == Classification.READONLY
 
     def test_sudo_with_pipe(self, database):
@@ -459,7 +431,5 @@ class TestComplexRealWorld:
 
     def test_git_log_pipe_xargs_show(self, database):
         """Git log piped to xargs for batch show."""
-        result = classify_expression(
-            'git log --format="%H" | head -5 | xargs -I{} git show --stat {}', database
-        )
+        result = classify_expression('git log --format="%H" | head -5 | xargs -I{} git show --stat {}', database)
         assert result.classification == Classification.READONLY

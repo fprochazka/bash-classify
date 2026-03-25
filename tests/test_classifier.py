@@ -528,9 +528,7 @@ class TestUserCommandOverride:
         assert isinstance(tmp_path, Path)
         user_dir = tmp_path / "config" / "commands"
         user_dir.mkdir(parents=True)
-        (user_dir / "mycli.yaml").write_text(
-            "command: mycli\nclassification: READONLY\nstrict: false\n"
-        )
+        (user_dir / "mycli.yaml").write_text("command: mycli\nclassification: READONLY\nstrict: false\n")
 
         import os
 

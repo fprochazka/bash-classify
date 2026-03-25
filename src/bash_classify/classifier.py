@@ -18,12 +18,33 @@ from .models import (
 from .parser import parse_expression
 
 _SYSTEM_DIRS = (
-    "/etc", "/lib", "/lib64", "/usr", "/bin", "/sbin", "/boot",
-    "/sys", "/proc", "/run", "/srv", "/root", "/opt", "/var", "/dev",
+    "/etc",
+    "/lib",
+    "/lib64",
+    "/usr",
+    "/bin",
+    "/sbin",
+    "/boot",
+    "/sys",
+    "/proc",
+    "/run",
+    "/srv",
+    "/root",
+    "/opt",
+    "/var",
+    "/dev",
 )
 _SAFE_PREFIXES = (
-    "/tmp", "/var/tmp", "/home", "/dev/null", "/dev/stdin",
-    "/dev/stdout", "/dev/stderr", "/dev/fd", "/dev/tcp", "/dev/udp",
+    "/tmp",
+    "/var/tmp",
+    "/home",
+    "/dev/null",
+    "/dev/stdin",
+    "/dev/stdout",
+    "/dev/stderr",
+    "/dev/fd",
+    "/dev/tcp",
+    "/dev/udp",
 )
 
 
@@ -132,9 +153,8 @@ def classify_expression(
             if system_paths_found and result.classification != Classification.DANGEROUS:
                 result.classification = Classification.DANGEROUS
                 result.classification_reason = (
-                    (result.classification_reason or "")
-                    + f"; elevated to DANGEROUS: system path {system_paths_found[0]}"
-                )
+                    result.classification_reason or ""
+                ) + f"; elevated to DANGEROUS: system path {system_paths_found[0]}"
 
         command_results.append(result)
         all_redirects.extend(invocation.redirects)

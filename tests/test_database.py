@@ -204,9 +204,7 @@ class TestUserCommandsDir:
         """User YAML overrides built-in command definition."""
         user_dir = tmp_path / "config" / "commands"
         user_dir.mkdir(parents=True)
-        (user_dir / "grep.yaml").write_text(
-            "command: grep\nclassification: WRITE\nstrict: false\n"
-        )
+        (user_dir / "grep.yaml").write_text("command: grep\nclassification: WRITE\nstrict: false\n")
 
         import os
 
@@ -225,9 +223,7 @@ class TestUserCommandsDir:
         """User YAML adds a command not in built-in database."""
         user_dir = tmp_path / "config" / "commands"
         user_dir.mkdir(parents=True)
-        (user_dir / "mycustomtool.yaml").write_text(
-            "command: mycustomtool\nclassification: READONLY\nstrict: false\n"
-        )
+        (user_dir / "mycustomtool.yaml").write_text("command: mycustomtool\nclassification: READONLY\nstrict: false\n")
 
         import os
 
@@ -262,9 +258,7 @@ class TestUserCommandsDir:
         """When explicit commands_dir is passed, user overrides are NOT loaded."""
         user_dir = tmp_path / "config" / "commands"
         user_dir.mkdir(parents=True)
-        (user_dir / "grep.yaml").write_text(
-            "command: grep\nclassification: DANGEROUS\nstrict: false\n"
-        )
+        (user_dir / "grep.yaml").write_text("command: grep\nclassification: DANGEROUS\nstrict: false\n")
 
         import os
 
