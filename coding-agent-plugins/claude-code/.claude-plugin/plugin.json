@@ -1,6 +1,6 @@
 {
   "name": "bash-classify-hook",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Auto-allows readonly bash commands in Claude Code using bash-classify",
   "author": {
     "name": "Filip Prochazka"
