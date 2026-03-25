@@ -1,16 +1,16 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
 name = "bash-classify"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Classify bash commands as READONLY, WRITE, DANGEROUS, or UNKNOWN"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [
-    {name = "Filip Prochazka", email = "mr@fprochazka.cz"}
+    {name = "Filip Procházka", email = "dev@fprochazka.cz"}
 ]
 keywords = ["bash", "classification", "security", "cli", "tree-sitter"]
 classifiers = [
@@ -20,6 +20,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security",
     "Topic :: Software Development :: Libraries",
     "Topic :: System :: Shells",
@@ -47,6 +48,9 @@ dev = [
     "ruff>=0.8",
     "jsonschema>=4.20",
 ]
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bash_classify"]
