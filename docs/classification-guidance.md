@@ -140,9 +140,34 @@ strict: false
 
 When in doubt, leave `strict` at the default (`true`). It is safer to have false UNKNOWNs (which prompt the user) than to miss a dangerous flag.
 
-## 5. Option Overrides
+## 5. Subcommand Classification vs Option Overrides
 
-Options can change classification in **both directions** -- they can elevate or lower it. The `overrides` field **replaces** the base classification entirely; it does not merely elevate.
+There are two distinct mechanisms for controlling classification — don't confuse them.
+
+### Subcommand classification: independent, no `overrides` keyword
+
+Each subcommand has its **own** `classification` field. It does not inherit from or override the parent — it simply IS the classification for that subcommand. No special keyword is needed.
+
+```yaml
+# git.worktree is WRITE, but git.worktree.list is READONLY
+# No "overrides" keyword — list has its own classification
+subcommands:
+  worktree:
+    classification: WRITE
+    subcommands:
+      list:
+        classification: READONLY    # independent, not an override
+      add:
+        classification: WRITE
+      remove:
+        classification: WRITE
+```
+
+The parent's classification (`WRITE`) is used only when **no subcommand matches** — e.g., bare `git worktree` or `git worktree unknown-thing`.
+
+### Option overrides: replace the matched subcommand's classification
+
+The `overrides` keyword is for **options** (flags) that change the classification of the command they belong to. Options can change classification in **both directions** — they can elevate or lower it. The `overrides` field **replaces** the base classification entirely; it does not merely elevate.
 
 ### Elevating classification
 
