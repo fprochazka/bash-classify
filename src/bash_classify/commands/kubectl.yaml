@@ -171,10 +171,13 @@ subcommands:
     subcommands:
       view:
         classification: READONLY
+        strict: false
       get-contexts:
         classification: READONLY
+        strict: false
       current-context:
         classification: READONLY
+        strict: false
       use-context:
         classification: EXTERNAL_EFFECTS
       set:
