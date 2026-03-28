@@ -1,0 +1,9 @@
+# $schema: ../../../schemas/command.schema.json
+command: agent-browser
+description: "Fast browser automation CLI for AI agents"
+classification: EXTERNAL_EFFECTS
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  --version: {overrides: READONLY}
+  -V: {overrides: READONLY}
