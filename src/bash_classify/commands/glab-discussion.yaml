@@ -7,6 +7,7 @@ global_options:
   -h: {overrides: READONLY}
 subcommands:
   read:
+    # Technically writes to temp files, but the operation is read-only in intent
     classification: READONLY
     strict: false
   write:
