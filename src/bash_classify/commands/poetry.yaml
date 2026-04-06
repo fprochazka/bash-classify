@@ -80,9 +80,11 @@ subcommands:
     subcommands:
       pytest:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       ruff:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       mypy:
         classification: READONLY
