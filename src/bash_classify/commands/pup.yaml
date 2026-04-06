@@ -1,0 +1,572 @@
+# $schema: ../../../schemas/command.schema.json
+command: pup
+description: "Datadog CLI"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  --org: {takes_value: true}
+  --output: {takes_value: true}
+  --yes: {}
+
+subcommands:
+
+  apm:
+    classification: READONLY
+  audit-logs:
+    classification: READONLY
+  auth:
+    classification: LOCAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      status:
+        classification: READONLY
+      test:
+        classification: READONLY
+      login:
+        classification: LOCAL_EFFECTS
+      logout:
+        classification: LOCAL_EFFECTS
+      refresh:
+        classification: LOCAL_EFFECTS
+  cloud:
+    classification: READONLY
+  containers:
+    classification: READONLY
+  cost:
+    classification: READONLY
+  dbm:
+    classification: READONLY
+  ddsql:
+    classification: READONLY
+  error-tracking:
+    classification: READONLY
+  events:
+    classification: READONLY
+  fleet:
+    classification: READONLY
+  infrastructure:
+    classification: READONLY
+  llm-obs:
+    classification: READONLY
+  logs:
+    classification: READONLY
+  on-call:
+    classification: READONLY
+  organizations:
+    classification: READONLY
+  rum:
+    classification: READONLY
+  scorecards:
+    classification: READONLY
+  service-catalog:
+    classification: READONLY
+  static-analysis:
+    classification: READONLY
+  status-pages:
+    classification: READONLY
+  symdb:
+    classification: READONLY
+  synthetics:
+    classification: READONLY
+  traces:
+    classification: READONLY
+  usage:
+    classification: READONLY
+  users:
+    classification: READONLY
+  version:
+    classification: READONLY
+  status:
+    classification: READONLY
+  completions:
+    classification: READONLY
+  test-optimization:
+    classification: READONLY
+  code-coverage:
+    classification: READONLY
+  cicd:
+    classification: READONLY
+  product-analytics:
+    classification: READONLY
+  data-governance:
+    classification: READONLY
+  feature-flags:
+    classification: READONLY
+  bits:
+    classification: READONLY
+  hamr:
+    classification: READONLY
+  misc:
+    classification: READONLY
+  agent:
+    classification: READONLY
+
+
+  monitors:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      search:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      update:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+
+  dashboards:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      update:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+
+  notebooks:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      update:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+
+  slos:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      update:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+
+  workflows:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      update:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+
+  api-keys:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+
+  app-keys:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      update:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+
+  app-builder:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      update:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+
+  obs-pipelines:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      update:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+
+
+  metrics:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      query:
+        classification: READONLY
+      search:
+        classification: READONLY
+      submit:
+        classification: EXTERNAL_EFFECTS
+      metadata:
+        classification: READONLY
+        strict: false
+        subcommands:
+          get:
+            classification: READONLY
+          update:
+            classification: EXTERNAL_EFFECTS
+      tags:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+
+  downtime:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      cancel:
+        classification: DANGEROUS
+
+  incidents:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      import:
+        classification: EXTERNAL_EFFECTS
+      settings:
+        strict: false
+        subcommands:
+          get:
+            classification: READONLY
+          update:
+            classification: EXTERNAL_EFFECTS
+      handles:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+          update:
+            classification: EXTERNAL_EFFECTS
+          delete:
+            classification: DANGEROUS
+      attachments:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+          delete:
+            classification: DANGEROUS
+      postmortem-templates:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+          update:
+            classification: EXTERNAL_EFFECTS
+          delete:
+            classification: DANGEROUS
+
+  cases:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      search:
+        classification: READONLY
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      archive:
+        classification: DANGEROUS
+      unarchive:
+        classification: EXTERNAL_EFFECTS
+      assign:
+        classification: EXTERNAL_EFFECTS
+      move:
+        classification: EXTERNAL_EFFECTS
+      update-priority:
+        classification: EXTERNAL_EFFECTS
+      update-status:
+        classification: EXTERNAL_EFFECTS
+      update-title:
+        classification: EXTERNAL_EFFECTS
+      projects:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+          update:
+            classification: EXTERNAL_EFFECTS
+          delete:
+            classification: DANGEROUS
+          notification-rules:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+            subcommands:
+              list:
+                classification: READONLY
+              create:
+                classification: EXTERNAL_EFFECTS
+              update:
+                classification: EXTERNAL_EFFECTS
+              delete:
+                classification: DANGEROUS
+      jira:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          create-issue:
+            classification: EXTERNAL_EFFECTS
+          link:
+            classification: EXTERNAL_EFFECTS
+          unlink:
+            classification: EXTERNAL_EFFECTS
+      servicenow:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          create-ticket:
+            classification: EXTERNAL_EFFECTS
+
+  tags:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      add:
+        classification: EXTERNAL_EFFECTS
+      update:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+
+  runbooks:
+    classification: READONLY
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      describe:
+        classification: READONLY
+      validate:
+        classification: READONLY
+      run:
+        classification: EXTERNAL_EFFECTS
+      import:
+        classification: EXTERNAL_EFFECTS
+
+  debugger:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+
+  deployment-gates:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      evaluations:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          get:
+            classification: READONLY
+          trigger:
+            classification: EXTERNAL_EFFECTS
+      gates:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+          update:
+            classification: EXTERNAL_EFFECTS
+          delete:
+            classification: DANGEROUS
+      rules:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+          update:
+            classification: EXTERNAL_EFFECTS
+          delete:
+            classification: DANGEROUS
+
+  change-requests:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+      create-branch:
+        classification: EXTERNAL_EFFECTS
+      update:
+        classification: EXTERNAL_EFFECTS
+      decisions:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          update:
+            classification: EXTERNAL_EFFECTS
+          delete:
+            classification: DANGEROUS
+
+  idp:
+    classification: READONLY
+    strict: false
+    subcommands:
+      assist:
+        classification: READONLY
+      deps:
+        classification: READONLY
+      find:
+        classification: READONLY
+      owner:
+        classification: READONLY
+      register:
+        classification: EXTERNAL_EFFECTS
+
+  investigations:
+    classification: READONLY
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      trigger:
+        classification: EXTERNAL_EFFECTS
+
+  reference-tables:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      batch-query:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+
+  skills:
+    classification: LOCAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      path:
+        classification: READONLY
+      install:
+        classification: LOCAL_EFFECTS
+
+  extension:
+    classification: LOCAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      install:
+        classification: LOCAL_EFFECTS
+      upgrade:
+        classification: LOCAL_EFFECTS
+      remove:
+        classification: LOCAL_EFFECTS
+
+  alias:
+    classification: LOCAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+      set:
+        classification: LOCAL_EFFECTS
+      import:
+        classification: LOCAL_EFFECTS
+      delete:
+        classification: LOCAL_EFFECTS
