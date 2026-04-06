@@ -14,6 +14,7 @@ from .models import (
     ExpressionResult,
     InnerCommandResult,
     Redirect,
+    Risk,
 )
 from .parser import parse_expression
 
@@ -94,6 +95,7 @@ def classify_expression(
                 command=[invocation.argv[0]],
                 argv=list(invocation.argv),
                 classification=Classification.DANGEROUS,
+                risk=Risk.HIGH,
                 matched_rule=None,
                 inner_commands=[],
                 classification_reason="variable expansion in command position",
@@ -112,12 +114,15 @@ def classify_expression(
                         if result.classification_reason
                         else "elevated by output redirect"
                     )
+                # Elevate risk to at least MEDIUM for output redirects
+                result.risk = Risk.max_severity(result.risk, Risk.MEDIUM)
             # /dev/tcp and /dev/udp redirects are network access -> DANGEROUS
             if redirect.target.startswith("/dev/tcp/") or redirect.target.startswith("/dev/udp/"):
                 elevated = Classification.max_severity(result.classification, Classification.DANGEROUS)
                 if elevated != result.classification:
                     result.classification = elevated
                     result.classification_reason = "elevated to DANGEROUS: /dev/tcp or /dev/udp access detected"
+                result.risk = Risk.HIGH
 
         # Step 4b: Check for /dev/tcp and /dev/udp in command arguments
         for arg in invocation.argv:
@@ -126,6 +131,7 @@ def classify_expression(
                 if elevated != result.classification:
                     result.classification = elevated
                     result.classification_reason = "elevated to DANGEROUS: /dev/tcp or /dev/udp access detected"
+                result.risk = Risk.HIGH
 
         # Step 5: Apply backgrounding
         if invocation.is_background:
@@ -137,6 +143,8 @@ def classify_expression(
                     if result.classification_reason
                     else "elevated by backgrounding"
                 )
+            # Elevate risk to at least MEDIUM for backgrounding
+            result.risk = Risk.max_severity(result.risk, Risk.MEDIUM)
 
         # Step 6: Elevate to DANGEROUS when writing to system directories
         if result.classification.severity() >= Classification.LOCAL_EFFECTS.severity():
@@ -155,6 +163,7 @@ def classify_expression(
                 result.classification_reason = (
                     result.classification_reason or ""
                 ) + f"; elevated to DANGEROUS: system path {system_paths_found[0]}"
+                result.risk = Risk.HIGH
 
         command_results.append(result)
         all_redirects.extend(invocation.redirects)
@@ -162,17 +171,21 @@ def classify_expression(
     # Step 7: Collect directories
     directories = _collect_directories(command_results)
 
-    # Step 8: Compute composite classification
+    # Step 8: Compute composite classification and risk
     if not command_results and parse_warnings:
         overall = Classification.UNKNOWN
+        overall_risk = Risk.HIGH
     elif command_results:
         overall = Classification.max_severity(*(r.classification for r in command_results))
+        overall_risk = Risk.max_severity(*(r.risk for r in command_results))
     else:
         overall = Classification.READONLY  # empty input
+        overall_risk = Risk.LOW
 
     return ExpressionResult(
         expression=expression,
         classification=overall,
+        risk=overall_risk,
         directories=directories,
         commands=command_results,
         redirects=all_redirects,

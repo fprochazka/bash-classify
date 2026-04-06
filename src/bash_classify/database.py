@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from .models import Classification, CommandDef, DelegationConfig, DelegationMode, OptionDef
+from .models import Classification, CommandDef, DelegationConfig, DelegationMode, OptionDef, Risk
 
 
 def get_default_commands_dir() -> Path:
@@ -170,6 +170,7 @@ def _yaml_str(value: object) -> str:
 def _parse_command_def(data: dict, command_name: str) -> CommandDef:
     """Parse a raw YAML dict into a CommandDef structure."""
     classification = _parse_classification(data.get("classification"))
+    risk = _parse_risk(data.get("risk"))
 
     global_options = _parse_options(data.get("global_options", {}))
     options = _parse_options(data.get("options", {}))
@@ -180,6 +181,7 @@ def _parse_command_def(data: dict, command_name: str) -> CommandDef:
     return CommandDef(
         command=command_name,
         classification=classification,
+        risk=risk,
         global_options=global_options,
         subcommands=subcommands,
         options=options,
@@ -193,6 +195,13 @@ def _parse_classification(value: str | None) -> Classification | None:
     if value is None:
         return None
     return Classification(value)
+
+
+def _parse_risk(value: str | None) -> Risk | None:
+    """Parse a risk string into a Risk enum."""
+    if value is None:
+        return None
+    return Risk(value)
 
 
 def _parse_options(raw: dict | None) -> dict[str, OptionDef]:
@@ -210,6 +219,7 @@ def _parse_options(raw: dict | None) -> dict[str, OptionDef]:
             takes_value=props.get("takes_value", False),
             aliases=props.get("aliases", []),
             overrides=_parse_classification(props.get("overrides")),
+            risk=_parse_risk(props.get("risk")),
             captures_directory=props.get("captures_directory", False),
             delegates_to=_parse_delegation_config(props.get("delegates_to")),
         )

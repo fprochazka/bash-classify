@@ -9,6 +9,7 @@ from bash_classify.models import (
     ExpressionResult,
     InnerCommandResult,
     Redirect,
+    Risk,
 )
 
 
@@ -40,6 +41,7 @@ class TestCommandToDict:
             command=["ls"],
             argv=["ls", "-la"],
             classification=Classification.READONLY,
+            risk=Risk.LOW,
             matched_rule="ls",
             inner_commands=[],
         )
@@ -47,6 +49,7 @@ class TestCommandToDict:
             command=["git", "push"],
             argv=["git", "push", "--force"],
             classification=Classification.DANGEROUS,
+            risk=Risk.HIGH,
             matched_rule="git.push",
             inner_commands=[inner],
             ignored_options=["--context=prod"],
@@ -70,6 +73,7 @@ class TestCommandToDict:
             command=["ls"],
             argv=["ls"],
             classification=Classification.READONLY,
+            risk=Risk.LOW,
             matched_rule="ls",
             inner_commands=[],
             ignored_options=None,
@@ -94,6 +98,7 @@ class TestInnerCommandToDict:
             command=["rm"],
             argv=["rm", "-rf", "/"],
             classification=Classification.DANGEROUS,
+            risk=Risk.HIGH,
             matched_rule="rm",
             inner_commands=[],
         )
@@ -114,6 +119,7 @@ class TestResultToDict:
             command=["echo"],
             argv=["echo", "hello"],
             classification=Classification.EXTERNAL_EFFECTS,
+            risk=Risk.MEDIUM,
             matched_rule="echo",
             inner_commands=[],
             classification_reason="elevated by output redirect",
@@ -121,6 +127,7 @@ class TestResultToDict:
         result = ExpressionResult(
             expression="echo hello > out.txt",
             classification=Classification.EXTERNAL_EFFECTS,
+            risk=Risk.MEDIUM,
             directories=[],
             commands=[cmd],
             redirects=[redirect],
@@ -139,12 +146,14 @@ class TestResultToDict:
             command=["ls"],
             argv=["ls"],
             classification=Classification.READONLY,
+            risk=Risk.LOW,
             matched_rule="ls",
             inner_commands=[],
         )
         result = ExpressionResult(
             expression="ls",
             classification=Classification.READONLY,
+            risk=Risk.LOW,
             directories=[],
             commands=[cmd],
             redirects=[],
@@ -161,6 +170,7 @@ class TestClassificationSerializesAsString:
             command=["ls"],
             argv=["ls"],
             classification=Classification.READONLY,
+            risk=Risk.LOW,
             matched_rule="ls",
             inner_commands=[],
         )
@@ -176,9 +186,76 @@ class TestClassificationSerializesAsString:
                 command=["x"],
                 argv=["x"],
                 classification=cls,
+                risk=Risk.HIGH,
                 matched_rule=None,
                 inner_commands=[],
             )
             d = _command_to_dict(result)
             assert d["classification"] == cls.value
             assert "." not in d["classification"]
+
+
+class TestRiskSerialization:
+    def test_risk_field_in_command_dict(self) -> None:
+        result = CommandResult(
+            command=["ls"],
+            argv=["ls"],
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            matched_rule="ls",
+            inner_commands=[],
+        )
+        d = _command_to_dict(result)
+        assert "risk" in d
+        assert d["risk"] == "LOW"
+
+    def test_risk_field_in_inner_command_dict(self) -> None:
+        inner = InnerCommandResult(
+            delegation_mode="rest_are_argv",
+            delegation_source="sudo",
+            command=["ls"],
+            argv=["ls"],
+            classification=Classification.READONLY,
+            risk=Risk.MEDIUM,
+            matched_rule="ls",
+            inner_commands=[],
+        )
+        d = _inner_command_to_dict(inner)
+        assert "risk" in d
+        assert d["risk"] == "MEDIUM"
+
+    def test_risk_field_in_result_dict(self) -> None:
+        cmd = CommandResult(
+            command=["ls"],
+            argv=["ls"],
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            matched_rule="ls",
+            inner_commands=[],
+        )
+        result = ExpressionResult(
+            expression="ls",
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            directories=[],
+            commands=[cmd],
+            redirects=[],
+            parse_warnings=[],
+        )
+        d = _result_to_dict(result)
+        assert "risk" in d
+        assert d["risk"] == "LOW"
+
+    def test_all_risk_values_serialize_correctly(self) -> None:
+        for risk in Risk:
+            result = CommandResult(
+                command=["x"],
+                argv=["x"],
+                classification=Classification.READONLY,
+                risk=risk,
+                matched_rule=None,
+                inner_commands=[],
+            )
+            d = _command_to_dict(result)
+            assert d["risk"] == risk.value
+            assert isinstance(d["risk"], str)

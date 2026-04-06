@@ -18,6 +18,10 @@
     "classification": {
       "$ref": "#/$defs/Classification"
     },
+    "risk": {
+      "$ref": "#/$defs/Risk",
+      "description": "Explicit risk level override for this command (default derived from classification)"
+    },
     "strict": {
       "type": "boolean",
       "description": "If true (default), unrecognized options yield UNKNOWN"
@@ -43,6 +47,11 @@
       "type": "string",
       "enum": ["READONLY", "LOCAL_EFFECTS", "EXTERNAL_EFFECTS", "DANGEROUS", "UNKNOWN"],
       "description": "Classification level for a command or option override"
+    },
+    "Risk": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH"],
+      "description": "Risk level for a command or option override"
     },
     "DelegationConfig": {
       "type": "object",
@@ -95,6 +104,10 @@
           "$ref": "#/$defs/Classification",
           "description": "When this option is present, override the classification to this level"
         },
+        "risk": {
+          "$ref": "#/$defs/Risk",
+          "description": "When this option is present, override the risk level"
+        },
         "captures_directory": {
           "type": "boolean",
           "description": "The value of this option is a working directory"
@@ -117,6 +130,10 @@
       "properties": {
         "classification": {
           "$ref": "#/$defs/Classification"
+        },
+        "risk": {
+          "$ref": "#/$defs/Risk",
+          "description": "Explicit risk level override for this subcommand (default derived from classification)"
         },
         "strict": {
           "type": "boolean",

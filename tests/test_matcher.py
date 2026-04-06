@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from bash_classify.matcher import _is_terminator, _strip_quotes, match_command
-from bash_classify.models import Classification, CommandDef, CommandInvocation
+from bash_classify.models import Classification, CommandDef, CommandInvocation, Risk
 
 
 def _make_invocation(argv: list[str]) -> CommandInvocation:
@@ -597,3 +597,125 @@ class TestGlobalOptionOverrides:
     def test_help_on_terraform_apply(self, database):
         result = match_command(_make_invocation(["terraform", "apply", "--help"]), database)
         assert result.classification == Classification.READONLY
+
+
+class TestRiskDefaults:
+    def test_readonly_command_has_low_risk(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["ls"]), database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_local_effects_command_has_medium_risk(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["git", "commit", "-m", "test"]), database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.MEDIUM
+
+    def test_external_effects_command_has_medium_risk(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["git", "push"]), database)
+        assert result.classification == Classification.EXTERNAL_EFFECTS
+        assert result.risk == Risk.MEDIUM
+
+    def test_dangerous_command_has_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["rm", "-rf", "/tmp/foo"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_unknown_command_has_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["someunknowncommand"]), database)
+        assert result.classification == Classification.UNKNOWN
+        assert result.risk == Risk.HIGH
+
+    def test_empty_argv_has_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation([]), database)
+        assert result.classification == Classification.UNKNOWN
+        assert result.risk == Risk.HIGH
+
+
+class TestRiskOptionOverrides:
+    def test_option_classification_override_derives_risk(self, database: dict[str, CommandDef]) -> None:
+        """git push --force overrides classification to DANGEROUS -> risk HIGH."""
+        result = match_command(_make_invocation(["git", "push", "--force"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_option_dry_run_override_derives_low_risk(self, database: dict[str, CommandDef]) -> None:
+        """kubectl apply --dry-run overrides to READONLY -> risk LOW."""
+        result = match_command(_make_invocation(["kubectl", "apply", "--dry-run", "client"]), database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_strict_mode_unknown_option_high_risk(self, database: dict[str, CommandDef]) -> None:
+        """Strict mode unknown options -> UNKNOWN classification -> HIGH risk."""
+        result = match_command(_make_invocation(["kubectl", "top", "--unknown-flag"]), database)
+        assert result.classification == Classification.UNKNOWN
+        assert result.risk == Risk.HIGH
+
+
+class TestRiskExplicitOverrideInCommandDef:
+    def test_explicit_risk_in_command_def(self) -> None:
+        """A command with explicit risk: LOW should use that risk."""
+        cmd_def = CommandDef(
+            command="mycmd",
+            classification=Classification.LOCAL_EFFECTS,
+            risk=Risk.LOW,
+            options={},
+        )
+        database = {"mycmd": cmd_def}
+        result = match_command(_make_invocation(["mycmd"]), database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+
+    def test_explicit_risk_on_option(self) -> None:
+        """An option with explicit risk override should use that risk."""
+        from bash_classify.models import OptionDef
+
+        cmd_def = CommandDef(
+            command="mycmd",
+            classification=Classification.READONLY,
+            options={
+                "--dangerous-flag": OptionDef(risk=Risk.HIGH),
+            },
+        )
+        database = {"mycmd": cmd_def}
+        result = match_command(_make_invocation(["mycmd", "--dangerous-flag"]), database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.HIGH
+
+    def test_option_with_both_overrides_and_risk(self) -> None:
+        """An option with both overrides and risk should apply both."""
+        from bash_classify.models import OptionDef
+
+        cmd_def = CommandDef(
+            command="mycmd",
+            classification=Classification.READONLY,
+            options={
+                "--elevate": OptionDef(overrides=Classification.LOCAL_EFFECTS, risk=Risk.HIGH),
+            },
+        )
+        database = {"mycmd": cmd_def}
+        result = match_command(_make_invocation(["mycmd", "--elevate"]), database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.HIGH
+
+
+class TestRiskInnerCommands:
+    def test_inner_command_elevates_parent_risk(self, database: dict[str, CommandDef]) -> None:
+        """Inner command with higher risk should elevate parent risk."""
+        result = match_command(_make_invocation(["sudo", "rm", "-rf", "/"]), database)
+        assert result.risk == Risk.HIGH
+        assert len(result.inner_commands) == 1
+        assert result.inner_commands[0].risk == Risk.HIGH
+
+
+class TestRiskBuiltins:
+    def test_cd_low_risk(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["cd", "/tmp"]), database)
+        assert result.risk == Risk.LOW
+
+    def test_eval_high_risk(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["eval", "code"]), database)
+        assert result.risk == Risk.HIGH
+
+    def test_test_builtin_low_risk(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["test", "-f", "file"]), database)
+        assert result.risk == Risk.LOW

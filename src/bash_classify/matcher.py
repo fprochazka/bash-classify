@@ -14,6 +14,7 @@ from .models import (
     DelegationConfig,
     DelegationMode,
     InnerCommandResult,
+    Risk,
 )
 
 # Shell builtins that are special-cased (not from database)
@@ -23,6 +24,23 @@ _BUILTIN_DANGEROUS_COMMANDS = {"eval", "source", ".", "exec"}
 
 # Regex for KEY=VALUE assignments (used by strip_assignments)
 _ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _default_risk(classification: Classification) -> Risk:
+    """Return the default risk level for a given classification."""
+    if classification in (Classification.DANGEROUS, Classification.UNKNOWN):
+        return Risk.HIGH
+    if classification == Classification.READONLY:
+        return Risk.LOW
+    # LOCAL_EFFECTS and EXTERNAL_EFFECTS
+    return Risk.MEDIUM
+
+
+def _clamp_risk(classification: Classification, risk: Risk) -> Risk:
+    """Clamp risk to HIGH for DANGEROUS and UNKNOWN classifications."""
+    if classification in (Classification.DANGEROUS, Classification.UNKNOWN):
+        return Risk.HIGH
+    return risk
 
 
 def match_command(
@@ -40,6 +58,7 @@ def match_command(
             command=[],
             argv=[],
             classification=Classification.UNKNOWN,
+            risk=Risk.HIGH,
             matched_rule=None,
             inner_commands=[],
         )
@@ -68,6 +87,7 @@ def match_command(
             command=[binary],
             argv=list(argv),
             classification=Classification.UNKNOWN,
+            risk=Risk.HIGH,
             matched_rule=None,
             inner_commands=[],
             classification_reason="command not in database",
@@ -76,7 +96,9 @@ def match_command(
     remaining = argv[1:]
 
     # Step 2: Strip global options
-    remaining, ignored_options, global_directories, global_overrides = _strip_global_options(remaining, command_def)
+    remaining, ignored_options, global_directories, global_overrides, global_risk_overrides = _strip_global_options(
+        remaining, command_def
+    )
 
     # Step 3: Subcommand matching
     matched_def, command_chain, remaining = _match_subcommand(remaining, command_def)
@@ -86,6 +108,7 @@ def match_command(
         known_options,
         unknown_options,
         overrides,
+        risk_overrides,
         option_directories,
         option_delegations,
         remaining_positional,
@@ -93,16 +116,22 @@ def match_command(
 
     # Merge global overrides with subcommand overrides
     all_overrides = global_overrides + overrides
+    all_risk_overrides = global_risk_overrides + risk_overrides
     all_directories = global_directories + option_directories
 
     # Build command path
     full_command = [binary, *command_chain]
     matched_rule = ".".join(full_command) if command_chain else binary
 
-    # Step 5: Determine classification
+    # Step 5: Determine classification and risk
     base_classification = matched_def.classification
     if base_classification is None:
         base_classification = Classification.READONLY
+
+    # Base risk from command def or default
+    base_risk = matched_def.risk if matched_def.risk is not None else _default_risk(base_classification)
+    # Track whether risk was explicitly set at command level
+    risk_explicitly_set = matched_def.risk is not None
 
     # Find the highest override — overrides REPLACE the base classification
     classification_reason: str | None = None
@@ -122,6 +151,20 @@ def match_command(
         final_classification = base_classification
         classification_reason = f"base classification from rule {matched_rule}"
 
+    # Determine risk from option overrides
+    if all_risk_overrides:
+        # When any option has a risk override, use max of all risk overrides
+        final_risk = all_risk_overrides[0][1]
+        for _opt_name, override_risk in all_risk_overrides[1:]:
+            if override_risk.severity() > final_risk.severity():
+                final_risk = override_risk
+    elif all_overrides and not risk_explicitly_set:
+        # Classification changed due to option override but no explicit risk override
+        # and risk was not explicitly set at command level -> re-derive from new classification
+        final_risk = _default_risk(final_classification)
+    else:
+        final_risk = base_risk
+
     # Global options that appear after the subcommand (e.g., `kubectl apply --help`)
     # are not caught by _strip_global_options. Check for them here and apply overrides.
     if command_def.global_options:
@@ -140,12 +183,23 @@ def match_command(
                             final_classification = o_class
                             overriding_option = o_name
                     classification_reason = f"overridden by option {overriding_option} to {final_classification.value}"
+                if global_opt_def.risk is not None:
+                    all_risk_overrides.append((opt_key, global_opt_def.risk))
+                # Re-evaluate risk after global option processing
+                if all_risk_overrides:
+                    final_risk = all_risk_overrides[0][1]
+                    for _o_name, o_risk in all_risk_overrides[1:]:
+                        if o_risk.severity() > final_risk.severity():
+                            final_risk = o_risk
+                elif all_overrides and not risk_explicitly_set:
+                    final_risk = _default_risk(final_classification)
 
     # Strict mode: unrecognized options -> UNKNOWN
     if matched_def.strict and unknown_options:
         final_classification = Classification.max_severity(final_classification, Classification.UNKNOWN)
         if final_classification == Classification.UNKNOWN:
             classification_reason = f"unrecognized option {unknown_options[0]} in strict mode"
+        final_risk = Risk.HIGH
 
     # Step 6: Handle delegation
     inner_commands: list[InnerCommandResult] = []
@@ -167,11 +221,15 @@ def match_command(
         inner_results = _handle_option_delegation(opt_name, delegation_config, delegation_tokens, database)
         inner_commands.extend(inner_results)
 
-    # Inner command classifications affect the parent
+    # Inner command classifications and risks affect the parent
     for inner in inner_commands:
         if inner.classification.severity() > final_classification.severity():
             final_classification = Classification.max_severity(final_classification, inner.classification)
             classification_reason = "elevated by inner command"
+        final_risk = Risk.max_severity(final_risk, inner.risk)
+
+    # Clamp risk for DANGEROUS/UNKNOWN classifications
+    final_risk = _clamp_risk(final_classification, final_risk)
 
     # Build remaining_options output
     remaining_opts_output = list(unknown_options)
@@ -180,6 +238,7 @@ def match_command(
         command=full_command,
         argv=list(argv),
         classification=final_classification,
+        risk=final_risk,
         matched_rule=matched_rule,
         inner_commands=inner_commands,
         ignored_options=ignored_options if ignored_options else None,
@@ -196,6 +255,7 @@ def _handle_directory_builtin(invocation: CommandInvocation) -> CommandResult:
         command=[invocation.argv[0]],
         argv=list(invocation.argv),
         classification=Classification.READONLY,
+        risk=Risk.LOW,
         matched_rule=None,
         inner_commands=[],
         classification_reason=f"shell builtin (always {Classification.READONLY.value})",
@@ -208,6 +268,7 @@ def _handle_readonly_builtin(invocation: CommandInvocation) -> CommandResult:
         command=[invocation.argv[0]],
         argv=list(invocation.argv),
         classification=Classification.READONLY,
+        risk=Risk.LOW,
         matched_rule=None,
         inner_commands=[],
         classification_reason=f"shell builtin (always {Classification.READONLY.value})",
@@ -220,6 +281,7 @@ def _handle_dangerous_builtin(invocation: CommandInvocation) -> CommandResult:
         command=[invocation.argv[0]],
         argv=list(invocation.argv),
         classification=Classification.DANGEROUS,
+        risk=Risk.HIGH,
         matched_rule=None,
         inner_commands=[],
         classification_reason=f"shell builtin (always {Classification.DANGEROUS.value})",
@@ -229,22 +291,23 @@ def _handle_dangerous_builtin(invocation: CommandInvocation) -> CommandResult:
 def _strip_global_options(
     argv: list[str],
     command_def: CommandDef,
-) -> tuple[list[str], list[str], list[str], list[tuple[str, Classification]]]:
+) -> tuple[list[str], list[str], list[str], list[tuple[str, Classification]], list[tuple[str, Risk]]]:
     """Strip global options from argv, only before the first subcommand.
 
     Global options are consumed from the front of argv. Once a non-option token
     is encountered (potential subcommand or positional arg), stripping stops and
     all remaining tokens are passed through.
 
-    Returns (remaining_argv, ignored_options, directories, overrides).
+    Returns (remaining_argv, ignored_options, directories, overrides, risk_overrides).
     """
     if not command_def.global_options:
-        return list(argv), [], [], []
+        return list(argv), [], [], [], []
 
     remaining: list[str] = []
     ignored: list[str] = []
     directories: list[str] = []
     overrides: list[tuple[str, Classification]] = []
+    risk_overrides: list[tuple[str, Risk]] = []
     i = 0
 
     while i < len(argv):
@@ -266,6 +329,8 @@ def _strip_global_options(
                     directories.append(token.split("=", 1)[1])
                 if opt_def.overrides is not None:
                     overrides.append((key, opt_def.overrides))
+                if opt_def.risk is not None:
+                    risk_overrides.append((key, opt_def.risk))
                 i += 1
                 continue
 
@@ -275,6 +340,8 @@ def _strip_global_options(
             ignored.append(token)
             if opt_def.overrides is not None:
                 overrides.append((token, opt_def.overrides))
+            if opt_def.risk is not None:
+                risk_overrides.append((token, opt_def.risk))
             if opt_def.takes_value and i + 1 < len(argv):
                 i += 1
                 ignored.append(argv[i])
@@ -287,7 +354,7 @@ def _strip_global_options(
         remaining.append(token)
         i += 1
 
-    return remaining, ignored, directories, overrides
+    return remaining, ignored, directories, overrides, risk_overrides
 
 
 def _match_subcommand(
@@ -326,6 +393,7 @@ def _classify_options(
     list[str],  # known_options
     list[str],  # unknown_options
     list[tuple[str, Classification]],  # overrides: (option_name, classification)
+    list[tuple[str, Risk]],  # risk_overrides: (option_name, risk)
     list[str],  # directories
     list[tuple[str, DelegationConfig, list[str]]],  # option_delegations
     list[str],  # remaining_positional (non-option tokens)
@@ -334,6 +402,7 @@ def _classify_options(
     known: list[str] = []
     unknown: list[str] = []
     overrides: list[tuple[str, Classification]] = []
+    risk_overrides: list[tuple[str, Risk]] = []
     directories: list[str] = []
     delegations: list[tuple[str, DelegationConfig, list[str]]] = []
     positional: list[str] = []
@@ -380,6 +449,8 @@ def _classify_options(
                 known.append(token)
                 if opt_def.overrides is not None:
                     overrides.append((key, opt_def.overrides))
+                if opt_def.risk is not None:
+                    risk_overrides.append((key, opt_def.risk))
                 if opt_def.captures_directory:
                     directories.append(value)
             else:
@@ -394,6 +465,8 @@ def _classify_options(
                 known.append(token)
                 if opt_def.overrides is not None:
                     overrides.append((token, opt_def.overrides))
+                if opt_def.risk is not None:
+                    risk_overrides.append((token, opt_def.risk))
                 if opt_def.delegates_to is not None:
                     delegation_tokens = _extract_delegation_tokens(argv, i, opt_def.delegates_to)
                     delegations.append((token, opt_def.delegates_to, delegation_tokens))
@@ -418,6 +491,8 @@ def _classify_options(
             known.append(token)
             if opt_def.overrides is not None:
                 overrides.append((token, opt_def.overrides))
+            if opt_def.risk is not None:
+                risk_overrides.append((token, opt_def.risk))
             if opt_def.delegates_to is not None:
                 delegation_tokens = _extract_delegation_tokens(argv, i, opt_def.delegates_to)
                 delegations.append((token, opt_def.delegates_to, delegation_tokens))
@@ -444,6 +519,8 @@ def _classify_options(
                 value = token[2:]
                 if opt_def.overrides is not None:
                     overrides.append((short_flag, opt_def.overrides))
+                if opt_def.risk is not None:
+                    risk_overrides.append((short_flag, opt_def.risk))
                 if opt_def.captures_directory:
                     directories.append(value)
                 i += 1
@@ -454,6 +531,7 @@ def _classify_options(
                 # If a middle flag takes_value, remaining chars are its joined value.
                 all_known = True
                 pending_overrides: list[tuple[str, Classification]] = []
+                pending_risk_overrides: list[tuple[str, Risk]] = []
                 for j in range(1, len(token)):
                     char_flag = f"-{token[j]}"
                     char_def = options.get(char_flag)
@@ -464,6 +542,8 @@ def _classify_options(
                         # This flag takes a value: remaining chars are the joined value
                         if char_def.overrides is not None:
                             pending_overrides.append((char_flag, char_def.overrides))
+                        if char_def.risk is not None:
+                            pending_risk_overrides.append((char_flag, char_def.risk))
                         remaining_chars = token[j + 1 :]
                         if remaining_chars:
                             # Joined value from remaining characters
@@ -479,10 +559,13 @@ def _classify_options(
                         break
                     if char_def.overrides is not None:
                         pending_overrides.append((char_flag, char_def.overrides))
+                    if char_def.risk is not None:
+                        pending_risk_overrides.append((char_flag, char_def.risk))
 
                 if all_known:
                     known.append(token)
                     overrides.extend(pending_overrides)
+                    risk_overrides.extend(pending_risk_overrides)
                     i += 1
                     continue
 
@@ -491,6 +574,8 @@ def _classify_options(
                 known.append(token)
                 if opt_def.overrides is not None:
                     overrides.append((short_flag, opt_def.overrides))
+                if opt_def.risk is not None:
+                    risk_overrides.append((short_flag, opt_def.risk))
                 if opt_def.takes_value and i + 1 < len(argv):
                     i += 1
                     value = argv[i]
@@ -504,7 +589,7 @@ def _classify_options(
         unknown.append(token)
         i += 1
 
-    return known, unknown, overrides, directories, delegations, positional
+    return known, unknown, overrides, risk_overrides, directories, delegations, positional
 
 
 def _is_terminator(token: str, terminator: str | None) -> bool:
@@ -678,8 +763,13 @@ def _match_inner_command(
     inner_result = match_command(inner_invocation, database)
 
     classification = inner_result.classification
+    risk = inner_result.risk
     if min_classification is not None:
         classification = Classification.max_severity(classification, min_classification)
+        risk = Risk.max_severity(risk, _default_risk(min_classification))
+
+    # Clamp risk for DANGEROUS/UNKNOWN classifications
+    risk = _clamp_risk(classification, risk)
 
     return InnerCommandResult(
         delegation_mode=delegation_mode,
@@ -687,6 +777,7 @@ def _match_inner_command(
         command=inner_result.command,
         argv=list(argv),
         classification=classification,
+        risk=risk,
         matched_rule=inner_result.matched_rule,
         inner_commands=inner_result.inner_commands,
         ignored_options=inner_result.ignored_options,

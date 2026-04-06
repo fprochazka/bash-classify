@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bash_classify.models import Classification
+from bash_classify.models import Classification, Risk
 
 
 class TestClassificationSeverity:
@@ -32,3 +32,27 @@ class TestClassificationSeverity:
             Classification.READONLY, Classification.EXTERNAL_EFFECTS, Classification.UNKNOWN, Classification.DANGEROUS
         )
         assert result == Classification.DANGEROUS
+
+
+class TestRiskSeverity:
+    def test_severity_ordering(self) -> None:
+        assert Risk.LOW.severity() < Risk.MEDIUM.severity()
+        assert Risk.MEDIUM.severity() < Risk.HIGH.severity()
+
+    def test_max_severity_empty(self) -> None:
+        assert Risk.max_severity() == Risk.LOW
+
+    def test_max_severity_single(self) -> None:
+        assert Risk.max_severity(Risk.MEDIUM) == Risk.MEDIUM
+
+    def test_max_severity_multiple(self) -> None:
+        result = Risk.max_severity(Risk.LOW, Risk.HIGH, Risk.MEDIUM)
+        assert result == Risk.HIGH
+
+    def test_max_severity_ties(self) -> None:
+        result = Risk.max_severity(Risk.MEDIUM, Risk.MEDIUM)
+        assert result == Risk.MEDIUM
+
+    def test_max_severity_all_three(self) -> None:
+        result = Risk.max_severity(Risk.LOW, Risk.MEDIUM, Risk.HIGH)
+        assert result == Risk.HIGH

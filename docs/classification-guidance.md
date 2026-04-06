@@ -368,7 +368,49 @@ Commands invoked with a full path (e.g. `/usr/bin/rm`) are resolved to their bas
 
 The first line `# $schema: ../../../schemas/command.schema.json` is a convention for IDE support. It is not parsed by bash-classify itself but provides autocomplete and validation when editing YAML files in editors that support JSON Schema.
 
-## 8. Common Patterns
+## 8. Risk Levels
+
+Each command also has a risk level (`LOW`, `MEDIUM`, `HIGH`) that defaults based on classification. You only need to set `risk` explicitly in YAML when the default does not fit.
+
+### When to set `risk: LOW`
+
+Use for safe routine operations that should be auto-allowed, even though their classification is above READONLY:
+
+```yaml
+# git add only stages files -- safe to auto-allow
+subcommands:
+  add:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+```
+
+Other good candidates: `git fetch`, `mkdir`, `touch`, code formatters like `ruff format`, `prettier`.
+
+### When to leave the default (`MEDIUM`)
+
+The default `MEDIUM` is appropriate for most `LOCAL_EFFECTS` and `EXTERNAL_EFFECTS` commands. If the command does what its classification says and nothing surprising, don't set `risk` at all.
+
+### When to set `risk: HIGH`
+
+Use when a command is more dangerous than its classification default suggests -- e.g. an `EXTERNAL_EFFECTS` command that is particularly destructive or hard to reverse.
+
+### `DANGEROUS` and `UNKNOWN` are always `HIGH`
+
+Commands classified as `DANGEROUS` or `UNKNOWN` are automatically clamped to `HIGH` risk regardless of any explicit `risk` field. You never need to set `risk` on these.
+
+### Risk on options
+
+Options can override risk the same way they override classification:
+
+```yaml
+subcommands:
+  apply:
+    classification: EXTERNAL_EFFECTS
+    options:
+      --dry-run: {takes_value: true, overrides: READONLY, risk: LOW}
+```
+
+## 9. Common Patterns
 
 | Pattern | Example | Classification |
 |---------|---------|---------------|

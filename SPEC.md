@@ -200,6 +200,54 @@ $ echo 'sh -c "ls /tmp | grep log"' | bash-classify
 | `DANGEROUS` | Destructive, hard to reverse, or affects critical systems |
 | `UNKNOWN` | Command or subcommand not in database |
 
+### Risk levels
+
+Each command also receives a risk level, used to distinguish routine operations from high-stakes ones within the same classification tier.
+
+| Level | Meaning |
+|---|---|
+| `LOW` | Safe routine operation, suitable for auto-allowing |
+| `MEDIUM` | Standard operation, may deserve review |
+| `HIGH` | High-stakes or irreversible, always requires confirmation |
+
+#### Default risk by classification
+
+| Classification | Default risk |
+|---|---|
+| `READONLY` | `LOW` |
+| `LOCAL_EFFECTS` | `MEDIUM` |
+| `EXTERNAL_EFFECTS` | `MEDIUM` |
+| `DANGEROUS` | `HIGH` (always, cannot be overridden) |
+| `UNKNOWN` | `HIGH` (always, cannot be overridden) |
+
+`DANGEROUS` and `UNKNOWN` commands are always clamped to `HIGH` regardless of any explicit `risk` field in the YAML definition.
+
+#### Composite risk
+
+The overall `risk` of a full expression is the **maximum** across all commands in the expression:
+
+```
+HIGH > MEDIUM > LOW
+```
+
+#### YAML `risk` field
+
+The optional `risk` field can be set on commands, subcommands, and options in the database YAML. It works the same way as classification:
+
+- **Command/subcommand level:** Sets the base risk for that command or subcommand.
+- **Option level:** When the option is present, overrides the risk to this level (same semantics as classification `overrides`).
+
+When no explicit `risk` is set, the default risk for the resolved classification is used.
+
+#### Security elevations
+
+Certain expression-level patterns elevate risk to at least `HIGH`:
+
+- Writing to system paths (e.g. `/etc`, `/usr`)
+- Redirecting to `/dev/tcp` or `/dev/udp`
+- Backgrounding (`cmd &`)
+- Output redirects to non-`/dev/null` targets
+
 ### Composite classification
 
 The overall `classification` of a full expression is the **maximum severity** across all commands in the expression:

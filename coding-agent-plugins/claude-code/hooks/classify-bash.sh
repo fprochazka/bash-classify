@@ -31,14 +31,14 @@ if [[ -z "$classification_output" ]]; then
   exit 0
 fi
 
-# Extract the top-level classification
-classification=$(echo "$classification_output" | jq -r '.classification // empty')
+# Extract the top-level risk
+risk=$(echo "$classification_output" | jq -r '.risk // empty')
 
-if [[ "$classification" == "READONLY" ]]; then
-  # Auto-allow readonly commands
+if [[ "$risk" == "LOW" ]]; then
+  # Auto-allow low-risk commands
   echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
 fi
 
-# For anything else (LOCAL_EFFECTS, EXTERNAL_EFFECTS, DANGEROUS, UNKNOWN), output nothing
+# For anything else (MEDIUM, HIGH), output nothing
 # — this lets the normal permission flow handle it
 exit 0

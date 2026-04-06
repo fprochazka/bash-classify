@@ -22,6 +22,7 @@ def _inner_command_to_dict(result: InnerCommandResult) -> dict:
         "command": result.command,
         "argv": result.argv,
         "classification": result.classification.value,
+        "risk": result.risk.value,
         "matched_rule": result.matched_rule,
     }
 
@@ -43,6 +44,7 @@ def _command_to_dict(result: CommandResult) -> dict:
         "command": result.command,
         "argv": result.argv,
         "classification": result.classification.value,
+        "risk": result.risk.value,
         "matched_rule": result.matched_rule,
     }
 
@@ -74,6 +76,7 @@ def _result_to_dict(result: ExpressionResult) -> dict:
     d: dict = {
         "expression": result.expression,
         "classification": result.classification.value,
+        "risk": result.risk.value,
         "directories": result.directories,
         "commands": [_command_to_dict(cmd) for cmd in result.commands],
     }

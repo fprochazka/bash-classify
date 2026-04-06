@@ -39,6 +39,35 @@ _SEVERITY_ORDER: dict[Classification, int] = {
 }
 
 
+class Risk(enum.Enum):
+    """Risk levels for commands, ordered by severity."""
+
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+    def severity(self) -> int:
+        """Return the severity ordering for this risk level.
+
+        HIGH > MEDIUM > LOW
+        """
+        return _RISK_SEVERITY_ORDER[self]
+
+    @classmethod
+    def max_severity(cls, *risks: Risk) -> Risk:
+        """Return the risk with the highest severity."""
+        if not risks:
+            return cls.LOW
+        return max(risks, key=lambda r: r.severity())
+
+
+_RISK_SEVERITY_ORDER: dict[Risk, int] = {
+    Risk.LOW: 0,
+    Risk.MEDIUM: 1,
+    Risk.HIGH: 2,
+}
+
+
 class DelegationMode(enum.Enum):
     """How a command delegates execution to an inner command."""
 
@@ -89,6 +118,7 @@ class OptionDef:
     takes_value: bool = False
     aliases: list[str] = field(default_factory=list)
     overrides: Classification | None = None
+    risk: Risk | None = None
     captures_directory: bool = False
     delegates_to: DelegationConfig | None = None
 
@@ -99,6 +129,7 @@ class CommandDef:
 
     command: str
     classification: Classification | None = None
+    risk: Risk | None = None
     global_options: dict[str, OptionDef] = field(default_factory=dict)
     subcommands: dict[str, CommandDef] = field(default_factory=dict)
     options: dict[str, OptionDef] = field(default_factory=dict)
@@ -115,6 +146,7 @@ class InnerCommandResult:
     command: list[str]
     argv: list[str]
     classification: Classification
+    risk: Risk
     matched_rule: str | None
     inner_commands: list[InnerCommandResult]
     ignored_options: list[str] | None = None
@@ -129,6 +161,7 @@ class CommandResult:
     command: list[str]
     argv: list[str]
     classification: Classification
+    risk: Risk
     matched_rule: str | None
     inner_commands: list[InnerCommandResult]
     ignored_options: list[str] | None = None
@@ -144,6 +177,7 @@ class ExpressionResult:
 
     expression: str
     classification: Classification
+    risk: Risk
     directories: list[str]
     commands: list[CommandResult]
     redirects: list[Redirect]
