@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bash_classify.models import Classification, Risk
+from bash_classify.models import Classification, Risk, SubcommandMode
 
 
 class TestClassificationSeverity:
@@ -56,3 +56,9 @@ class TestRiskSeverity:
     def test_max_severity_all_three(self) -> None:
         result = Risk.max_severity(Risk.LOW, Risk.MEDIUM, Risk.HIGH)
         assert result == Risk.HIGH
+
+
+class TestSubcommandMode:
+    def test_subcommand_mode_values(self) -> None:
+        assert SubcommandMode.HIERARCHICAL.value == "hierarchical"
+        assert SubcommandMode.MATCH_ALL.value == "match_all"

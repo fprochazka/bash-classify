@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from .models import Classification, CommandDef, DelegationConfig, DelegationMode, OptionDef, Risk
+from .models import Classification, CommandDef, DelegationConfig, DelegationMode, OptionDef, Risk, SubcommandMode
 
 
 def get_default_commands_dir() -> Path:
@@ -177,6 +177,7 @@ def _parse_command_def(data: dict, command_name: str) -> CommandDef:
     subcommands = _parse_subcommands(data.get("subcommands", {}))
     delegates_to = _parse_delegation_config(data.get("delegates_to"))
     strict = data.get("strict", True)
+    subcommand_mode = _parse_subcommand_mode(data.get("subcommand_mode"))
 
     return CommandDef(
         command=command_name,
@@ -186,6 +187,7 @@ def _parse_command_def(data: dict, command_name: str) -> CommandDef:
         subcommands=subcommands,
         options=options,
         strict=strict,
+        subcommand_mode=subcommand_mode,
         delegates_to=delegates_to,
     )
 
@@ -202,6 +204,13 @@ def _parse_risk(value: str | None) -> Risk | None:
     if value is None:
         return None
     return Risk(value)
+
+
+def _parse_subcommand_mode(value: str | None) -> SubcommandMode:
+    """Parse a subcommand_mode string into a SubcommandMode enum."""
+    if value is None:
+        return SubcommandMode.HIERARCHICAL
+    return SubcommandMode(value)
 
 
 def _parse_options(raw: dict | None) -> dict[str, OptionDef]:

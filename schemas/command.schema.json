@@ -38,6 +38,9 @@
       "$ref": "#/$defs/SubcommandsMap",
       "description": "Nested subcommand definitions"
     },
+    "subcommand_mode": {
+      "$ref": "#/$defs/SubcommandMode"
+    },
     "delegates_to": {
       "$ref": "#/$defs/DelegationConfig"
     }
@@ -52,6 +55,11 @@
       "type": "string",
       "enum": ["LOW", "MEDIUM", "HIGH"],
       "description": "Risk level for a command or option override"
+    },
+    "SubcommandMode": {
+      "type": "string",
+      "enum": ["hierarchical", "match_all"],
+      "description": "How subcommands are matched: hierarchical (chained tree walk, default) or match_all (each positional arg matched independently)"
     },
     "DelegationConfig": {
       "type": "object",
@@ -138,6 +146,9 @@
         "strict": {
           "type": "boolean",
           "description": "If true (default), unrecognized options yield UNKNOWN"
+        },
+        "subcommand_mode": {
+          "$ref": "#/$defs/SubcommandMode"
         },
         "options": {
           "$ref": "#/$defs/OptionsMap"

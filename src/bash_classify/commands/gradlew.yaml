@@ -3,6 +3,40 @@ command: gradlew
 description: "Gradle wrapper"
 classification: LOCAL_EFFECTS
 strict: false
+subcommand_mode: match_all
+subcommands:
+  clean:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  build:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  test:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  assemble:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  check:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  jar:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  classes:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  compileJava:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  compileKotlin:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  publishToMavenLocal:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  publish:
+    classification: EXTERNAL_EFFECTS
 global_options:
   --help: {overrides: READONLY}
   -h: {overrides: READONLY}

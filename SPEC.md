@@ -345,6 +345,48 @@ The database defines which options take values, so the parser knows whether `-n 
 
 If the matched subcommand has `strict: true` (default), any unrecognized option makes the command `UNKNOWN`. If `strict: false`, unrecognized options are ignored (useful for commands with too many harmless flags to enumerate).
 
+### Subcommand matching modes
+
+The `subcommand_mode` field controls how positional arguments are matched against the subcommand dictionary. There are two modes:
+
+#### `hierarchical` (default)
+
+The default mode. Subcommands are matched as a greedy chain through nested subcommand dictionaries. Each matched subcommand narrows the context to its own subcommand dict.
+
+Example: `kubectl rollout status` matches `kubectl` → `rollout` → `status`, walking the tree.
+
+#### `match_all`
+
+Each positional argument is matched independently against the **same** top-level subcommand dictionary. This is designed for build tools like Maven and Gradle where multiple goals/tasks appear as positional arguments in any order.
+
+Example: `mvn clean install` matches both `clean` and `install` independently against `mvn`'s subcommand dict.
+
+**Classification/risk aggregation in `match_all` mode:**
+
+- The final classification is the **maximum severity** across all matched goals.
+- The final risk is the **maximum** across all matched goals' risks.
+- If any positional argument is **unrecognized** (not in the subcommand dict), the command's base classification and risk are included in the aggregation.
+- If **no goals match** (no positional args or all unrecognized), the command's base classification and risk apply.
+- Option overrides (e.g. `--dry-run`) take precedence over goal aggregation — they replace the classification as usual.
+- The `strict` mode only applies to **options** (flags starting with `-`), not to unrecognized positional arguments. Unrecognized goals do not cause UNKNOWN classification.
+
+```
+argv: ["mvn", "-B", "clean", "deploy"]
+
+Step 1: binary lookup → found "mvn" in database (subcommand_mode: match_all)
+Step 2: strip global options → none
+Step 3: subcommand matching (match_all mode)
+  - "-B" starts with "-" → passed to option classification
+  - "clean" found in subcommands → LOCAL_EFFECTS, risk LOW
+  - "deploy" found in subcommands → EXTERNAL_EFFECTS, risk MEDIUM (default)
+  - aggregate: classification = EXTERNAL_EFFECTS, risk = MEDIUM
+Step 4: option classification
+  - "-B" is a known option (no override)
+Step 5: classification
+  - aggregate classification: EXTERNAL_EFFECTS
+  - no option overrides → final: EXTERNAL_EFFECTS, risk: MEDIUM
+```
+
 ## Command Database Format
 
 YAML files, one per command or command family. Loaded from a `commands/` directory.
@@ -807,6 +849,7 @@ The `delegates_to` field defines how a command (or option like `find -exec`) han
 | `subcommands` | `map` | Nested subcommand definitions (recursive structure) |
 | `options` | `map` | Options that affect classification of this command/subcommand |
 | `strict` | `bool` | If `true` (default), unrecognized options yield `UNKNOWN` |
+| `subcommand_mode` | `enum` | How subcommands are matched: `hierarchical` (default, chained tree walk) or `match_all` (each positional arg matched independently) |
 | `delegates_to` | `object` | How this command delegates execution to an inner command (see delegation modes) |
 
 #### Option level

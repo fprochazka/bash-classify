@@ -68,6 +68,13 @@ _RISK_SEVERITY_ORDER: dict[Risk, int] = {
 }
 
 
+class SubcommandMode(enum.Enum):
+    """How subcommands are matched against positional arguments."""
+
+    HIERARCHICAL = "hierarchical"
+    MATCH_ALL = "match_all"
+
+
 class DelegationMode(enum.Enum):
     """How a command delegates execution to an inner command."""
 
@@ -134,6 +141,7 @@ class CommandDef:
     subcommands: dict[str, CommandDef] = field(default_factory=dict)
     options: dict[str, OptionDef] = field(default_factory=dict)
     strict: bool = True
+    subcommand_mode: SubcommandMode = SubcommandMode.HIERARCHICAL
     delegates_to: DelegationConfig | None = None
 
 

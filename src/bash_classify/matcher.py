@@ -15,6 +15,7 @@ from .models import (
     DelegationMode,
     InnerCommandResult,
     Risk,
+    SubcommandMode,
 )
 
 # Shell builtins that are special-cased (not from database)
@@ -101,7 +102,13 @@ def match_command(
     )
 
     # Step 3: Subcommand matching
-    matched_def, command_chain, remaining = _match_subcommand(remaining, command_def)
+    if command_def.subcommand_mode == SubcommandMode.MATCH_ALL:
+        matched_names, matched_defs, remaining = _match_all_subcommands(remaining, command_def)
+        matched_def = command_def  # options come from top-level
+        command_chain = matched_names
+    else:
+        matched_def, command_chain, remaining = _match_subcommand(remaining, command_def)
+        matched_defs = []  # not used in hierarchical mode
 
     # Step 4: Option classification
     (
@@ -193,6 +200,33 @@ def match_command(
                             final_risk = o_risk
                 elif all_overrides and not risk_explicitly_set:
                     final_risk = _default_risk(final_classification)
+
+    # Step 5b: For match_all, aggregate subcommand classifications/risks
+    if command_def.subcommand_mode == SubcommandMode.MATCH_ALL and matched_defs:
+        # Compute the aggregate classification/risk from all matched goals
+        agg_classification = Classification.READONLY
+        agg_risk = Risk.LOW
+        for sub_def in matched_defs:
+            sub_class = sub_def.classification or Classification.READONLY
+            sub_risk = sub_def.risk if sub_def.risk is not None else _default_risk(sub_class)
+            agg_classification = Classification.max_severity(agg_classification, sub_class)
+            agg_risk = Risk.max_severity(agg_risk, sub_risk)
+
+        # Check if there are unrecognized positional args (non-option tokens)
+        has_unrecognized_positional = any(not t.startswith("-") for t in remaining_positional)
+        if has_unrecognized_positional:
+            # Unrecognized goals: include base classification/risk in aggregation
+            agg_risk = Risk.max_severity(agg_risk, base_risk)
+
+        if all_overrides:
+            # Option overrides replace base classification; aggregate risk from goals
+            # but don't let goals override the option's classification decision
+            final_risk = Risk.max_severity(final_risk, agg_risk)
+        else:
+            # No option overrides: goals determine classification and risk
+            final_classification = Classification.max_severity(final_classification, agg_classification)
+            final_risk = agg_risk
+            classification_reason = f"base classification from rule {matched_rule}"
 
     # Strict mode: unrecognized options -> UNKNOWN
     if matched_def.strict and unknown_options:
@@ -384,6 +418,36 @@ def _match_subcommand(
             break
 
     return matched_def, command_chain, remaining
+
+
+def _match_all_subcommands(
+    argv: list[str],
+    command_def: CommandDef,
+) -> tuple[list[str], list[CommandDef], list[str]]:
+    """Match each positional arg independently against the same subcommand dict.
+
+    Used for commands like Maven and Gradle where multiple goals/tasks
+    appear as positional args in any order.
+
+    Returns (matched_names, matched_defs, remaining).
+    remaining includes both options and unrecognized positional args.
+    """
+    matched_names: list[str] = []
+    matched_defs: list[CommandDef] = []
+    remaining: list[str] = []
+
+    for token in argv:
+        if token.startswith("-"):
+            # Options pass through for _classify_options later
+            remaining.append(token)
+        elif token in command_def.subcommands:
+            matched_names.append(token)
+            matched_defs.append(command_def.subcommands[token])
+        else:
+            # Unrecognized goal — pass through as positional
+            remaining.append(token)
+
+    return matched_names, matched_defs, remaining
 
 
 def _classify_options(

@@ -410,7 +410,50 @@ subcommands:
       --dry-run: {takes_value: true, overrides: READONLY, risk: LOW}
 ```
 
-## 9. Common Patterns
+## 9. Subcommand Matching Modes
+
+### `subcommand_mode: hierarchical` (default)
+
+The default mode. Subcommands form a tree, and matching walks the tree greedily. This is correct for most CLI tools where subcommands are hierarchical (e.g. `kubectl rollout status`, `git stash list`).
+
+### `subcommand_mode: match_all`
+
+Use for build tools that accept multiple goals or tasks as positional arguments in any order. Each positional argument is matched independently against the same subcommand dictionary.
+
+```yaml
+# Maven accepts multiple lifecycle phases: mvn clean install
+command: mvn
+classification: LOCAL_EFFECTS
+strict: false
+subcommand_mode: match_all
+subcommands:
+  clean:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  compile:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  install:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  deploy:
+    classification: EXTERNAL_EFFECTS
+```
+
+**When to use `match_all`:**
+
+- Build tools that accept multiple goals/tasks (Maven, Gradle)
+- Commands where positional args are independent operations, not hierarchical nesting
+
+**How classification works:**
+
+- The final classification is the maximum severity across all matched goals
+- `mvn clean install` → both LOCAL_EFFECTS → final: LOCAL_EFFECTS
+- `mvn clean deploy` → LOCAL_EFFECTS + EXTERNAL_EFFECTS → final: EXTERNAL_EFFECTS
+- Unrecognized goals (e.g. custom Maven plugin goals like `some-plugin:goal`) fall back to the command's base classification and risk
+- Option overrides (e.g. `--dry-run`) still take precedence over goal aggregation
+
+## 10. Common Patterns
 
 | Pattern | Example | Classification |
 |---------|---------|---------------|

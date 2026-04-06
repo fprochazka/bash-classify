@@ -433,3 +433,35 @@ class TestComplexRealWorld:
         """Git log piped to xargs for batch show."""
         result = classify_expression('git log --format="%H" | head -5 | xargs -I{} git show --stat {}', database)
         assert result.classification == Classification.READONLY
+
+
+class TestBuildTools:
+    """Build tools with match_all subcommand mode (Maven, Gradle)."""
+
+    def test_mvn_clean_install(self, database):
+        result = classify_expression("mvn clean install", database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk.value == "LOW"
+
+    def test_mvn_clean_deploy(self, database):
+        result = classify_expression("mvn clean deploy", database)
+        assert result.classification == Classification.EXTERNAL_EFFECTS
+        assert result.risk.value == "MEDIUM"
+
+    def test_mvn_custom_plugin_goal(self, database):
+        """Unrecognized goal falls back to command base classification."""
+        result = classify_expression("mvn clean some-plugin:goal", database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+
+    def test_gradle_clean_build_test(self, database):
+        result = classify_expression("gradle clean build test", database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk.value == "LOW"
+
+    def test_gradle_publish(self, database):
+        result = classify_expression("gradle clean publish", database)
+        assert result.classification == Classification.EXTERNAL_EFFECTS
+
+    def test_gradle_dry_run(self, database):
+        result = classify_expression("gradle --dry-run clean build", database)
+        assert result.classification == Classification.READONLY

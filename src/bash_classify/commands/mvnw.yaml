@@ -3,6 +3,36 @@ command: mvnw
 description: "Apache Maven wrapper"
 classification: LOCAL_EFFECTS
 strict: false
+subcommand_mode: match_all
+subcommands:
+  clean:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  validate:
+    classification: READONLY
+  compile:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  test:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  test-compile:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  package:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  verify:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  install:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  site:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  deploy:
+    classification: EXTERNAL_EFFECTS
 global_options:
   --help: {overrides: READONLY}
   -h: {overrides: READONLY}

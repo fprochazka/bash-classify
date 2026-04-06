@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from bash_classify.matcher import _is_terminator, _strip_quotes, match_command
-from bash_classify.models import Classification, CommandDef, CommandInvocation, Risk
+from bash_classify.models import Classification, CommandDef, CommandInvocation, OptionDef, Risk, SubcommandMode
 
 
 def _make_invocation(argv: list[str]) -> CommandInvocation:
@@ -723,4 +723,78 @@ class TestRiskBuiltins:
 
     def test_test_builtin_low_risk(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["test", "-f", "file"]), database)
+        assert result.risk == Risk.LOW
+
+
+class TestMatchAllSubcommandMode:
+    """Tests for subcommand_mode: match_all."""
+
+    def _make_match_all_command(self) -> CommandDef:
+        """Create a command with match_all subcommand mode for testing."""
+        return CommandDef(
+            command="builder",
+            classification=Classification.LOCAL_EFFECTS,
+            subcommand_mode=SubcommandMode.MATCH_ALL,
+            strict=False,
+            subcommands={
+                "clean": CommandDef(command="clean", classification=Classification.LOCAL_EFFECTS, risk=Risk.LOW),
+                "compile": CommandDef(command="compile", classification=Classification.LOCAL_EFFECTS, risk=Risk.LOW),
+                "test": CommandDef(command="test", classification=Classification.LOCAL_EFFECTS, risk=Risk.LOW),
+                "deploy": CommandDef(command="deploy", classification=Classification.EXTERNAL_EFFECTS),
+            },
+            options={
+                "-B": OptionDef(),
+                "--dry-run": OptionDef(overrides=Classification.READONLY),
+            },
+        )
+
+    def test_single_known_goal(self) -> None:
+        cmd_def = self._make_match_all_command()
+        database = {"builder": cmd_def}
+        result = match_command(_make_invocation(["builder", "clean"]), database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+        assert result.matched_rule == "builder.clean"
+
+    def test_multiple_known_goals_all_low(self) -> None:
+        cmd_def = self._make_match_all_command()
+        database = {"builder": cmd_def}
+        result = match_command(_make_invocation(["builder", "clean", "compile", "test"]), database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+        assert result.matched_rule == "builder.clean.compile.test"
+
+    def test_multiple_goals_max_classification(self) -> None:
+        cmd_def = self._make_match_all_command()
+        database = {"builder": cmd_def}
+        result = match_command(_make_invocation(["builder", "clean", "deploy"]), database)
+        assert result.classification == Classification.EXTERNAL_EFFECTS
+        assert result.risk == Risk.MEDIUM  # deploy has no explicit risk, EXTERNAL_EFFECTS defaults to MEDIUM
+
+    def test_unrecognized_goal_uses_base(self) -> None:
+        cmd_def = self._make_match_all_command()
+        database = {"builder": cmd_def}
+        result = match_command(_make_invocation(["builder", "clean", "custom-plugin:goal"]), database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.MEDIUM  # base risk for LOCAL_EFFECTS
+
+    def test_no_goals_uses_base(self) -> None:
+        cmd_def = self._make_match_all_command()
+        database = {"builder": cmd_def}
+        result = match_command(_make_invocation(["builder"]), database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.MEDIUM
+
+    def test_options_still_processed(self) -> None:
+        cmd_def = self._make_match_all_command()
+        database = {"builder": cmd_def}
+        result = match_command(_make_invocation(["builder", "-B", "clean", "compile"]), database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+
+    def test_option_override_works(self) -> None:
+        cmd_def = self._make_match_all_command()
+        database = {"builder": cmd_def}
+        result = match_command(_make_invocation(["builder", "--dry-run", "clean"]), database)
+        assert result.classification == Classification.READONLY
         assert result.risk == Risk.LOW
