@@ -27,6 +27,9 @@ subcommands:
   diff:
     classification: READONLY
     strict: false
+  diff-tree:
+    classification: READONLY
+    strict: false
   blame:
     classification: READONLY
     strict: false
