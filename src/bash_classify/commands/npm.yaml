@@ -28,9 +28,11 @@ subcommands:
         classification: LOCAL_EFFECTS
   install:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   ci:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   run:
     classification: LOCAL_EFFECTS
@@ -43,9 +45,11 @@ subcommands:
     strict: false
   uninstall:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   update:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   publish:
     classification: DANGEROUS

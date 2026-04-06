@@ -38,21 +38,27 @@ subcommands:
         classification: READONLY
   install:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   update:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   add:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   remove:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   lock:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   build:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   init:
     classification: LOCAL_EFFECTS
@@ -62,6 +68,7 @@ subcommands:
     strict: false
   shell:
     classification: LOCAL_EFFECTS
+    risk: LOW
   publish:
     classification: DANGEROUS
     strict: false

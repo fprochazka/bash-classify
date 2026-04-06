@@ -13,14 +13,18 @@ subcommands:
     classification: READONLY
   install:
     classification: LOCAL_EFFECTS
+    risk: LOW
   uninstall:
     classification: LOCAL_EFFECTS
+    risk: LOW
   update:
     classification: LOCAL_EFFECTS
+    risk: LOW
   upgrade:
     classification: LOCAL_EFFECTS
   cleanup:
     classification: LOCAL_EFFECTS
+    risk: LOW
   doctor:
     classification: READONLY
   config:

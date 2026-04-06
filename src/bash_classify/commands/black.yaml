@@ -2,6 +2,7 @@
 command: black
 description: "Python code formatter"
 classification: LOCAL_EFFECTS
+risk: LOW
 strict: false
 global_options:
   --help: {overrides: READONLY}

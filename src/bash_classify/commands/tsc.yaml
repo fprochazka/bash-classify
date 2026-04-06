@@ -2,6 +2,7 @@
 command: tsc
 description: "TypeScript compiler"
 classification: LOCAL_EFFECTS
+risk: LOW
 strict: false
 global_options:
   --help: {overrides: READONLY}

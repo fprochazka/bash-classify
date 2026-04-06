@@ -7,8 +7,10 @@ global_options:
 subcommands:
   build:
     classification: LOCAL_EFFECTS
+    risk: LOW
   test:
     classification: LOCAL_EFFECTS
+    risk: LOW
   run:
     classification: DANGEROUS
   check:
@@ -19,18 +21,23 @@ subcommands:
       --fix: {overrides: LOCAL_EFFECTS}
   fmt:
     classification: LOCAL_EFFECTS
+    risk: LOW
   doc:
     classification: LOCAL_EFFECTS
+    risk: LOW
   publish:
     classification: DANGEROUS
   install:
     classification: LOCAL_EFFECTS
+    risk: LOW
     options:
       --list: {overrides: READONLY}
   clean:
     classification: LOCAL_EFFECTS
+    risk: LOW
   update:
     classification: LOCAL_EFFECTS
+    risk: LOW
   search:
     classification: READONLY
   tree:
@@ -41,15 +48,22 @@ subcommands:
     classification: READONLY
   bench:
     classification: LOCAL_EFFECTS
+    risk: LOW
   init:
     classification: LOCAL_EFFECTS
+    risk: LOW
   new:
     classification: LOCAL_EFFECTS
+    risk: LOW
   fix:
     classification: LOCAL_EFFECTS
+    risk: LOW
   add:
     classification: LOCAL_EFFECTS
+    risk: LOW
   remove:
     classification: LOCAL_EFFECTS
+    risk: LOW
   generate-lockfile:
     classification: LOCAL_EFFECTS
+    risk: LOW

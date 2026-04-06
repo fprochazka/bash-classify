@@ -2,6 +2,7 @@
 command: unzip
 description: "Extract files from ZIP archives"
 classification: LOCAL_EFFECTS
+risk: LOW
 strict: false
 global_options:
   --help: {overrides: READONLY}

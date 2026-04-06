@@ -19,9 +19,11 @@ subcommands:
     classification: READONLY
   install:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   uninstall:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   download:
     classification: EXTERNAL_EFFECTS

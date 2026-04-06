@@ -2,6 +2,7 @@
 command: mkdir
 description: "Create directories"
 classification: LOCAL_EFFECTS
+risk: LOW
 strict: false
 global_options:
   --help: {overrides: READONLY}

@@ -9,12 +9,15 @@ options:
 subcommands:
   install:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   add:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   remove:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   up:
     classification: LOCAL_EFFECTS

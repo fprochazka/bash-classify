@@ -7,12 +7,15 @@ global_options:
 subcommands:
   build:
     classification: LOCAL_EFFECTS
+    risk: LOW
   test:
     classification: LOCAL_EFFECTS
+    risk: LOW
   run:
     classification: DANGEROUS
   install:
     classification: LOCAL_EFFECTS
+    risk: LOW
   get:
     classification: LOCAL_EFFECTS
   mod:
@@ -28,6 +31,7 @@ subcommands:
         classification: READONLY
   fmt:
     classification: LOCAL_EFFECTS
+    risk: LOW
   vet:
     classification: READONLY
   doc:

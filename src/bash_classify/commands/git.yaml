@@ -89,6 +89,7 @@ subcommands:
   # --- Branch / tag / remote management ---
   branch:
     classification: LOCAL_EFFECTS
+    risk: LOW
     options:
       -a: {}
       --all: {aliases: [-a]}
@@ -96,18 +97,18 @@ subcommands:
       --verbose: {aliases: [-v]}
       -l: {overrides: READONLY}
       --list: {overrides: READONLY, aliases: [-l]}
-      -d: {overrides: LOCAL_EFFECTS}
+      -d: {overrides: LOCAL_EFFECTS, risk: MEDIUM}
       -D: {overrides: DANGEROUS}
-      --delete: {overrides: LOCAL_EFFECTS}
-      -m: {overrides: LOCAL_EFFECTS}
-      --move: {overrides: LOCAL_EFFECTS, aliases: [-m]}
+      --delete: {overrides: LOCAL_EFFECTS, risk: MEDIUM}
+      -m: {overrides: LOCAL_EFFECTS, risk: MEDIUM}
+      --move: {overrides: LOCAL_EFFECTS, risk: MEDIUM, aliases: [-m]}
       -M: {overrides: DANGEROUS}
-      -c: {overrides: LOCAL_EFFECTS}
-      --copy: {overrides: LOCAL_EFFECTS, aliases: [-c]}
+      -c: {overrides: LOCAL_EFFECTS, risk: LOW}
+      --copy: {overrides: LOCAL_EFFECTS, risk: LOW, aliases: [-c]}
       -C: {overrides: DANGEROUS}
-      --edit-description: {overrides: LOCAL_EFFECTS}
-      --set-upstream-to: {overrides: LOCAL_EFFECTS, takes_value: true}
-      --unset-upstream: {overrides: LOCAL_EFFECTS}
+      --edit-description: {overrides: LOCAL_EFFECTS, risk: LOW}
+      --set-upstream-to: {overrides: LOCAL_EFFECTS, risk: LOW, takes_value: true}
+      --unset-upstream: {overrides: LOCAL_EFFECTS, risk: LOW}
   remote:
     classification: READONLY
     strict: false
@@ -141,6 +142,7 @@ subcommands:
   # --- Staging and committing ---
   add:
     classification: LOCAL_EFFECTS
+    risk: LOW
     options:
       -A: {}
       --all: {aliases: [-A]}
@@ -154,13 +156,14 @@ subcommands:
       --dry-run: {aliases: [-n]}
   commit:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
     options:
       -m: {takes_value: true}
       --message: {takes_value: true, aliases: [-m]}
       -a: {}
       --all: {aliases: [-a]}
-      --amend: {}
+      --amend: {risk: MEDIUM}
       --no-edit: {}
       --allow-empty: {}
       --fixup: {takes_value: true}
@@ -250,28 +253,34 @@ subcommands:
     strict: false
   fetch:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
     options:
       --prune: {overrides: LOCAL_EFFECTS}
   clone:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   init:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
 
   # --- Working tree ---
   checkout:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   switch:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   restore:
     classification: LOCAL_EFFECTS
     strict: false
   stash:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
     subcommands:
       push:
@@ -306,17 +315,22 @@ subcommands:
         strict: false
       add:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       remove:
         classification: LOCAL_EFFECTS
+        risk: LOW
       prune:
         classification: LOCAL_EFFECTS
+        risk: LOW
       move:
         classification: LOCAL_EFFECTS
       lock:
         classification: LOCAL_EFFECTS
+        risk: LOW
       unlock:
         classification: LOCAL_EFFECTS
+        risk: LOW
       repair:
         classification: LOCAL_EFFECTS
   bisect:
@@ -370,8 +384,10 @@ subcommands:
         strict: false
       init:
         classification: LOCAL_EFFECTS
+        risk: LOW
       update:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       add:
         classification: LOCAL_EFFECTS
@@ -385,6 +401,7 @@ subcommands:
         classification: LOCAL_EFFECTS
       sync:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       absorbgitdirs:
         classification: LOCAL_EFFECTS
@@ -426,6 +443,7 @@ subcommands:
       --skip: {}
   format-patch:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
     options:
       --stdout: {overrides: READONLY}

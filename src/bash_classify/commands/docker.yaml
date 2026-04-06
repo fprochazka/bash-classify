@@ -60,9 +60,11 @@ subcommands:
     strict: false
   build:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   pull:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   push:
     classification: EXTERNAL_EFFECTS
@@ -114,9 +116,11 @@ subcommands:
         strict: false
       build:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       pull:
         classification: LOCAL_EFFECTS
+        risk: LOW
       push:
         classification: EXTERNAL_EFFECTS
       exec:

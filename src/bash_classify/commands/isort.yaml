@@ -2,6 +2,7 @@
 command: isort
 description: "Python import sorter"
 classification: LOCAL_EFFECTS
+risk: LOW
 strict: false
 global_options:
   --help: {overrides: READONLY}

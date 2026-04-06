@@ -9,10 +9,11 @@ subcommands:
     classification: READONLY
     strict: false
     options:
-      --fix: {overrides: LOCAL_EFFECTS}
-      --fix-only: {overrides: LOCAL_EFFECTS}
+      --fix: {overrides: LOCAL_EFFECTS, risk: LOW}
+      --fix-only: {overrides: LOCAL_EFFECTS, risk: LOW}
   format:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
     options:
       --check: {overrides: READONLY}
@@ -25,3 +26,4 @@ subcommands:
     classification: READONLY
   clean:
     classification: LOCAL_EFFECTS
+    risk: LOW

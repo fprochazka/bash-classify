@@ -606,9 +606,14 @@ class TestRiskDefaults:
         assert result.risk == Risk.LOW
 
     def test_local_effects_command_has_medium_risk(self, database: dict[str, CommandDef]) -> None:
-        result = match_command(_make_invocation(["git", "commit", "-m", "test"]), database)
+        result = match_command(_make_invocation(["git", "merge", "main"]), database)
         assert result.classification == Classification.LOCAL_EFFECTS
         assert result.risk == Risk.MEDIUM
+
+    def test_local_effects_command_with_explicit_low_risk(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["git", "commit", "-m", "test"]), database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
 
     def test_external_effects_command_has_medium_risk(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["git", "push"]), database)

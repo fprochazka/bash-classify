@@ -7,9 +7,11 @@ global_options:
 subcommands:
   install:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   uninstall:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   upgrade:
     classification: LOCAL_EFFECTS

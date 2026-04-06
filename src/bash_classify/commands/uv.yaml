@@ -23,14 +23,17 @@ subcommands:
         strict: false
   init:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   add:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
     options:
       --dry-run: {overrides: READONLY}
   remove:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
     options:
       --dry-run: {overrides: READONLY}
@@ -39,9 +42,11 @@ subcommands:
     strict: false
   sync:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   lock:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
     options:
       --check: {overrides: READONLY}
@@ -59,9 +64,11 @@ subcommands:
     subcommands:
       install:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       uninstall:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       list:
         classification: READONLY
@@ -75,9 +82,11 @@ subcommands:
     subcommands:
       install:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       uninstall:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       list:
         classification: READONLY
@@ -94,9 +103,11 @@ subcommands:
     subcommands:
       install:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       uninstall:
         classification: LOCAL_EFFECTS
+        risk: LOW
         strict: false
       list:
         classification: READONLY
@@ -113,9 +124,11 @@ subcommands:
         strict: false
   venv:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   build:
     classification: LOCAL_EFFECTS
+    risk: LOW
     strict: false
   publish:
     classification: DANGEROUS
@@ -125,8 +138,10 @@ subcommands:
     subcommands:
       clean:
         classification: LOCAL_EFFECTS
+        risk: LOW
       prune:
         classification: LOCAL_EFFECTS
+        risk: LOW
       dir:
         classification: READONLY
   self:
@@ -134,5 +149,6 @@ subcommands:
     subcommands:
       update:
         classification: LOCAL_EFFECTS
+        risk: LOW
   help:
     classification: READONLY
