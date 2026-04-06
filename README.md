@@ -4,9 +4,9 @@ Classify bash commands by their side-effect risk level.
 
 ## What it does
 
-bash-classify parses bash expressions using tree-sitter, classifies each command against a database of 120+ known commands, and outputs a structured JSON verdict. Commands are classified into five levels: `READONLY`, `LOCAL_EFFECTS`, `EXTERNAL_EFFECTS`, `DANGEROUS`, and `UNKNOWN`.
+bash-classify parses bash expressions using tree-sitter, classifies each command against a database of 120+ known commands, and outputs a structured JSON verdict. Commands are classified along two axes: **classification** (`READONLY`, `LOCAL_EFFECTS`, `EXTERNAL_EFFECTS`, `DANGEROUS`, `UNKNOWN`) describing what kind of effects a command has, and **risk** (`LOW`, `MEDIUM`, `HIGH`) describing how worried you should be.
 
-Designed primarily as a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook to automatically allow safe, read-only commands while flagging risky ones for human review.
+Designed primarily as a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook to automatically allow low-risk commands while flagging risky ones for human review.
 
 ## Installation
 
@@ -34,7 +34,7 @@ $ echo 'find . -name "*.pyc" -delete' | bash-classify | jq '.classification'
 
 ## Claude Code plugin
 
-The repo includes a Claude Code plugin that auto-allows readonly bash commands via a `PreToolUse` hook.
+The repo includes a Claude Code plugin that auto-allows low-risk bash commands via a `PreToolUse` hook.
 
 ```bash
 # Install the bash-classify CLI
@@ -53,7 +53,7 @@ claude plugin marketplace update fprochazka-bash-classify
 claude plugin update bash-classify-hook@fprochazka-bash-classify
 ```
 
-Once installed, any Bash tool call classified as `READONLY` is auto-approved — no permission prompt. Everything else (LOCAL_EFFECTS, EXTERNAL_EFFECTS, DANGEROUS, UNKNOWN) still requires confirmation.
+Once installed, any Bash tool call with `risk: LOW` is auto-approved — no permission prompt. This includes all `READONLY` commands plus safe routine operations like `git add`, `git commit`, `mkdir`, package installs, code formatters, and more. Commands with `MEDIUM` or `HIGH` risk still require confirmation.
 
 ## Command database
 
@@ -66,11 +66,23 @@ The classification database includes 120+ command definitions covering common Un
 
 | Level | Description | Examples |
 |---|---|---|
-| `READONLY` | No side effects, auto-approved | `ls`, `cat`, `grep`, `kubectl get` |
+| `READONLY` | No side effects | `ls`, `cat`, `grep`, `kubectl get` |
 | `LOCAL_EFFECTS` | Modifies local files or state only | `git add`, `git commit`, `cp`, `mkdir`, `pytest` |
 | `EXTERNAL_EFFECTS` | Interacts with external systems | `git push`, `kubectl apply`, `curl -d` |
 | `DANGEROUS` | Destructive, system-wide, or irreversible | `rm -rf`, `git push --force`, `chmod` |
 | `UNKNOWN` | Command not in database | Any unrecognized command |
+
+## Risk levels
+
+Each command also gets a **risk** rating, orthogonal to classification:
+
+| Risk | Description | Examples |
+|---|---|---|
+| `LOW` | Safe, routine operation — auto-approved | `ls`, `git add`, `git commit`, `mkdir`, `ruff format` |
+| `MEDIUM` | Normal caution warranted | `git push`, `cp`, `npm run`, `git rebase` |
+| `HIGH` | Dangerous or unknown — always requires confirmation | `rm -rf`, `git push --force`, unknown commands |
+
+Risk defaults are derived from classification (`READONLY`→LOW, `LOCAL_EFFECTS`→MEDIUM, `EXTERNAL_EFFECTS`→MEDIUM, `DANGEROUS`/`UNKNOWN`→HIGH) but can be overridden per command, subcommand, or option in the YAML database.
 
 ## How it works
 
@@ -86,6 +98,7 @@ from bash_classify import classify_expression
 
 result = classify_expression("kubectl get pods")
 print(result.classification)  # Classification.READONLY
+print(result.risk)            # Risk.LOW
 ```
 
 See [SPEC.md](SPEC.md) for the full specification.
