@@ -13,8 +13,10 @@ subcommands:
 
   apm:
     classification: READONLY
+    strict: false
   audit-logs:
     classification: READONLY
+    strict: false
   auth:
     classification: LOCAL_EFFECTS
     strict: false
@@ -33,76 +35,112 @@ subcommands:
         classification: LOCAL_EFFECTS
   cloud:
     classification: READONLY
+    strict: false
   containers:
     classification: READONLY
+    strict: false
   cost:
     classification: READONLY
+    strict: false
   dbm:
     classification: READONLY
+    strict: false
   ddsql:
     classification: READONLY
+    strict: false
   error-tracking:
     classification: READONLY
+    strict: false
   events:
     classification: READONLY
+    strict: false
   fleet:
     classification: READONLY
+    strict: false
   infrastructure:
     classification: READONLY
+    strict: false
   llm-obs:
     classification: READONLY
+    strict: false
   logs:
     classification: READONLY
+    strict: false
   on-call:
     classification: READONLY
+    strict: false
   organizations:
     classification: READONLY
+    strict: false
   rum:
     classification: READONLY
+    strict: false
   scorecards:
     classification: READONLY
+    strict: false
   service-catalog:
     classification: READONLY
+    strict: false
   static-analysis:
     classification: READONLY
+    strict: false
   status-pages:
     classification: READONLY
+    strict: false
   symdb:
     classification: READONLY
+    strict: false
   synthetics:
     classification: READONLY
+    strict: false
   traces:
     classification: READONLY
+    strict: false
   usage:
     classification: READONLY
+    strict: false
   users:
     classification: READONLY
+    strict: false
   version:
     classification: READONLY
+    strict: false
   status:
     classification: READONLY
+    strict: false
   completions:
     classification: READONLY
+    strict: false
   test-optimization:
     classification: READONLY
+    strict: false
   code-coverage:
     classification: READONLY
+    strict: false
   cicd:
     classification: READONLY
+    strict: false
   product-analytics:
     classification: READONLY
+    strict: false
   data-governance:
     classification: READONLY
+    strict: false
   feature-flags:
     classification: READONLY
+    strict: false
   bits:
     classification: READONLY
+    strict: false
   hamr:
     classification: READONLY
+    strict: false
   misc:
     classification: READONLY
+    strict: false
   agent:
     classification: READONLY
+    strict: false
 
 
   monitors:
