@@ -2,6 +2,7 @@
 command: tee
 description: "Read from stdin and write to stdout and files"
 classification: LOCAL_EFFECTS
+risk: LOW
 strict: false
 global_options:
   --help: {overrides: READONLY}
