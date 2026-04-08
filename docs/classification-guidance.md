@@ -453,7 +453,15 @@ subcommands:
 - Unrecognized goals (e.g. custom Maven plugin goals like `some-plugin:goal`) fall back to the command's base classification and risk
 - Option overrides (e.g. `--dry-run`) still take precedence over goal aggregation
 
-## 10. Common Patterns
+## 10. Temp Path Risk Behavior
+
+When a command writes to a file via output redirects (`>`, `>>`, `2>`, `&>`, `>&`), its risk is normally elevated to at least `MEDIUM`. However, if **all** write targets are under `/tmp` or `/var/tmp`, the risk elevation is skipped and the command stays at `LOW` risk (assuming no other risk elevations apply).
+
+This means `cat > /tmp/foo.txt` is classified as `LOCAL_EFFECTS` with risk `LOW`, while `cat > ~/foo.txt` is classified as `LOCAL_EFFECTS` with risk `MEDIUM`.
+
+The tool also reports `write_paths` and `read_paths` in the output, extracted from redirect operators. These fields are omitted from the JSON output when empty.
+
+## 11. Common Patterns
 
 | Pattern | Example | Classification |
 |---------|---------|---------------|

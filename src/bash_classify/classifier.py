@@ -48,6 +48,22 @@ _SAFE_PREFIXES = (
     "/dev/udp",
 )
 
+_WRITE_OPERATORS = {">", ">>", "2>", "&>", ">&"}
+_READ_OPERATORS = {"<"}
+_HEREDOC_OPERATORS = {"<<", "<<<"}
+
+_DEV_PATHS = ("/dev/null", "/dev/stdin", "/dev/stdout", "/dev/stderr", "/dev/fd/")
+
+
+def _is_temp_path(path: str) -> bool:
+    """Check if a path is under a temp directory."""
+    return path.startswith("/tmp/") or path == "/tmp" or path.startswith("/var/tmp/") or path == "/var/tmp"
+
+
+def _is_real_file_path(path: str) -> bool:
+    """Check if a redirect target is a real file path (not /dev/null etc)."""
+    return all(not (path == dev or path.startswith(dev)) for dev in _DEV_PATHS)
+
 
 def _is_system_path(path: str) -> bool:
     """Check if a path is a system directory that should trigger DANGEROUS when written to."""
@@ -103,6 +119,20 @@ def classify_expression(
         else:
             result = match_command(invocation, database)
 
+        # Collect file paths from redirects
+        write_paths: list[str] = []
+        read_paths: list[str] = []
+        all_write_targets_are_temp = True
+
+        for redirect in invocation.redirects:
+            if redirect.operator in _WRITE_OPERATORS and _is_real_file_path(redirect.target):
+                write_paths.append(redirect.target)
+                if not _is_temp_path(redirect.target):
+                    all_write_targets_are_temp = False
+            elif redirect.operator in _READ_OPERATORS and _is_real_file_path(redirect.target):
+                read_paths.append(redirect.target)
+            # Skip << and <<< (heredoc/herestring - target is delimiter, not file)
+
         # Step 4: Apply redirect classification
         for redirect in invocation.redirects:
             if redirect.affects_classification:
@@ -114,8 +144,9 @@ def classify_expression(
                         if result.classification_reason
                         else "elevated by output redirect"
                     )
-                # Elevate risk to at least MEDIUM for output redirects
-                result.risk = Risk.max_severity(result.risk, Risk.MEDIUM)
+                # Only elevate risk if write targets are NOT all temp paths
+                if not (write_paths and all_write_targets_are_temp):
+                    result.risk = Risk.max_severity(result.risk, Risk.MEDIUM)
             # /dev/tcp and /dev/udp redirects are network access -> DANGEROUS
             if redirect.target.startswith("/dev/tcp/") or redirect.target.startswith("/dev/udp/"):
                 elevated = Classification.max_severity(result.classification, Classification.DANGEROUS)
@@ -165,11 +196,23 @@ def classify_expression(
                 ) + f"; elevated to DANGEROUS: system path {system_paths_found[0]}"
                 result.risk = Risk.HIGH
 
+        result.write_paths = write_paths if write_paths else None
+        result.read_paths = read_paths if read_paths else None
+
         command_results.append(result)
         all_redirects.extend(invocation.redirects)
 
     # Step 7: Collect directories
     directories = _collect_directories(command_results)
+
+    # Step 7b: Aggregate write_paths and read_paths
+    all_write_paths: list[str] = []
+    all_read_paths: list[str] = []
+    for cmd_result in command_results:
+        if cmd_result.write_paths:
+            all_write_paths.extend(cmd_result.write_paths)
+        if cmd_result.read_paths:
+            all_read_paths.extend(cmd_result.read_paths)
 
     # Step 8: Compute composite classification and risk
     if not command_results and parse_warnings:
@@ -187,6 +230,8 @@ def classify_expression(
         classification=overall,
         risk=overall_risk,
         directories=directories,
+        write_paths=all_write_paths,
+        read_paths=all_read_paths,
         commands=command_results,
         redirects=all_redirects,
         parse_warnings=parse_warnings,

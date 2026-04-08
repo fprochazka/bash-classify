@@ -129,6 +129,8 @@ class TestResultToDict:
             classification=Classification.EXTERNAL_EFFECTS,
             risk=Risk.MEDIUM,
             directories=[],
+            write_paths=[],
+            read_paths=[],
             commands=[cmd],
             redirects=[redirect],
             parse_warnings=["some warning"],
@@ -155,6 +157,8 @@ class TestResultToDict:
             classification=Classification.READONLY,
             risk=Risk.LOW,
             directories=[],
+            write_paths=[],
+            read_paths=[],
             commands=[cmd],
             redirects=[],
             parse_warnings=[],
@@ -238,6 +242,8 @@ class TestRiskSerialization:
             classification=Classification.READONLY,
             risk=Risk.LOW,
             directories=[],
+            write_paths=[],
+            read_paths=[],
             commands=[cmd],
             redirects=[],
             parse_warnings=[],
@@ -259,3 +265,96 @@ class TestRiskSerialization:
             d = _command_to_dict(result)
             assert d["risk"] == risk.value
             assert isinstance(d["risk"], str)
+
+
+class TestWriteReadPaths:
+    def test_write_paths_in_command_dict(self) -> None:
+        result = CommandResult(
+            command=["cat"],
+            argv=["cat"],
+            classification=Classification.LOCAL_EFFECTS,
+            risk=Risk.LOW,
+            matched_rule="cat",
+            inner_commands=[],
+            write_paths=["/tmp/foo.txt"],
+        )
+        d = _command_to_dict(result)
+        assert d["write_paths"] == ["/tmp/foo.txt"]
+        assert "read_paths" not in d
+
+    def test_read_paths_in_command_dict(self) -> None:
+        result = CommandResult(
+            command=["cat"],
+            argv=["cat"],
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            matched_rule="cat",
+            inner_commands=[],
+            read_paths=["/etc/hosts"],
+        )
+        d = _command_to_dict(result)
+        assert d["read_paths"] == ["/etc/hosts"]
+        assert "write_paths" not in d
+
+    def test_paths_omitted_when_empty(self) -> None:
+        result = CommandResult(
+            command=["ls"],
+            argv=["ls"],
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            matched_rule="ls",
+            inner_commands=[],
+        )
+        d = _command_to_dict(result)
+        assert "write_paths" not in d
+        assert "read_paths" not in d
+
+    def test_expression_write_read_paths(self) -> None:
+        cmd = CommandResult(
+            command=["cat"],
+            argv=["cat"],
+            classification=Classification.LOCAL_EFFECTS,
+            risk=Risk.LOW,
+            matched_rule="cat",
+            inner_commands=[],
+            write_paths=["/tmp/out.txt"],
+            read_paths=["/etc/hosts"],
+        )
+        result = ExpressionResult(
+            expression="cat < /etc/hosts > /tmp/out.txt",
+            classification=Classification.LOCAL_EFFECTS,
+            risk=Risk.LOW,
+            directories=[],
+            write_paths=["/tmp/out.txt"],
+            read_paths=["/etc/hosts"],
+            commands=[cmd],
+            redirects=[],
+            parse_warnings=[],
+        )
+        d = _result_to_dict(result)
+        assert d["write_paths"] == ["/tmp/out.txt"]
+        assert d["read_paths"] == ["/etc/hosts"]
+
+    def test_expression_paths_omitted_when_empty(self) -> None:
+        cmd = CommandResult(
+            command=["ls"],
+            argv=["ls"],
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            matched_rule="ls",
+            inner_commands=[],
+        )
+        result = ExpressionResult(
+            expression="ls",
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            directories=[],
+            write_paths=[],
+            read_paths=[],
+            commands=[cmd],
+            redirects=[],
+            parse_warnings=[],
+        )
+        d = _result_to_dict(result)
+        assert "write_paths" not in d
+        assert "read_paths" not in d

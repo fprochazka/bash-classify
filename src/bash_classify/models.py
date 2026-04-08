@@ -177,6 +177,8 @@ class CommandResult:
     classification_reason: str | None = None
     overriding_option: str | None = None
     directories: list[str] | None = None
+    write_paths: list[str] | None = None
+    read_paths: list[str] | None = None
 
 
 @dataclass
@@ -187,6 +189,8 @@ class ExpressionResult:
     classification: Classification
     risk: Risk
     directories: list[str]
+    write_paths: list[str]
+    read_paths: list[str]
     commands: list[CommandResult]
     redirects: list[Redirect]
     parse_warnings: list[str]

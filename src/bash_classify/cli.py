@@ -57,6 +57,11 @@ def _command_to_dict(result: CommandResult) -> dict:
     if result.overriding_option is not None:
         d["overriding_option"] = result.overriding_option
 
+    if result.write_paths:
+        d["write_paths"] = result.write_paths
+    if result.read_paths:
+        d["read_paths"] = result.read_paths
+
     d["inner_commands"] = [_inner_command_to_dict(ic) for ic in result.inner_commands]
 
     return d
@@ -80,6 +85,11 @@ def _result_to_dict(result: ExpressionResult) -> dict:
         "directories": result.directories,
         "commands": [_command_to_dict(cmd) for cmd in result.commands],
     }
+
+    if result.write_paths:
+        d["write_paths"] = result.write_paths
+    if result.read_paths:
+        d["read_paths"] = result.read_paths
 
     if result.redirects:
         d["redirects"] = [_redirect_to_dict(r) for r in result.redirects]

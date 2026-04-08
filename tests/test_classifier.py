@@ -631,3 +631,59 @@ class TestRiskExpressionAggregation:
         result = classify_expression("if then fi", database=database)
         assert result.classification == Classification.UNKNOWN
         assert result.risk == Risk.HIGH
+
+
+class TestFilePathDetection:
+    """Tests for write_paths/read_paths detection and temp path risk lowering."""
+
+    def test_write_to_tmp_stays_low_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat > /tmp/foo.txt", database=database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+        assert result.write_paths == ["/tmp/foo.txt"]
+        cmd = result.commands[0]
+        assert cmd.write_paths == ["/tmp/foo.txt"]
+
+    def test_write_to_var_tmp_stays_low_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat > /var/tmp/foo.txt", database=database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+        assert result.write_paths == ["/var/tmp/foo.txt"]
+
+    def test_write_to_home_elevates_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat > /home/user/foo.txt", database=database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.MEDIUM
+        assert result.write_paths == ["/home/user/foo.txt"]
+
+    def test_mixed_tmp_and_home_elevates_risk(self, database: dict[str, CommandDef]) -> None:
+        # Two redirects: one temp, one not -- should elevate
+        result = classify_expression("echo hello > /tmp/a.txt > /home/user/b.txt", database=database)
+        assert result.risk == Risk.MEDIUM
+
+    def test_read_redirect_detected(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat < /home/user/data.txt", database=database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+        assert result.read_paths == ["/home/user/data.txt"]
+        assert result.write_paths == []
+
+    def test_read_and_write_redirect(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("sort < /home/user/hosts > /tmp/sorted.txt", database=database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+        assert result.write_paths == ["/tmp/sorted.txt"]
+        assert result.read_paths == ["/home/user/hosts"]
+
+    def test_dev_null_excluded_from_write_paths(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat > /dev/null", database=database)
+        assert result.write_paths == []
+
+    def test_heredoc_not_in_read_paths(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat << EOF\nhello\nEOF", database=database)
+        assert result.read_paths == []
+
+    def test_expression_level_aggregation(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat < /home/user/data.txt | tee /tmp/out.txt > /tmp/log.txt", database=database)
+        assert "/home/user/data.txt" in result.read_paths
+        assert "/tmp/log.txt" in result.write_paths

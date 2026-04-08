@@ -246,7 +246,21 @@ Certain expression-level patterns elevate risk to at least `HIGH`:
 - Writing to system paths (e.g. `/etc`, `/usr`)
 - Redirecting to `/dev/tcp` or `/dev/udp`
 - Backgrounding (`cmd &`)
-- Output redirects to non-`/dev/null` targets
+- Output redirects to non-`/dev/null` targets (except when all write targets are under `/tmp` or `/var/tmp`)
+
+#### Temp path risk lowering
+
+When all write targets from output redirects (`>`, `>>`, `2>`, `&>`, `>&`) are under `/tmp` or `/var/tmp`, the risk elevation to `MEDIUM` from output redirects is skipped. This allows commands like `cat > /tmp/foo.txt` to remain at `LOW` risk while still being classified as `LOCAL_EFFECTS`.
+
+### File path detection
+
+The tool extracts file paths from shell redirects:
+
+- **`write_paths`**: Files targeted by output redirects (`>`, `>>`, `2>`, `&>`, `>&`), excluding `/dev/null`, `/dev/stdin`, `/dev/stdout`, `/dev/stderr`, and `/dev/fd/*`.
+- **`read_paths`**: Files targeted by input redirects (`<`), excluding the same `/dev/*` paths.
+- Heredoc operators (`<<`, `<<<`) are not included — their target is a delimiter, not a file path.
+
+Paths are reported at both the per-command level (`commands[].write_paths`, `commands[].read_paths`) and the expression level (aggregated from all commands).
 
 ### Composite classification
 
@@ -918,6 +932,8 @@ The `commands` list is recursive — any command entry can contain `inner_comman
   "expression": "string — the original input",
   "classification": "READONLY | LOCAL_EFFECTS | EXTERNAL_EFFECTS | DANGEROUS | UNKNOWN",
   "directories": ["string — detected directories"],
+  "write_paths": ["string — files targeted by output redirects (optional, omitted when empty)"],
+  "read_paths": ["string — files targeted by input redirects (optional, omitted when empty)"],
   "commands": [
     {
       "command": ["string — binary + subcommand chain (without inner command tokens)"],
@@ -928,6 +944,8 @@ The `commands` list is recursive — any command entry can contain `inner_comman
       "remaining_options": ["string — options that were not in database"],
       "classification_reason": "string — why this classification was chosen",
       "overriding_option": "string | null — the option that elevated classification",
+      "write_paths": ["string — files targeted by output redirects (optional, omitted when empty)"],
+      "read_paths": ["string — files targeted by input redirects (optional, omitted when empty)"],
       "inner_commands": [
         {
           "delegation_mode": "string — how this inner command was extracted",
