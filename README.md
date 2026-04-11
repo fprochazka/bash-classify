@@ -4,7 +4,7 @@ Classify bash commands by their side-effect risk level.
 
 ## What it does
 
-bash-classify parses bash expressions using tree-sitter, classifies each command against a database of 120+ known commands, and outputs a structured JSON verdict. Commands are classified along two axes: **classification** (`READONLY`, `LOCAL_EFFECTS`, `EXTERNAL_EFFECTS`, `DANGEROUS`, `UNKNOWN`) describing what kind of effects a command has, and **risk** (`LOW`, `MEDIUM`, `HIGH`) describing how worried you should be.
+bash-classify parses bash expressions using tree-sitter, classifies each command against a database of 150+ known commands, and outputs a structured JSON verdict. Commands are classified along two axes: **classification** (`READONLY`, `LOCAL_EFFECTS`, `EXTERNAL_EFFECTS`, `DANGEROUS`, `UNKNOWN`) describing what kind of effects a command has, and **risk** (`LOW`, `MEDIUM`, `HIGH`) describing how worried you should be.
 
 Designed primarily as a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook to automatically allow low-risk commands while flagging risky ones for human review.
 
@@ -57,7 +57,7 @@ Once installed, any Bash tool call with `risk: LOW` is auto-approved — no perm
 
 ## Command database
 
-The classification database includes 120+ command definitions covering common Unix utilities, package managers, container tools, cloud CLIs, and more.
+The classification database includes 150+ command definitions covering common Unix utilities, package managers, container tools, cloud CLIs, and more.
 
 - See [docs/classification-guidance.md](docs/classification-guidance.md) for how to add new commands
 - YAML definitions are validated against a JSON Schema for IDE autocomplete and CI checks
@@ -89,7 +89,9 @@ Risk defaults are derived from classification (`READONLY`→LOW, `LOCAL_EFFECTS`
 - **Tree-sitter parsing** -- bash expressions are parsed into an AST for accurate command extraction, handling pipes, subshells, and command substitution
 - **YAML command database** -- each command has classification rules with subcommand and option matching
 - **Subcommand matching** -- `kubectl get` and `kubectl delete` can have different classifications
+- **Multi-goal build tools** -- `subcommand_mode: match_all` handles commands like `mvn clean install` and `gradle clean build test` where multiple goals can be combined in any order
 - **Delegation for wrappers** -- commands like `xargs`, `sudo`, and `env` delegate classification to the inner command
+- **File path detection** -- redirect operators (`>`, `>>`, `<`) are parsed into `write_paths`/`read_paths` in the output; writes to `/tmp` and `/var/tmp` stay at LOW risk
 
 ## Python API
 
