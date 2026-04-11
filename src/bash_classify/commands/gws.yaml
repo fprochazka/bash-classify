@@ -1,0 +1,202 @@
+# $schema: ../../../schemas/command.schema.json
+command: gws
+description: "Google Workspace CLI — manages Drive, Sheets, Gmail, Calendar, Docs, and more via Google APIs"
+classification: READONLY
+strict: false
+
+# Dispatch model:
+#
+# `gws <service> <resource> [sub-resource] <method>` is a 3-4 level hierarchy.
+# bash-classify only honors `subcommand_mode: match_all` on the top-level
+# command, not on nested subcommands. To avoid enumerating every
+# service × resource × method triple, we run the whole thing in match_all
+# mode at the top. Every positional token is matched independently against
+# the flat verb dictionary below; unknown tokens (service names like
+# "drive", resource names like "files", IDs, etc.) fall back to the base
+# READONLY classification. The final classification is the max severity
+# across all matched tokens.
+#
+# This means:
+#   gws drive files list         -> list (READONLY)                -> READONLY
+#   gws drive files delete       -> delete (DANGEROUS)              -> DANGEROUS
+#   gws drive files create       -> create (EXTERNAL_EFFECTS)       -> EXTERNAL
+#   gws gmail users messages send -> send (EXTERNAL_EFFECTS)        -> EXTERNAL
+#
+# The one wart: the verb `export` is used both for "download as format"
+# (drive/sheets export = READONLY) and for `auth export` (prints decrypted
+# credentials). We classify it as READONLY because the drive case is far
+# more common. `auth export` is not specially flagged here — review it by
+# hand.
+subcommand_mode: match_all
+
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  --format: {takes_value: true}
+  --params: {takes_value: true}
+  --json: {takes_value: true}
+  --upload: {takes_value: true}
+  --upload-content-type: {takes_value: true}
+  --output: {takes_value: true}
+  --api-version: {takes_value: true}
+  --page-all: {}
+  --page-limit: {takes_value: true}
+  --page-delay: {takes_value: true}
+  --sanitize: {takes_value: true}
+  --dry-run: {overrides: READONLY, risk: LOW}
+
+subcommands:
+  # ── service names (explicit READONLY so they don't pollute risk) ──
+  drive: {classification: READONLY}
+  sheets: {classification: READONLY}
+  gmail: {classification: READONLY}
+  calendar: {classification: READONLY}
+  docs: {classification: READONLY}
+  slides: {classification: READONLY}
+  tasks: {classification: READONLY}
+  people: {classification: READONLY}
+  chat: {classification: READONLY}
+  classroom: {classification: READONLY}
+  forms: {classification: READONLY}
+  keep: {classification: READONLY}
+  meet: {classification: READONLY}
+  events: {classification: READONLY}
+  workflow: {classification: READONLY}
+  wf: {classification: READONLY}
+  script: {classification: READONLY}
+  admin-reports: {classification: READONLY}
+  reports: {classification: READONLY}
+  modelarmor: {classification: READONLY}
+  schema: {classification: READONLY}
+
+  # ── auth: a flat "verb" since match_all treats every token equally ─
+  # `auth` itself maps to READONLY; the method tokens below elevate.
+  # Note `auth export` ends up READONLY — review by hand (see header).
+  auth: {classification: READONLY}
+  status: {classification: READONLY}
+  login:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  logout:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+  setup: {classification: LOCAL_EFFECTS}
+
+  # ── READONLY methods ──────────────────────────────────────────────
+  get: {classification: READONLY}
+  getProfile: {classification: READONLY}
+  getContent: {classification: READONLY}
+  getMetrics: {classification: READONLY}
+  getThumbnail: {classification: READONLY}
+  getByDataFilter: {classification: READONLY}
+  getBatchGet: {classification: READONLY}
+  batchGet: {classification: READONLY}
+  list: {classification: READONLY}
+  listLabels: {classification: READONLY}
+  listContactGroups: {classification: READONLY}
+  listDirectoryPeople: {classification: READONLY}
+  listScriptProcesses: {classification: READONLY}
+  listUserProcesses: {classification: READONLY}
+  searchContacts: {classification: READONLY}
+  searchDirectoryPeople: {classification: READONLY}
+  search: {classification: READONLY}
+  query: {classification: READONLY}
+  findDirectMessage: {classification: READONLY}
+  freebusy: {classification: READONLY}
+  instances: {classification: READONLY}
+  about: {classification: READONLY}
+  download: {classification: READONLY}
+  export: {classification: READONLY}           # drive/sheets/docs export; NOTE: auth export also matches
+  sanitizeUserPrompt: {classification: READONLY}
+  sanitizeModelResponse: {classification: READONLY}
+  generateIds: {classification: READONLY}
+  generateCseToken: {classification: READONLY}
+
+  # ── READONLY helpers ('+' prefix) ─────────────────────────────────
+  "+read": {classification: READONLY}
+  "+triage": {classification: READONLY}
+  "+watch": {classification: READONLY}
+  "+agenda": {classification: READONLY}
+  "+standup-report": {classification: READONLY}
+  "+meeting-prep": {classification: READONLY}
+  "+weekly-digest": {classification: READONLY}
+  "+subscribe": {classification: READONLY}
+  "+sanitize-prompt": {classification: READONLY}
+  "+sanitize-response": {classification: READONLY}
+
+  # ── EXTERNAL_EFFECTS methods ──────────────────────────────────────
+  create: {classification: EXTERNAL_EFFECTS}
+  createContact: {classification: EXTERNAL_EFFECTS}
+  update: {classification: EXTERNAL_EFFECTS}
+  updateContent: {classification: EXTERNAL_EFFECTS}
+  updateContact: {classification: EXTERNAL_EFFECTS}
+  updateContactPhoto: {classification: EXTERNAL_EFFECTS}
+  patch: {classification: EXTERNAL_EFFECTS}
+  insert: {classification: EXTERNAL_EFFECTS}
+  import: {classification: EXTERNAL_EFFECTS}
+  send: {classification: EXTERNAL_EFFECTS}
+  copy: {classification: EXTERNAL_EFFECTS}
+  copyTo: {classification: EXTERNAL_EFFECTS}
+  copyOtherContactToMyContactsGroup: {classification: EXTERNAL_EFFECTS}
+  move: {classification: EXTERNAL_EFFECTS}
+  modify: {classification: EXTERNAL_EFFECTS}
+  modifyLabels: {classification: EXTERNAL_EFFECTS}
+  modifyAttachments: {classification: EXTERNAL_EFFECTS}
+  modifyAssignment: {classification: EXTERNAL_EFFECTS}
+  modifyIndividualStudentsOptions: {classification: EXTERNAL_EFFECTS}
+  batchUpdate: {classification: EXTERNAL_EFFECTS}
+  batchUpdateByDataFilter: {classification: EXTERNAL_EFFECTS}
+  batchModify: {classification: EXTERNAL_EFFECTS}
+  batchCreateContacts: {classification: EXTERNAL_EFFECTS}
+  batchUpdateContacts: {classification: EXTERNAL_EFFECTS}
+  append: {classification: EXTERNAL_EFFECTS}
+  upload: {classification: EXTERNAL_EFFECTS}
+  watch: {classification: EXTERNAL_EFFECTS}
+  stop: {classification: EXTERNAL_EFFECTS}
+  untrash: {classification: EXTERNAL_EFFECTS}
+  hide: {classification: EXTERNAL_EFFECTS}
+  unhide: {classification: EXTERNAL_EFFECTS}
+  enable: {classification: EXTERNAL_EFFECTS}
+  disable: {classification: EXTERNAL_EFFECTS}
+  verify: {classification: EXTERNAL_EFFECTS}
+  accept: {classification: EXTERNAL_EFFECTS}
+  reclaim: {classification: EXTERNAL_EFFECTS}
+  return: {classification: EXTERNAL_EFFECTS}
+  turnIn: {classification: EXTERNAL_EFFECTS}
+  quickAdd: {classification: EXTERNAL_EFFECTS}
+  setUp: {classification: EXTERNAL_EFFECTS}
+  setPublishSettings: {classification: EXTERNAL_EFFECTS}
+  completeImport: {classification: EXTERNAL_EFFECTS}
+  reactivate: {classification: EXTERNAL_EFFECTS}
+  publish: {classification: EXTERNAL_EFFECTS}
+  endActiveConference: {classification: EXTERNAL_EFFECTS}
+
+  # ── EXTERNAL_EFFECTS helpers ──────────────────────────────────────
+  "+upload": {classification: EXTERNAL_EFFECTS}
+  "+push": {classification: EXTERNAL_EFFECTS}
+  "+send": {classification: EXTERNAL_EFFECTS}
+  "+reply": {classification: EXTERNAL_EFFECTS}
+  "+reply-all": {classification: EXTERNAL_EFFECTS}
+  "+forward": {classification: EXTERNAL_EFFECTS}
+  "+insert": {classification: EXTERNAL_EFFECTS}
+  "+write": {classification: EXTERNAL_EFFECTS}
+  "+append": {classification: EXTERNAL_EFFECTS}
+  "+email-to-task": {classification: EXTERNAL_EFFECTS}
+  "+file-announce": {classification: EXTERNAL_EFFECTS}
+  "+renew": {classification: EXTERNAL_EFFECTS}
+  "+create-template": {classification: EXTERNAL_EFFECTS}
+
+  # ── DANGEROUS methods ─────────────────────────────────────────────
+  delete: {classification: DANGEROUS}
+  deleteContact: {classification: DANGEROUS}
+  deleteContactPhoto: {classification: DANGEROUS}
+  batchDelete: {classification: DANGEROUS}
+  batchDeleteContacts: {classification: DANGEROUS}
+  batchClear: {classification: DANGEROUS}
+  batchClearByDataFilter: {classification: DANGEROUS}
+  clear: {classification: DANGEROUS}
+  trash: {classification: DANGEROUS}
+  emptyTrash: {classification: DANGEROUS}
+  remove: {classification: DANGEROUS}
+  # Running an Apps Script project executes arbitrary code.
+  run: {classification: DANGEROUS}
