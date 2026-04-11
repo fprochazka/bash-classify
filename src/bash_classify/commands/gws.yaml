@@ -22,11 +22,11 @@ strict: false
 #   gws drive files create       -> create (EXTERNAL_EFFECTS)       -> EXTERNAL
 #   gws gmail users messages send -> send (EXTERNAL_EFFECTS)        -> EXTERNAL
 #
-# The one wart: the verb `export` is used both for "download as format"
-# (drive/sheets export = READONLY) and for `auth export` (prints decrypted
-# credentials). We classify it as READONLY because the drive case is far
-# more common. `auth export` is not specially flagged here — review it by
-# hand.
+# The verb `export` is used both for "download as format" (drive/sheets/docs
+# export = READONLY) and for `auth export`, which by default prints *masked*
+# credentials (also READONLY). Only `auth export --unmasked` prints plaintext
+# OAuth tokens and client secrets — that specific case is flagged via the
+# `--unmasked` global option override below.
 subcommand_mode: match_all
 
 global_options:
@@ -44,6 +44,8 @@ global_options:
   --page-delay: {takes_value: true}
   --sanitize: {takes_value: true}
   --dry-run: {overrides: READONLY, risk: LOW}
+  # `auth export --unmasked` prints plaintext OAuth tokens and client secrets.
+  --unmasked: {overrides: DANGEROUS, risk: HIGH}
 
 subcommands:
   # ── service names (explicit READONLY so they don't pollute risk) ──
@@ -64,6 +66,7 @@ subcommands:
   workflow: {classification: READONLY}
   wf: {classification: READONLY}
   script: {classification: READONLY}
+  admin: {classification: READONLY}
   admin-reports: {classification: READONLY}
   reports: {classification: READONLY}
   modelarmor: {classification: READONLY}
@@ -71,16 +74,18 @@ subcommands:
 
   # ── auth: a flat "verb" since match_all treats every token equally ─
   # `auth` itself maps to READONLY; the method tokens below elevate.
-  # Note `auth export` ends up READONLY — review by hand (see header).
+  # `auth export` defaults to READONLY (masked); `--unmasked` is flagged
+  # separately via the global option override above.
   auth: {classification: READONLY}
   status: {classification: READONLY}
-  login:
-    classification: LOCAL_EFFECTS
-    risk: LOW
+  # `auth login` performs an OAuth2 handshake with Google — creates/rotates
+  # a credential server-side, so it has external effects.
+  login: {classification: EXTERNAL_EFFECTS}
   logout:
     classification: LOCAL_EFFECTS
     risk: LOW
-  setup: {classification: LOCAL_EFFECTS}
+  # `auth setup` can shell out to `gcloud` and create GCP OAuth clients/projects.
+  setup: {classification: EXTERNAL_EFFECTS}
 
   # ── READONLY methods ──────────────────────────────────────────────
   get: {classification: READONLY}
@@ -107,22 +112,17 @@ subcommands:
   about: {classification: READONLY}
   download: {classification: READONLY}
   export: {classification: READONLY}           # drive/sheets/docs export; NOTE: auth export also matches
-  sanitizeUserPrompt: {classification: READONLY}
-  sanitizeModelResponse: {classification: READONLY}
   generateIds: {classification: READONLY}
   generateCseToken: {classification: READONLY}
 
   # ── READONLY helpers ('+' prefix) ─────────────────────────────────
   "+read": {classification: READONLY}
   "+triage": {classification: READONLY}
-  "+watch": {classification: READONLY}
   "+agenda": {classification: READONLY}
   "+standup-report": {classification: READONLY}
   "+meeting-prep": {classification: READONLY}
   "+weekly-digest": {classification: READONLY}
   "+subscribe": {classification: READONLY}
-  "+sanitize-prompt": {classification: READONLY}
-  "+sanitize-response": {classification: READONLY}
 
   # ── EXTERNAL_EFFECTS methods ──────────────────────────────────────
   create: {classification: EXTERNAL_EFFECTS}
@@ -170,11 +170,20 @@ subcommands:
   reactivate: {classification: EXTERNAL_EFFECTS}
   publish: {classification: EXTERNAL_EFFECTS}
   endActiveConference: {classification: EXTERNAL_EFFECTS}
+  # Model Armor sanitize* methods POST user-controlled text to the remote
+  # modelarmor.{region}.rep.googleapis.com endpoint.
+  sanitizeUserPrompt: {classification: EXTERNAL_EFFECTS}
+  sanitizeModelResponse: {classification: EXTERNAL_EFFECTS}
 
   # ── EXTERNAL_EFFECTS helpers ──────────────────────────────────────
   "+upload": {classification: EXTERNAL_EFFECTS}
   "+push": {classification: EXTERNAL_EFFECTS}
   "+send": {classification: EXTERNAL_EFFECTS}
+  # `gmail +watch` creates Pub/Sub topic+subscription and calls users.watch —
+  # leaves persistent server-side GCP resources unless --cleanup is passed.
+  "+watch": {classification: EXTERNAL_EFFECTS}
+  "+sanitize-prompt": {classification: EXTERNAL_EFFECTS}
+  "+sanitize-response": {classification: EXTERNAL_EFFECTS}
   "+reply": {classification: EXTERNAL_EFFECTS}
   "+reply-all": {classification: EXTERNAL_EFFECTS}
   "+forward": {classification: EXTERNAL_EFFECTS}
