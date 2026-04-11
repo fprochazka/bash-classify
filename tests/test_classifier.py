@@ -687,3 +687,60 @@ class TestFilePathDetection:
         result = classify_expression("cat < /home/user/data.txt | tee /tmp/out.txt > /tmp/log.txt", database=database)
         assert "/home/user/data.txt" in result.read_paths
         assert "/tmp/log.txt" in result.write_paths
+
+
+class TestAliasOfClassification:
+    """Tests for the alias_of feature — an alias file points at another command def."""
+
+    def _make_db(self, tmp_path):
+        from bash_classify.database import load_database
+
+        (tmp_path / "target.yaml").write_text(
+            "command: target\n"
+            "classification: READONLY\n"
+            "strict: false\n"
+            "subcommands:\n"
+            "  sub1: {classification: READONLY}\n"
+            "  sub2: {classification: DANGEROUS}\n"
+        )
+        (tmp_path / "myalias.yaml").write_text("command: myalias\ndescription: pointer\nalias_of: target\n")
+        return load_database(tmp_path)
+
+    def test_alias_resolves_to_target(self, tmp_path) -> None:
+        db = self._make_db(tmp_path)
+        result = classify_expression("myalias sub1", database=db)
+        target_result = classify_expression("target sub1", database=db)
+        assert result.classification == target_result.classification
+        assert result.risk == target_result.risk
+        cmd = result.commands[0]
+        # matched_rule and command reflect the alias as typed
+        assert cmd.command[0] == "myalias"
+        assert cmd.matched_rule == "myalias.sub1"
+
+    def test_alias_resolves_dangerous_subcommand(self, tmp_path) -> None:
+        db = self._make_db(tmp_path)
+        result = classify_expression("myalias sub2", database=db)
+        assert result.classification == Classification.DANGEROUS
+        assert result.commands[0].matched_rule == "myalias.sub2"
+
+    def test_dangling_alias_raises(self, tmp_path) -> None:
+        import pytest
+
+        (tmp_path / "myalias.yaml").write_text("command: myalias\nalias_of: nonexistent\n")
+        from bash_classify.database import load_database
+
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="nonexistent"):
+            classify_expression("myalias foo", database=db)
+
+    def test_alias_chain_too_deep_raises(self, tmp_path) -> None:
+        import pytest
+
+        (tmp_path / "target.yaml").write_text("command: target\nclassification: READONLY\n")
+        (tmp_path / "mid.yaml").write_text("command: mid\nalias_of: target\n")
+        (tmp_path / "myalias.yaml").write_text("command: myalias\nalias_of: mid\n")
+        from bash_classify.database import load_database
+
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="alias chain too deep"):
+            classify_expression("myalias foo", database=db)

@@ -94,6 +94,17 @@ def match_command(
             classification_reason="command not in database",
         )
 
+    # Step 1b: Resolve alias_of (max depth 1). The user-facing binary stays
+    # as typed; only command_def is swapped to the target.
+    if command_def.alias_of is not None:
+        target_name = command_def.alias_of
+        target_def = database.get(target_name)
+        if target_def is None:
+            raise ValueError(f"{binary} aliases '{target_name}' which is not in the database")
+        if target_def.alias_of is not None:
+            raise ValueError(f"alias chain too deep: {binary} -> {target_name} -> {target_def.alias_of}")
+        command_def = target_def
+
     remaining = argv[1:]
 
     # Step 2: Strip global options

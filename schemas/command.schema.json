@@ -6,6 +6,28 @@
   "type": "object",
   "required": ["command"],
   "additionalProperties": false,
+  "oneOf": [
+    {
+      "description": "Alias file: points at another command, mutually exclusive with classification-bearing fields",
+      "required": ["alias_of"],
+      "not": {
+        "anyOf": [
+          {"required": ["classification"]},
+          {"required": ["risk"]},
+          {"required": ["subcommands"]},
+          {"required": ["options"]},
+          {"required": ["global_options"]},
+          {"required": ["subcommand_mode"]},
+          {"required": ["delegates_to"]},
+          {"required": ["strict"]}
+        ]
+      }
+    },
+    {
+      "description": "Regular command definition",
+      "not": {"required": ["alias_of"]}
+    }
+  ],
   "properties": {
     "command": {
       "type": "string",
@@ -14,6 +36,10 @@
     "description": {
       "type": "string",
       "description": "Short description of the tool"
+    },
+    "alias_of": {
+      "type": "string",
+      "description": "Name of another command in the database whose definition should be used verbatim. Mutually exclusive with classification/risk/subcommands/options/global_options/subcommand_mode/delegates_to/strict."
     },
     "classification": {
       "$ref": "#/$defs/Classification"

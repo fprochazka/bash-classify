@@ -199,6 +199,45 @@ class TestStrictDefault:
         assert grep.strict is False
 
 
+class TestAliasOf:
+    def test_alias_file_parses(self, tmp_path: Path) -> None:
+        """An alias file produces a CommandDef with alias_of set."""
+        target = tmp_path / "target.yaml"
+        target.write_text("command: target\nclassification: READONLY\n")
+        alias = tmp_path / "myalias.yaml"
+        alias.write_text("command: myalias\ndescription: pointer\nalias_of: target\n")
+
+        db = load_database(tmp_path)
+        alias_def = db["myalias"]
+        assert alias_def.alias_of == "target"
+        assert alias_def.command == "myalias"
+        assert alias_def.classification is None
+        assert alias_def.subcommands == {}
+
+    def test_alias_file_with_subcommands_raises(self, tmp_path: Path) -> None:
+        """An alias file combined with classification-bearing fields is rejected."""
+        alias = tmp_path / "bad.yaml"
+        alias.write_text("command: bad\nalias_of: target\nsubcommands:\n  sub: {classification: READONLY}\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="subcommands"):
+            db["bad"]
+
+    def test_alias_file_with_classification_raises(self, tmp_path: Path) -> None:
+        alias = tmp_path / "bad.yaml"
+        alias.write_text("command: bad\nalias_of: target\nclassification: READONLY\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="classification"):
+            db["bad"]
+
+    def test_alias_file_only_command_description_alias_of_is_valid(self, tmp_path: Path) -> None:
+        target = tmp_path / "target.yaml"
+        target.write_text("command: target\nclassification: READONLY\n")
+        alias = tmp_path / "myalias.yaml"
+        alias.write_text('command: myalias\ndescription: "some desc"\nalias_of: target\n')
+        db = load_database(tmp_path)
+        assert db["myalias"].alias_of == "target"
+
+
 class TestUserCommandsDir:
     def test_user_override_replaces_builtin(self, tmp_path: Path) -> None:
         """User YAML overrides built-in command definition."""

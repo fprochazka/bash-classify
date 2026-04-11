@@ -167,8 +167,32 @@ def _yaml_str(value: object) -> str:
     return str(value)
 
 
+_ALIAS_FORBIDDEN_KEYS = frozenset(
+    {
+        "classification",
+        "risk",
+        "subcommands",
+        "options",
+        "global_options",
+        "subcommand_mode",
+        "delegates_to",
+        "strict",
+    }
+)
+
+
 def _parse_command_def(data: dict, command_name: str) -> CommandDef:
     """Parse a raw YAML dict into a CommandDef structure."""
+    alias_of = data.get("alias_of")
+    if alias_of is not None:
+        conflicting = sorted(_ALIAS_FORBIDDEN_KEYS & data.keys())
+        if conflicting:
+            raise ValueError(
+                f"alias file for '{command_name}' has alias_of='{alias_of}' "
+                f"combined with forbidden field(s): {', '.join(conflicting)}"
+            )
+        return CommandDef(command=command_name, alias_of=str(alias_of))
+
     classification = _parse_classification(data.get("classification"))
     risk = _parse_risk(data.get("risk"))
 

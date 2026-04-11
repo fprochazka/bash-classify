@@ -135,6 +135,7 @@ class CommandDef:
     """Definition of a command (or subcommand) from the database."""
 
     command: str
+    alias_of: str | None = None
     classification: Classification | None = None
     risk: Risk | None = None
     global_options: dict[str, OptionDef] = field(default_factory=dict)
