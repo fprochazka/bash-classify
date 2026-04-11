@@ -57,10 +57,12 @@ Once installed, any Bash tool call with `risk: LOW` is auto-approved — no perm
 
 ## Command database
 
-The classification database includes 150+ command definitions covering common Unix utilities, package managers, container tools, cloud CLIs, and more.
+bash-classify loads command definitions from two locations:
 
-- See [docs/classification-guidance.md](docs/classification-guidance.md) for how to add new commands
-- YAML definitions are validated against a JSON Schema for IDE autocomplete and CI checks
+- **Built-in database** — 150+ command definitions bundled with the package, covering common Unix utilities, package managers, container tools, cloud CLIs, and more. Lives in `src/bash_classify/commands/*.yaml`.
+- **User database** — your own command definitions at `~/.config/bash-classify/commands/*.yaml` (override the location with the `BASH_CLASSIFY_CONFIG_DIR` env var, which resolves to `$BASH_CLASSIFY_CONFIG_DIR/commands/`). User files with the same name as a built-in override it completely, so you can customize classifications for internal tools, company-specific wrappers, or personal CLIs without forking the repo.
+
+Both directories use the same YAML format. See [docs/classification-guidance.md](docs/classification-guidance.md) for how to add new commands. YAML definitions are validated against a [JSON Schema](schemas/command.schema.json) for IDE autocomplete and CI checks.
 
 ## Classification levels
 
