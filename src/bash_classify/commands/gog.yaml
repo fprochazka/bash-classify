@@ -1,0 +1,983 @@
+# $schema: ../../../schemas/command.schema.json
+command: gog
+description: "gogcli — Google Workspace CLI for Gmail, Calendar, Drive, Docs, Sheets, Slides, Chat, Contacts, Tasks, and more"
+classification: READONLY
+
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  --account: {takes_value: true}
+  -a: {takes_value: true, aliases: [--account]}
+  --client: {takes_value: true}
+  --enable-commands: {takes_value: true}
+  --json: {}
+  -j: {aliases: [--json]}
+  --plain: {}
+  -p: {aliases: [--plain]}
+  --results-only: {}
+  --select: {takes_value: true}
+  --dry-run: {overrides: READONLY, risk: LOW}
+  -n: {overrides: READONLY, risk: LOW, aliases: [--dry-run]}
+  --force: {}
+  -y: {aliases: [--force]}
+  --no-input: {}
+  --verbose: {}
+  -v: {aliases: [--verbose]}
+  --version: {overrides: READONLY}
+  --color: {takes_value: true}
+
+subcommands:
+  # ── top-level aliases ────────────────────────────────────────────────
+  # These are convenience aliases for common operations.
+  send:
+    # Alias for gmail send — sends an email
+    classification: EXTERNAL_EFFECTS
+    strict: false
+  ls:
+    classification: READONLY
+    strict: false
+  search:
+    classification: READONLY
+    strict: false
+  open:
+    classification: READONLY
+    strict: false
+  download:
+    classification: READONLY
+    strict: false
+  upload:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+  login:
+    # OAuth2 handshake — creates/rotates credential server-side
+    classification: EXTERNAL_EFFECTS
+    strict: false
+  logout:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  status:
+    classification: READONLY
+  me:
+    classification: READONLY
+  whoami:
+    classification: READONLY
+  version:
+    classification: READONLY
+  completion:
+    classification: READONLY
+    strict: false
+  exit-codes:
+    classification: READONLY
+  schema:
+    classification: READONLY
+    strict: false
+
+  # ── auth ─────────────────────────────────────────────────────────────
+  auth:
+    classification: READONLY
+    subcommands:
+      credentials:
+        # Storing OAuth client credentials is a local config write
+        classification: LOCAL_EFFECTS
+        subcommands:
+          set:
+            classification: LOCAL_EFFECTS
+          list:
+            classification: READONLY
+      add:
+        # OAuth2 handshake — creates/rotates credential server-side
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      services:
+        classification: READONLY
+      list:
+        classification: READONLY
+        strict: false
+      alias:
+        classification: LOCAL_EFFECTS
+        subcommands:
+          list:
+            classification: READONLY
+          set:
+            classification: LOCAL_EFFECTS
+          unset:
+            classification: LOCAL_EFFECTS
+      status:
+        classification: READONLY
+      keyring:
+        # Viewing or setting keyring backend — local config
+        classification: LOCAL_EFFECTS
+      remove:
+        # Removes a stored refresh token
+        classification: LOCAL_EFFECTS
+      tokens:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+          delete:
+            classification: LOCAL_EFFECTS
+          export:
+            # Exports a refresh token file — contains secrets
+            classification: DANGEROUS
+            strict: false
+          import:
+            classification: LOCAL_EFFECTS
+      manage:
+        # Opens browser to Google accounts manager
+        classification: READONLY
+      service-account:
+        classification: LOCAL_EFFECTS
+        subcommands:
+          set:
+            classification: LOCAL_EFFECTS
+            strict: false
+          unset:
+            classification: LOCAL_EFFECTS
+          status:
+            classification: READONLY
+      keep:
+        # Legacy alias for service-account set (Keep)
+        classification: LOCAL_EFFECTS
+        strict: false
+
+  # ── config ───────────────────────────────────────────────────────────
+  config:
+    classification: READONLY
+    subcommands:
+      get:
+        classification: READONLY
+      keys:
+        classification: READONLY
+      set:
+        classification: LOCAL_EFFECTS
+      unset:
+        classification: LOCAL_EFFECTS
+      list:
+        classification: READONLY
+      path:
+        classification: READONLY
+
+  # ── agent ────────────────────────────────────────────────────────────
+  agent:
+    classification: READONLY
+    subcommands:
+      exit-codes:
+        classification: READONLY
+
+  # ── time ─────────────────────────────────────────────────────────────
+  time:
+    classification: READONLY
+    strict: false
+    subcommands:
+      now:
+        classification: READONLY
+        strict: false
+
+  # ── gmail ────────────────────────────────────────────────────────────
+  gmail:
+    classification: READONLY
+    subcommands:
+      # -- read --
+      search:
+        classification: READONLY
+        strict: false
+      get:
+        classification: READONLY
+        strict: false
+      attachment:
+        classification: READONLY
+        strict: false
+      url:
+        classification: READONLY
+      history:
+        classification: READONLY
+        strict: false
+      messages:
+        classification: READONLY
+        subcommands:
+          search:
+            classification: READONLY
+            strict: false
+
+      # -- threads --
+      thread:
+        classification: READONLY
+        subcommands:
+          get:
+            classification: READONLY
+            strict: false
+          modify:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          attachments:
+            classification: READONLY
+            strict: false
+
+      # -- labels --
+      labels:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+          get:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+          modify:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+
+      # -- batch --
+      batch:
+        classification: EXTERNAL_EFFECTS
+        subcommands:
+          delete:
+            classification: DANGEROUS
+          modify:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+
+      # -- write --
+      send:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      drafts:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          send:
+            classification: EXTERNAL_EFFECTS
+          delete:
+            classification: DANGEROUS
+
+      # -- track --
+      track:
+        classification: READONLY
+        subcommands:
+          setup:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          opens:
+            classification: READONLY
+            strict: false
+          status:
+            classification: READONLY
+
+      # -- settings --
+      settings:
+        classification: READONLY
+        subcommands:
+          filters:
+            classification: READONLY
+            subcommands:
+              list:
+                classification: READONLY
+              get:
+                classification: READONLY
+              create:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+              delete:
+                classification: DANGEROUS
+          delegates:
+            classification: READONLY
+            subcommands:
+              list:
+                classification: READONLY
+              get:
+                classification: READONLY
+              add:
+                classification: EXTERNAL_EFFECTS
+              remove:
+                classification: EXTERNAL_EFFECTS
+          forwarding:
+            classification: READONLY
+            subcommands:
+              list:
+                classification: READONLY
+              get:
+                classification: READONLY
+              create:
+                classification: EXTERNAL_EFFECTS
+              delete:
+                classification: DANGEROUS
+          autoforward:
+            classification: READONLY
+            subcommands:
+              get:
+                classification: READONLY
+              update:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+          sendas:
+            classification: READONLY
+            subcommands:
+              list:
+                classification: READONLY
+              get:
+                classification: READONLY
+              create:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+              update:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+              verify:
+                classification: EXTERNAL_EFFECTS
+              delete:
+                classification: DANGEROUS
+          vacation:
+            classification: READONLY
+            subcommands:
+              get:
+                classification: READONLY
+              update:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+          watch:
+            classification: EXTERNAL_EFFECTS
+            subcommands:
+              start:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+              status:
+                classification: READONLY
+              renew:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+              stop:
+                classification: EXTERNAL_EFFECTS
+              serve:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+
+  # ── calendar ─────────────────────────────────────────────────────────
+  calendar:
+    classification: READONLY
+    subcommands:
+      calendars:
+        classification: READONLY
+        strict: false
+      acl:
+        classification: READONLY
+        strict: false
+      events:
+        classification: READONLY
+        strict: false
+      event:
+        classification: READONLY
+        strict: false
+      get:
+        classification: READONLY
+        strict: false
+      search:
+        classification: READONLY
+        strict: false
+      freebusy:
+        classification: READONLY
+        strict: false
+      conflicts:
+        classification: READONLY
+        strict: false
+      colors:
+        classification: READONLY
+      time:
+        classification: READONLY
+        strict: false
+      users:
+        classification: READONLY
+        strict: false
+      team:
+        classification: READONLY
+        strict: false
+      create:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      update:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      delete:
+        classification: DANGEROUS
+        strict: false
+      respond:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      propose-time:
+        # Generates a URL or opens browser; optionally declines
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      focus-time:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      out-of-office:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      working-location:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+
+  # ── drive ────────────────────────────────────────────────────────────
+  drive:
+    classification: READONLY
+    subcommands:
+      ls:
+        classification: READONLY
+        strict: false
+      search:
+        classification: READONLY
+        strict: false
+      get:
+        classification: READONLY
+      download:
+        classification: READONLY
+        strict: false
+      url:
+        classification: READONLY
+      permissions:
+        classification: READONLY
+        strict: false
+      drives:
+        classification: READONLY
+        strict: false
+      comments:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+      copy:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      upload:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      mkdir:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      rename:
+        classification: EXTERNAL_EFFECTS
+      move:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      share:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      unshare:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        # Default: move to trash. --permanent: permanently delete.
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        options:
+          --permanent: {overrides: DANGEROUS}
+
+  # ── docs ─────────────────────────────────────────────────────────────
+  docs:
+    classification: READONLY
+    subcommands:
+      info:
+        classification: READONLY
+      cat:
+        classification: READONLY
+        strict: false
+      export:
+        classification: READONLY
+        strict: false
+      list-tabs:
+        classification: READONLY
+      comments:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          add:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          reply:
+            classification: EXTERNAL_EFFECTS
+      create:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      copy:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      add-tab:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      update-tab:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      delete-tab:
+        classification: DANGEROUS
+      write:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      insert:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      delete:
+        classification: DANGEROUS
+        strict: false
+      find-replace:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      update:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+
+  # ── slides ───────────────────────────────────────────────────────────
+  slides:
+    classification: READONLY
+    subcommands:
+      info:
+        classification: READONLY
+      export:
+        classification: READONLY
+        strict: false
+      list-slides:
+        classification: READONLY
+      read-slide:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      create-from-markdown:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      copy:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      add-slide:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      update-notes:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      replace-slide:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      delete-slide:
+        classification: DANGEROUS
+
+  # ── sheets ───────────────────────────────────────────────────────────
+  sheets:
+    classification: READONLY
+    subcommands:
+      get:
+        classification: READONLY
+        strict: false
+      metadata:
+        classification: READONLY
+      notes:
+        classification: READONLY
+      export:
+        classification: READONLY
+        strict: false
+      create:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      copy:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      update:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      append:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      insert:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      format:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      clear:
+        classification: DANGEROUS
+
+  # ── contacts ─────────────────────────────────────────────────────────
+  contacts:
+    classification: READONLY
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      search:
+        classification: READONLY
+        strict: false
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      update:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      delete:
+        classification: DANGEROUS
+      directory:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          search:
+            classification: READONLY
+            strict: false
+      other:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          search:
+            classification: READONLY
+            strict: false
+          delete:
+            classification: DANGEROUS
+
+  # ── tasks ────────────────────────────────────────────────────────────
+  tasks:
+    classification: READONLY
+    subcommands:
+      lists:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+      list:
+        classification: READONLY
+        strict: false
+      get:
+        classification: READONLY
+      add:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      update:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      done:
+        classification: EXTERNAL_EFFECTS
+      undo:
+        classification: EXTERNAL_EFFECTS
+      delete:
+        classification: DANGEROUS
+      clear:
+        classification: DANGEROUS
+
+  # ── people ───────────────────────────────────────────────────────────
+  people:
+    classification: READONLY
+    subcommands:
+      me:
+        classification: READONLY
+      get:
+        classification: READONLY
+      search:
+        classification: READONLY
+        strict: false
+      relations:
+        classification: READONLY
+        strict: false
+
+  # ── chat ─────────────────────────────────────────────────────────────
+  chat:
+    classification: READONLY
+    subcommands:
+      spaces:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          find:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      messages:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          send:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      threads:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+      dm:
+        classification: READONLY
+        subcommands:
+          send:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          space:
+            classification: READONLY
+
+  # ── groups ───────────────────────────────────────────────────────────
+  groups:
+    classification: READONLY
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      members:
+        classification: READONLY
+        strict: false
+
+  # ── keep ─────────────────────────────────────────────────────────────
+  keep:
+    classification: READONLY
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      get:
+        classification: READONLY
+        strict: false
+      search:
+        classification: READONLY
+        strict: false
+      attachment:
+        classification: READONLY
+        strict: false
+
+  # ── forms ────────────────────────────────────────────────────────────
+  forms:
+    classification: READONLY
+    subcommands:
+      get:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      responses:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+
+  # ── appscript ────────────────────────────────────────────────────────
+  appscript:
+    classification: READONLY
+    subcommands:
+      get:
+        classification: READONLY
+      content:
+        classification: READONLY
+      create:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      run:
+        # Runs arbitrary Apps Script code
+        classification: DANGEROUS
+        strict: false
+
+  # ── classroom ────────────────────────────────────────────────────────
+  classroom:
+    classification: READONLY
+    subcommands:
+      courses:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+          archive:
+            classification: EXTERNAL_EFFECTS
+          unarchive:
+            classification: EXTERNAL_EFFECTS
+          url:
+            classification: READONLY
+      students:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          add:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          remove:
+            classification: EXTERNAL_EFFECTS
+      teachers:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          add:
+            classification: EXTERNAL_EFFECTS
+          remove:
+            classification: EXTERNAL_EFFECTS
+      roster:
+        classification: READONLY
+        strict: false
+      coursework:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          assignees:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      materials:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      submissions:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          grade:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          return:
+            classification: EXTERNAL_EFFECTS
+          turn-in:
+            classification: EXTERNAL_EFFECTS
+          reclaim:
+            classification: EXTERNAL_EFFECTS
+      announcements:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          assignees:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      topics:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+          update:
+            classification: EXTERNAL_EFFECTS
+      invitations:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          accept:
+            classification: EXTERNAL_EFFECTS
+      guardians:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          delete:
+            classification: DANGEROUS
+      guardian-invitations:
+        classification: READONLY
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          get:
+            classification: READONLY
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      profile:
+        classification: READONLY
+        subcommands:
+          get:
+            classification: READONLY
