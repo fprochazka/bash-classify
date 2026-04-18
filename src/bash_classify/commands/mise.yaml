@@ -527,13 +527,11 @@ subcommands:
   # --- Arbitrary command / task executors ---
   # `mise exec [tool@ver]... -- <cmd>` runs an arbitrary command with tools on PATH
   exec:
-    classification: READONLY
     strict: false
     delegates_to:
       mode: after_separator
       separator: "--"
   x:
-    classification: READONLY
     strict: false
     delegates_to:
       mode: after_separator

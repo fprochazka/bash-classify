@@ -220,13 +220,11 @@ subcommands:
   # --- Arbitrary command execution with package context ---
   # `pnpm exec [--] <cmd> [args...]` runs arbitrary commands with node_modules/.bin on PATH
   exec:
-    classification: READONLY
     strict: false
     delegates_to:
       mode: after_separator
       separator: "--"
   x:
-    classification: READONLY
     strict: false
     delegates_to:
       mode: after_separator

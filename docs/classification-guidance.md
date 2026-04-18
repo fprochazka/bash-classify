@@ -236,6 +236,12 @@ subcommands:
 
 Some commands do not do work themselves -- they delegate to an inner command. bash-classify models this with `delegates_to`, which tells the matcher how to extract the inner command's argv and classify it recursively.
 
+### Pure-wrapper rule of thumb
+
+For commands that are pure passthroughs -- they do nothing themselves beyond running the inner command (e.g. `env`, `xargs`, `mise exec`, `pnpm exec`) -- **omit `classification`**. The missing base defaults to `READONLY`, which is the identity element for severity-max against the delegated inner: the inner command's classification is what surfaces. Writing `classification: READONLY` explicitly on a pure wrapper is misleading -- it reads as "this command is safe" when the real intent is "inherit from whatever I wrap."
+
+Only set a non-`READONLY` base when the wrapper itself contributes risk regardless of the inner (e.g. `sudo` is `EXTERNAL_EFFECTS` because it elevates privileges) or when the wrapper also has a meaningful standalone behavior that isn't READONLY.
+
 ### `rest_are_argv`
 
 All remaining positional args (after the wrapper's own options) form the inner command.
@@ -244,7 +250,7 @@ All remaining positional args (after the wrapper's own options) form the inner c
 
 ```yaml
 command: xargs
-classification: READONLY
+# classification omitted -- pure passthrough, inherits from inner
 delegates_to:
   mode: rest_are_argv
 options:
@@ -267,7 +273,7 @@ delegates_to:
 
 ```yaml
 command: env
-classification: READONLY
+# classification omitted -- pure passthrough
 delegates_to:
   mode: rest_are_argv
   strip_assignments: true     # strip leading KEY=VALUE tokens

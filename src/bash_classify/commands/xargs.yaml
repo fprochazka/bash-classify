@@ -1,7 +1,6 @@
 # $schema: ../../../schemas/command.schema.json
 command: xargs
 description: "Build and execute command lines from standard input"
-classification: READONLY
 global_options:
   --help: {overrides: READONLY}
 delegates_to:
