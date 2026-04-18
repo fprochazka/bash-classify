@@ -1,0 +1,581 @@
+# $schema: ../../../schemas/command.schema.json
+command: mise
+description: "Dev tools, env vars, and task runner (asdf/nvm/rbenv replacement)"
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  -C: {takes_value: true, captures_directory: true}
+  --cd: {takes_value: true, captures_directory: true, aliases: [-C]}
+  -E: {takes_value: true}
+  --env: {takes_value: true, aliases: [-E]}
+  -j: {takes_value: true}
+  --jobs: {takes_value: true, aliases: [-j]}
+  -q: {}
+  --quiet: {aliases: [-q]}
+  -v: {}
+  --verbose: {aliases: [-v]}
+  -y: {}
+  --yes: {aliases: [-y]}
+  --no-config: {}
+  --no-env: {}
+  --no-hooks: {}
+  --output: {takes_value: true}
+  --raw: {}
+  --locked: {}
+  --silent: {}
+subcommands:
+  # --- Shell integration / READONLY output generators ---
+  activate:
+    classification: READONLY
+    strict: false
+  deactivate:
+    classification: READONLY
+    strict: false
+  env:
+    classification: READONLY
+    strict: false
+  hook-env:
+    classification: READONLY
+    strict: false
+  hook-not-found:
+    classification: READONLY
+    strict: false
+  completion:
+    classification: READONLY
+    strict: false
+  version:
+    classification: READONLY
+    strict: false
+  help:
+    classification: READONLY
+    strict: false
+
+  # --- Pure info/list/query commands ---
+  ls:
+    classification: READONLY
+    strict: false
+  list:
+    classification: READONLY
+    strict: false
+  ls-remote:
+    classification: READONLY
+    strict: false
+  current:
+    classification: READONLY
+    strict: false
+  latest:
+    classification: READONLY
+    strict: false
+  which:
+    classification: READONLY
+    strict: false
+  where:
+    classification: READONLY
+    strict: false
+  outdated:
+    classification: READONLY
+    strict: false
+  doctor:
+    classification: READONLY
+    strict: false
+  dr:
+    classification: READONLY
+    strict: false
+  registry:
+    classification: READONLY
+    strict: false
+  search:
+    classification: READONLY
+    strict: false
+  bin-paths:
+    classification: READONLY
+    strict: false
+  tool:
+    classification: READONLY
+    strict: false
+  token:
+    classification: READONLY
+    strict: false
+    subcommands:
+      forgejo:
+        classification: READONLY
+      github:
+        classification: READONLY
+      gitlab:
+        classification: READONLY
+  backends:
+    classification: READONLY
+    strict: false
+    subcommands:
+      ls:
+        classification: READONLY
+      list:
+        classification: READONLY
+  b:
+    classification: READONLY
+    strict: false
+
+  # --- Install / upgrade tools (downloads from network, writes locally) ---
+  install:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    options:
+      -n: {overrides: READONLY}
+      --dry-run: {overrides: READONLY, aliases: [-n]}
+  i:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+  install-into:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+  use:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+  u:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+  upgrade:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    options:
+      -n: {overrides: READONLY}
+      --dry-run: {overrides: READONLY, aliases: [-n]}
+  up:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+  self-update:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+
+  # --- Destructive: uninstall/prune/implode ---
+  uninstall:
+    classification: DANGEROUS
+    strict: false
+    options:
+      -n: {overrides: READONLY}
+      --dry-run: {overrides: READONLY, aliases: [-n]}
+      --dry-run-code: {overrides: READONLY}
+  unuse:
+    classification: LOCAL_EFFECTS
+    strict: false
+  rm:
+    classification: LOCAL_EFFECTS
+    strict: false
+  remove:
+    classification: LOCAL_EFFECTS
+    strict: false
+  prune:
+    classification: DANGEROUS
+    strict: false
+    options:
+      -n: {overrides: READONLY}
+      --dry-run: {overrides: READONLY, aliases: [-n]}
+      --dry-run-code: {overrides: READONLY}
+  implode:
+    classification: DANGEROUS
+    strict: false
+    options:
+      -n: {overrides: READONLY}
+      --dry-run: {overrides: READONLY, aliases: [-n]}
+
+  # --- Config / state-modifying local commands ---
+  trust:
+    classification: LOCAL_EFFECTS
+    strict: false
+    options:
+      --show: {overrides: READONLY}
+  untrust:
+    classification: LOCAL_EFFECTS
+    strict: false
+  set:
+    classification: LOCAL_EFFECTS
+    strict: false
+  unset:
+    classification: LOCAL_EFFECTS
+    strict: false
+  shell:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  sh:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  fmt:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+    options:
+      -c: {overrides: READONLY}
+      --check: {overrides: READONLY, aliases: [-c]}
+      -s: {overrides: READONLY}
+      --stdin: {overrides: READONLY, aliases: [-s]}
+  edit:
+    classification: LOCAL_EFFECTS
+    strict: false
+    options:
+      -n: {overrides: READONLY}
+      --dry-run: {overrides: READONLY, aliases: [-n]}
+  link:
+    classification: LOCAL_EFFECTS
+    strict: false
+  ln:
+    classification: LOCAL_EFFECTS
+    strict: false
+  unlink:
+    classification: LOCAL_EFFECTS
+    strict: false
+  reshim:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  lock:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  generate:
+    classification: LOCAL_EFFECTS
+    strict: false
+    subcommands:
+      bootstrap:
+        classification: LOCAL_EFFECTS
+        strict: false
+      config:
+        classification: LOCAL_EFFECTS
+        strict: false
+      devcontainer:
+        classification: LOCAL_EFFECTS
+        strict: false
+      git-pre-commit:
+        classification: LOCAL_EFFECTS
+        strict: false
+      pre-commit:
+        classification: LOCAL_EFFECTS
+        strict: false
+      github-action:
+        classification: LOCAL_EFFECTS
+        strict: false
+      task-docs:
+        classification: LOCAL_EFFECTS
+        strict: false
+      task-stubs:
+        classification: LOCAL_EFFECTS
+        strict: false
+      tool-stub:
+        classification: LOCAL_EFFECTS
+        strict: false
+  gen:
+    classification: LOCAL_EFFECTS
+    strict: false
+  sync:
+    classification: LOCAL_EFFECTS
+    strict: false
+    subcommands:
+      node:
+        classification: LOCAL_EFFECTS
+        strict: false
+      python:
+        classification: LOCAL_EFFECTS
+        strict: false
+      ruby:
+        classification: LOCAL_EFFECTS
+        strict: false
+
+  # --- Cache management ---
+  cache:
+    classification: READONLY
+    strict: false
+    subcommands:
+      clear:
+        classification: LOCAL_EFFECTS
+        risk: LOW
+      c:
+        classification: LOCAL_EFFECTS
+        risk: LOW
+      prune:
+        classification: LOCAL_EFFECTS
+        risk: LOW
+      p:
+        classification: LOCAL_EFFECTS
+        risk: LOW
+      path:
+        classification: READONLY
+      dir:
+        classification: READONLY
+
+  # --- Config subcommands ---
+  config:
+    classification: READONLY
+    strict: false
+    subcommands:
+      get:
+        classification: READONLY
+        strict: false
+      ls:
+        classification: READONLY
+        strict: false
+      list:
+        classification: READONLY
+        strict: false
+      set:
+        classification: LOCAL_EFFECTS
+        strict: false
+  cfg:
+    classification: READONLY
+    strict: false
+
+  # --- Settings subcommands ---
+  settings:
+    classification: READONLY
+    strict: false
+    subcommands:
+      ls:
+        classification: READONLY
+      list:
+        classification: READONLY
+      get:
+        classification: READONLY
+      add:
+        classification: LOCAL_EFFECTS
+        strict: false
+      set:
+        classification: LOCAL_EFFECTS
+        strict: false
+      create:
+        classification: LOCAL_EFFECTS
+        strict: false
+      unset:
+        classification: LOCAL_EFFECTS
+        strict: false
+      rm:
+        classification: LOCAL_EFFECTS
+        strict: false
+      remove:
+        classification: LOCAL_EFFECTS
+        strict: false
+      delete:
+        classification: LOCAL_EFFECTS
+        strict: false
+      del:
+        classification: LOCAL_EFFECTS
+        strict: false
+
+  # --- Alias management ---
+  tool-alias:
+    classification: READONLY
+    strict: false
+    subcommands:
+      get:
+        classification: READONLY
+      ls:
+        classification: READONLY
+      list:
+        classification: READONLY
+      set:
+        classification: LOCAL_EFFECTS
+        strict: false
+      add:
+        classification: LOCAL_EFFECTS
+        strict: false
+      create:
+        classification: LOCAL_EFFECTS
+        strict: false
+      unset:
+        classification: LOCAL_EFFECTS
+        strict: false
+      rm:
+        classification: LOCAL_EFFECTS
+        strict: false
+      remove:
+        classification: LOCAL_EFFECTS
+        strict: false
+      delete:
+        classification: LOCAL_EFFECTS
+        strict: false
+      del:
+        classification: LOCAL_EFFECTS
+        strict: false
+  shell-alias:
+    classification: READONLY
+    strict: false
+    subcommands:
+      get:
+        classification: READONLY
+      ls:
+        classification: READONLY
+      list:
+        classification: READONLY
+      set:
+        classification: LOCAL_EFFECTS
+        strict: false
+      add:
+        classification: LOCAL_EFFECTS
+        strict: false
+      create:
+        classification: LOCAL_EFFECTS
+        strict: false
+      unset:
+        classification: LOCAL_EFFECTS
+        strict: false
+      rm:
+        classification: LOCAL_EFFECTS
+        strict: false
+      remove:
+        classification: LOCAL_EFFECTS
+        strict: false
+      delete:
+        classification: LOCAL_EFFECTS
+        strict: false
+      del:
+        classification: LOCAL_EFFECTS
+        strict: false
+
+  # --- Plugins (install may download/run arbitrary code from git) ---
+  plugins:
+    classification: READONLY
+    strict: false
+    subcommands:
+      install:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      i:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      a:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      add:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      link:
+        classification: LOCAL_EFFECTS
+        strict: false
+      ln:
+        classification: LOCAL_EFFECTS
+        strict: false
+      ls:
+        classification: READONLY
+        strict: false
+      list:
+        classification: READONLY
+        strict: false
+      ls-remote:
+        classification: READONLY
+        strict: false
+      list-remote:
+        classification: READONLY
+        strict: false
+      list-all:
+        classification: READONLY
+        strict: false
+      uninstall:
+        classification: LOCAL_EFFECTS
+        strict: false
+      remove:
+        classification: LOCAL_EFFECTS
+        strict: false
+      rm:
+        classification: LOCAL_EFFECTS
+        strict: false
+      update:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      up:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      upgrade:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+  p:
+    classification: READONLY
+    strict: false
+
+  # --- Tasks management ---
+  tasks:
+    classification: READONLY
+    strict: false
+    subcommands:
+      ls:
+        classification: READONLY
+        strict: false
+      deps:
+        classification: READONLY
+        strict: false
+      info:
+        classification: READONLY
+        strict: false
+      validate:
+        classification: READONLY
+        strict: false
+      add:
+        classification: LOCAL_EFFECTS
+        strict: false
+      edit:
+        classification: LOCAL_EFFECTS
+        strict: false
+      run:
+        classification: DANGEROUS
+        strict: false
+      r:
+        classification: DANGEROUS
+        strict: false
+  t:
+    classification: READONLY
+    strict: false
+
+  # --- Arbitrary command / task executors ---
+  # `mise exec [tool@ver]... -- <cmd>` runs an arbitrary command with tools on PATH
+  exec:
+    classification: READONLY
+    strict: false
+    delegates_to:
+      mode: after_separator
+      separator: "--"
+  x:
+    classification: READONLY
+    strict: false
+    delegates_to:
+      mode: after_separator
+      separator: "--"
+  # `mise run <task> [args]` runs a user-defined task (shell script / arbitrary code)
+  run:
+    classification: DANGEROUS
+    strict: false
+  r:
+    classification: DANGEROUS
+    strict: false
+  watch:
+    classification: DANGEROUS
+    strict: false
+  w:
+    classification: DANGEROUS
+    strict: false
+  # `mise en` spawns a new shell — effectively executes arbitrary interactive commands
+  en:
+    classification: DANGEROUS
+    strict: false
+  # `mise mcp` starts an MCP server that exposes task execution to AI clients
+  mcp:
+    classification: DANGEROUS
+    strict: false
+  # `mise tool-stub <FILE> [ARGS]...` executes a tool stub — arbitrary code
+  tool-stub:
+    classification: DANGEROUS
+    strict: false
+  # `mise test-tool` installs and runs tools
+  test-tool:
+    classification: DANGEROUS
+    strict: false
+  # [experimental] runs install commands from project manifests
+  prepare:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    options:
+      -n: {overrides: READONLY}
+      --dry-run: {overrides: READONLY, aliases: [-n]}
+      --list: {overrides: READONLY}
+      --explain: {overrides: READONLY}
+  prep:
+    classification: EXTERNAL_EFFECTS
+    strict: false
