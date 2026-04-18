@@ -1,0 +1,345 @@
+# $schema: ../../../schemas/command.schema.json
+command: pnpm
+description: "Fast, disk space efficient Node.js package manager"
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY}
+  -v: {overrides: READONLY}
+  -C: {takes_value: true, captures_directory: true}
+  --dir: {takes_value: true, captures_directory: true, aliases: [-C]}
+  -w: {}
+  --workspace-root: {aliases: [-w]}
+  -r: {}
+  --recursive: {aliases: [-r]}
+  --filter: {takes_value: true}
+  --filter-prod: {takes_value: true}
+  --workspace-concurrency: {takes_value: true}
+  --reporter: {takes_value: true}
+  --loglevel: {takes_value: true}
+  --silent: {}
+  --stream: {}
+  --color: {}
+  --no-color: {}
+  --use-stderr: {}
+  --aggregate-output: {}
+  --prefix: {takes_value: true, captures_directory: true}
+
+subcommands:
+  # --- Pure read / query commands ---
+  ls:
+    classification: READONLY
+    strict: false
+  list:
+    classification: READONLY
+    strict: false
+  why:
+    classification: READONLY
+    strict: false
+  outdated:
+    classification: READONLY
+    strict: false
+  audit:
+    classification: READONLY
+    strict: false
+    options:
+      --fix: {overrides: LOCAL_EFFECTS}
+  licenses:
+    classification: READONLY
+    strict: false
+    subcommands:
+      ls:
+        classification: READONLY
+        strict: false
+      list:
+        classification: READONLY
+        strict: false
+  view:
+    classification: READONLY
+    strict: false
+  info:
+    classification: READONLY
+    strict: false
+  show:
+    classification: READONLY
+    strict: false
+  search:
+    classification: READONLY
+    strict: false
+  root:
+    classification: READONLY
+    strict: false
+  bin:
+    classification: READONLY
+    strict: false
+  doctor:
+    classification: READONLY
+    strict: false
+  whoami:
+    classification: READONLY
+    strict: false
+  help:
+    classification: READONLY
+    strict: false
+  cat-file:
+    classification: READONLY
+    strict: false
+  cat-index:
+    classification: READONLY
+    strict: false
+  find-hash:
+    classification: READONLY
+    strict: false
+
+  # --- Install / dependency management (local install, downloads from registry) ---
+  install:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  i:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  install-test:
+    classification: DANGEROUS
+    strict: false
+  it:
+    classification: DANGEROUS
+    strict: false
+  add:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  update:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  up:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  upgrade:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  remove:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  rm:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  uninstall:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  un:
+    classification: LOCAL_EFFECTS
+    risk: LOW
+    strict: false
+  import:
+    classification: LOCAL_EFFECTS
+    strict: false
+  link:
+    classification: LOCAL_EFFECTS
+    strict: false
+  ln:
+    classification: LOCAL_EFFECTS
+    strict: false
+  unlink:
+    classification: LOCAL_EFFECTS
+    strict: false
+  prune:
+    classification: LOCAL_EFFECTS
+    strict: false
+  dedupe:
+    classification: LOCAL_EFFECTS
+    strict: false
+  rebuild:
+    classification: LOCAL_EFFECTS
+    strict: false
+  rb:
+    classification: LOCAL_EFFECTS
+    strict: false
+  fetch:
+    classification: LOCAL_EFFECTS
+    strict: false
+
+  # --- Patching ---
+  patch:
+    classification: LOCAL_EFFECTS
+    strict: false
+  patch-commit:
+    classification: LOCAL_EFFECTS
+    strict: false
+  patch-remove:
+    classification: LOCAL_EFFECTS
+    strict: false
+
+  # --- Publishing (external / destructive from registry perspective) ---
+  publish:
+    classification: DANGEROUS
+    strict: false
+    options:
+      --dry-run: {overrides: READONLY, risk: LOW}
+  pack:
+    classification: LOCAL_EFFECTS
+    strict: false
+  deploy:
+    classification: LOCAL_EFFECTS
+    strict: false
+
+  # --- Script execution (runs arbitrary code from package.json / user input) ---
+  run:
+    classification: DANGEROUS
+    strict: false
+  run-script:
+    classification: DANGEROUS
+    strict: false
+  test:
+    classification: DANGEROUS
+    strict: false
+  t:
+    classification: DANGEROUS
+    strict: false
+  start:
+    classification: DANGEROUS
+    strict: false
+  restart:
+    classification: DANGEROUS
+    strict: false
+  stop:
+    classification: DANGEROUS
+    strict: false
+  create:
+    classification: DANGEROUS
+    strict: false
+
+  # --- Arbitrary command execution with package context ---
+  # `pnpm exec [--] <cmd> [args...]` runs arbitrary commands with node_modules/.bin on PATH
+  exec:
+    classification: READONLY
+    strict: false
+    delegates_to:
+      mode: after_separator
+      separator: "--"
+  x:
+    classification: READONLY
+    strict: false
+    delegates_to:
+      mode: after_separator
+      separator: "--"
+  # `pnpm dlx <pkg>` downloads and runs a package from the registry
+  dlx:
+    classification: EXTERNAL_EFFECTS
+    risk: HIGH
+    strict: false
+
+  # --- Version bump (writes package.json, creates git commit/tag) ---
+  version:
+    classification: LOCAL_EFFECTS
+    strict: false
+
+  # --- Config ---
+  config:
+    classification: READONLY
+    strict: false
+    subcommands:
+      get:
+        classification: READONLY
+        strict: false
+      list:
+        classification: READONLY
+        strict: false
+      ls:
+        classification: READONLY
+        strict: false
+      set:
+        classification: LOCAL_EFFECTS
+        strict: false
+      delete:
+        classification: LOCAL_EFFECTS
+        strict: false
+  c:
+    classification: READONLY
+    strict: false
+
+  # --- Store management ---
+  store:
+    classification: READONLY
+    strict: false
+    subcommands:
+      status:
+        classification: READONLY
+        strict: false
+      path:
+        classification: READONLY
+        strict: false
+      add:
+        classification: LOCAL_EFFECTS
+        risk: LOW
+        strict: false
+      prune:
+        classification: LOCAL_EFFECTS
+        risk: LOW
+        strict: false
+
+  # --- Server (local daemon) ---
+  server:
+    classification: LOCAL_EFFECTS
+    strict: false
+    subcommands:
+      start:
+        classification: LOCAL_EFFECTS
+        strict: false
+      stop:
+        classification: LOCAL_EFFECTS
+        strict: false
+      status:
+        classification: READONLY
+        strict: false
+
+  # --- Env (manages Node.js versions) ---
+  env:
+    classification: READONLY
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      ls:
+        classification: READONLY
+        strict: false
+      use:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      add:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      remove:
+        classification: LOCAL_EFFECTS
+        strict: false
+      rm:
+        classification: LOCAL_EFFECTS
+        strict: false
+
+  # --- Setup (modifies user shell rc / PATH) ---
+  setup:
+    classification: LOCAL_EFFECTS
+    strict: false
+
+  # --- Recursive / multi meta-commands ---
+  # `pnpm recursive <cmd>` runs a subcommand on every workspace package.
+  # Can run arbitrary commands via `pnpm recursive exec -- ...`, so base is DANGEROUS
+  # (safer default; user can write explicit `pnpm -r <cmd>` via global flag for the safe subcommands).
+  recursive:
+    classification: DANGEROUS
+    strict: false
+  multi:
+    classification: DANGEROUS
+    strict: false
+  m:
+    classification: DANGEROUS
+    strict: false
