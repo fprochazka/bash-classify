@@ -1,5 +1,5 @@
 {
-  "description": "Auto-allow readonly bash commands using bash-classify",
+  "description": "Auto-allow low-risk bash commands using bash-classify",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,7 +7,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/classify-bash.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/hook-pre-tool-use.sh",
+            "timeout": 10,
+            "statusMessage": "Classifying bash command..."
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/hook-permission-request.sh",
             "timeout": 10,
             "statusMessage": "Classifying bash command..."
           }
