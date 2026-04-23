@@ -116,6 +116,14 @@
         "min_classification": {
           "$ref": "#/$defs/Classification",
           "description": "Floor classification for the inner command"
+        },
+        "delegated_classification": {
+          "$ref": "#/$defs/Classification",
+          "description": "When delegation successfully resolves at least one inner command, the wrapper's own classification drops to this value before inner-elevation is applied. Use for pure delegation wrappers like sh/bash where the wrapper itself has no effect beyond the command it runs."
+        },
+        "delegated_risk": {
+          "$ref": "#/$defs/Risk",
+          "description": "Optional companion to delegated_classification — the risk floor applied when delegation resolves. Defaults to the default risk for delegated_classification."
         }
       }
     },

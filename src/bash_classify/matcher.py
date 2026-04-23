@@ -248,23 +248,43 @@ def match_command(
 
     # Step 6: Handle delegation
     inner_commands: list[InnerCommandResult] = []
+    command_level_inner_count = 0
 
     # Command-level delegation
     if matched_def.delegates_to is not None:
-        inner_commands.extend(
-            _handle_delegation(
-                remaining_positional,
-                matched_def.delegates_to,
-                database,
-                argv,
-                matched_def,
-            )
+        command_level_inner = _handle_delegation(
+            remaining_positional,
+            matched_def.delegates_to,
+            database,
+            argv,
+            matched_def,
         )
+        command_level_inner_count = len(command_level_inner)
+        inner_commands.extend(command_level_inner)
 
     # Option-level delegation (e.g., find -exec)
     for opt_name, delegation_config, delegation_tokens in option_delegations:
         inner_results = _handle_option_delegation(opt_name, delegation_config, delegation_tokens, database)
         inner_commands.extend(inner_results)
+
+    # When command-level delegation actually produced inner commands, optionally
+    # drop the wrapper's own base classification to `delegated_classification`.
+    # This only applies when the current classification came from the command's
+    # own base (no option override and no strict-mode escalation) — otherwise
+    # we'd be erasing an intentional escalation.
+    if (
+        matched_def.delegates_to is not None
+        and matched_def.delegates_to.delegated_classification is not None
+        and command_level_inner_count > 0
+        and not all_overrides
+        and not (matched_def.strict and unknown_options)
+    ):
+        final_classification = matched_def.delegates_to.delegated_classification
+        if matched_def.delegates_to.delegated_risk is not None:
+            final_risk = matched_def.delegates_to.delegated_risk
+        else:
+            final_risk = _default_risk(final_classification)
+        classification_reason = f"delegated to inner via {matched_rule}"
 
     # Inner command classifications and risks affect the parent
     for inner in inner_commands:

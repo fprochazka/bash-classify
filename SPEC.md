@@ -151,13 +151,13 @@ $ echo 'sh -c "ls /tmp | grep log"' | bash-classify
 ```json
 {
   "expression": "sh -c \"ls /tmp | grep log\"",
-  "classification": "DANGEROUS",
+  "classification": "READONLY",
   "directories": ["/tmp"],
   "commands": [
     {
       "command": ["sh"],
       "argv": ["sh", "-c", "ls /tmp | grep log"],
-      "classification": "DANGEROUS",
+      "classification": "READONLY",
       "matched_rule": "sh",
       "inner_commands": [
         {
@@ -850,6 +850,8 @@ The `delegates_to` field defines how a command (or option like `find -exec`) han
 | `flag` | `string` | For `flag_value_is_expression`: which flag's value to parse |
 | `strip_assignments` | `bool` | For `rest_are_argv`: strip leading `KEY=VALUE` tokens before the inner command |
 | `min_classification` | `enum` | Floor classification for the inner command (e.g. `sudo` forces at least `EXTERNAL_EFFECTS`) |
+| `delegated_classification` | `enum` | When delegation resolves at least one inner command, the wrapper's own classification drops to this value before inner-elevation is applied. Intended for pure delegation wrappers like `sh -c` / `bash -c` where the wrapper itself has no effect beyond the command it runs. Only applies when the current classification came from the command's own base (not from an option override or strict-mode escalation). |
+| `delegated_risk` | `enum` | Optional companion to `delegated_classification` — the risk floor applied when delegation resolves. Defaults to the default risk for `delegated_classification`. |
 
 ### Database field reference
 

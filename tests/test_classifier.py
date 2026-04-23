@@ -105,11 +105,13 @@ class TestSpecExamples:
             'sh -c "ls /tmp | grep log"',
             database=database,
         )
-        assert result.classification == Classification.DANGEROUS
+        # sh -c with only READONLY inner commands drops the DANGEROUS floor
+        # via delegated_classification and ends up READONLY.
+        assert result.classification == Classification.READONLY
 
         sh_cmd = result.commands[0]
         assert sh_cmd.matched_rule == "sh"
-        assert sh_cmd.classification == Classification.DANGEROUS
+        assert sh_cmd.classification == Classification.READONLY
         assert len(sh_cmd.inner_commands) >= 2
 
         inner_cmds = {tuple(ic.command) for ic in sh_cmd.inner_commands}

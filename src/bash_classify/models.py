@@ -116,6 +116,8 @@ class DelegationConfig:
     flag: str | None = None
     strip_assignments: bool = False
     min_classification: Classification | None = None
+    delegated_classification: Classification | None = None
+    delegated_risk: Risk | None = None
 
 
 @dataclass

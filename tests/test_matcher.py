@@ -553,6 +553,77 @@ class TestShFlagEqualsValue:
             pytest.skip("sh -c=value form not supported — known limitation")
 
 
+class TestDelegatedClassification:
+    """Tests for `delegated_classification` on delegates_to — sh/bash -c drops floor."""
+
+    def test_sh_c_readonly_inner(self, database: dict[str, CommandDef]) -> None:
+        """sh -c 'cat /tmp/x' -> READONLY/LOW (floor dropped, inner is READONLY)."""
+        result = match_command(_make_invocation(["sh", "-c", "cat /tmp/x"]), database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_bash_c_readonly_inner(self, database: dict[str, CommandDef]) -> None:
+        """bash -c 'cat /tmp/x' -> READONLY/LOW (same behavior for bash)."""
+        result = match_command(_make_invocation(["bash", "-c", "cat /tmp/x"]), database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_sh_c_dangerous_inner_elevates(self, database: dict[str, CommandDef]) -> None:
+        """sh -c 'rm -rf /' -> DANGEROUS (inner elevates past dropped floor)."""
+        result = match_command(_make_invocation(["sh", "-c", "rm -rf /"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_sh_c_local_effects_inner(self, database: dict[str, CommandDef]) -> None:
+        """sh -c 'git add .' -> LOCAL_EFFECTS (inner elevates from READONLY floor)."""
+        result = match_command(_make_invocation(["sh", "-c", "git add ."]), database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        # git add is LOCAL_EFFECTS/LOW in the database
+        assert result.risk == Risk.LOW
+
+    def test_sh_without_c_preserves_base(self, database: dict[str, CommandDef]) -> None:
+        """sh alone (no -c) -> DANGEROUS/HIGH (no delegation fired, base preserved)."""
+        result = match_command(_make_invocation(["sh"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_sh_c_empty_preserves_base(self, database: dict[str, CommandDef]) -> None:
+        """sh -c '' -> DANGEROUS (empty expression produces no inner, base preserved)."""
+        result = match_command(_make_invocation(["sh", "-c", ""]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_sudo_cat_unchanged(self, database: dict[str, CommandDef]) -> None:
+        """sudo cat x -> DANGEROUS (sudo.yaml untouched, regression test)."""
+        result = match_command(_make_invocation(["sudo", "cat", "/tmp/x"]), database)
+        assert result.classification == Classification.DANGEROUS
+
+    def test_sh_c_unknown_option_stays_dangerous(self, database: dict[str, CommandDef]) -> None:
+        """sh -c 'cat x' --bogus -> strict-mode escalation should not be dropped.
+
+        sh.yaml has default strict=true; an unknown option should escalate to
+        UNKNOWN/HIGH. The delegated_classification drop must not undo that.
+        """
+        result = match_command(_make_invocation(["sh", "--bogus", "-c", "cat /tmp/x"]), database)
+        # Inner is READONLY, but strict-mode unknown option should keep it non-READONLY.
+        assert result.classification != Classification.READONLY
+
+
+class TestShXargsIntegration:
+    """Integration: xargs sh -c 'cat x' should come out as READONLY/LOW.
+
+    This uses parse_expression to exercise the full pipeline including xargs's
+    rest_are_argv delegation wrapping sh's flag_value_is_expression delegation.
+    """
+
+    def test_xargs_sh_c_readonly(self, database: dict[str, CommandDef]) -> None:
+        from bash_classify.classifier import classify_expression
+
+        result = classify_expression("xargs -I{} sh -c 'cat {}'")
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+
 class TestGlobalOptionOverrides:
     """Global options with overrides should affect classification."""
 
