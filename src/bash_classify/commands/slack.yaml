@@ -1,0 +1,113 @@
+# $schema: ../../../schemas/command.schema.json
+command: slack
+description: "Slack CLI (https://github.com/fprochazka/slackcli) — interact with Slack workspaces"
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -o: {takes_value: true}
+  --org: {takes_value: true, aliases: [-o]}
+  -c: {takes_value: true}
+  --config: {takes_value: true, aliases: [-c]}
+  -v: {}
+  --verbose: {}
+
+subcommands:
+  # ── Resolve ───────────────────────────────────────────────────────
+  resolve:
+    classification: READONLY
+    strict: false
+
+  # ── Config ────────────────────────────────────────────────────────
+  config:
+    classification: READONLY
+    strict: false
+
+  # ── Conversations ─────────────────────────────────────────────────
+  conversations:
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+
+  # ── Messages ──────────────────────────────────────────────────────
+  messages:
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      send:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      edit:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      delete:
+        classification: DANGEROUS
+        strict: false
+
+  # ── Reactions ─────────────────────────────────────────────────────
+  reactions:
+    subcommands:
+      add:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      remove:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+
+  # ── Pins ──────────────────────────────────────────────────────────
+  pins:
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      add:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      remove:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+
+  # ── Scheduled ─────────────────────────────────────────────────────
+  scheduled:
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      create:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+      delete:
+        classification: DANGEROUS
+        strict: false
+
+  # ── Search ────────────────────────────────────────────────────────
+  search:
+    subcommands:
+      messages:
+        classification: READONLY
+        strict: false
+      files:
+        classification: READONLY
+        strict: false
+
+  # ── Users ─────────────────────────────────────────────────────────
+  users:
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+      search:
+        classification: READONLY
+        strict: false
+      get:
+        classification: READONLY
+        strict: false
+
+  # ── Files ─────────────────────────────────────────────────────────
+  files:
+    subcommands:
+      download:
+        classification: LOCAL_EFFECTS
+        risk: LOW
+        strict: false
