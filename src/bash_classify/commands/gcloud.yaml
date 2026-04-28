@@ -25,6 +25,331 @@ global_options:
   --no-user-output-enabled: {}
 
 subcommands:
+  # artifacts
+  artifacts:
+    classification: EXTERNAL_EFFECTS
+    strict: false
+    subcommands:
+      apt:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          import:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          upload:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      attachments:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          download:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      docker:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          images:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+            subcommands:
+              list:
+                classification: READONLY
+                strict: false
+              describe:
+                classification: READONLY
+                strict: false
+              get-operation:
+                classification: READONLY
+                strict: false
+              list-vulnerabilities:
+                classification: READONLY
+                strict: false
+              scan:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+              delete:
+                classification: DANGEROUS
+                strict: false
+          tags:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+            subcommands:
+              list:
+                classification: READONLY
+                strict: false
+              add:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+              delete:
+                classification: DANGEROUS
+                strict: false
+          upgrade:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+            subcommands:
+              print-iam-policy:
+                classification: READONLY
+                strict: false
+              migrate:
+                classification: EXTERNAL_EFFECTS
+                strict: false
+      files:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          download:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      generic:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          download:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          upload:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      go:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          auth:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          upload:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      locations:
+        classification: READONLY
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+      operations:
+        classification: READONLY
+        strict: false
+        subcommands:
+          describe:
+            classification: READONLY
+            strict: false
+      packages:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      print-settings:
+        classification: READONLY
+        strict: false
+        subcommands:
+          gradle:
+            classification: READONLY
+            strict: false
+          mvn:
+            classification: READONLY
+            strict: false
+          npm:
+            classification: READONLY
+            strict: false
+          python:
+            classification: READONLY
+            strict: false
+      repositories:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          get-iam-policy:
+            classification: READONLY
+            strict: false
+          list-cleanup-policies:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          add-iam-policy-binding:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          remove-iam-policy-binding:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          set-iam-policy:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          set-cleanup-policies:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+          delete-cleanup-policies:
+            classification: DANGEROUS
+            strict: false
+      rules:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      sbom:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          export:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          load:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      settings:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          describe:
+            classification: READONLY
+            strict: false
+          enable-upgrade-redirection:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          disable-upgrade-redirection:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      tags:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          create:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          export:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      versions:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          describe:
+            classification: READONLY
+            strict: false
+          export:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          update:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          delete:
+            classification: DANGEROUS
+            strict: false
+      vpcsc-config:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          describe:
+            classification: READONLY
+            strict: false
+          allow:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          deny:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      vulnerabilities:
+        classification: READONLY
+        strict: false
+        subcommands:
+          list:
+            classification: READONLY
+            strict: false
+          load-vex:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+      yum:
+        classification: EXTERNAL_EFFECTS
+        strict: false
+        subcommands:
+          import:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+          upload:
+            classification: EXTERNAL_EFFECTS
+            strict: false
+
   # compute
   compute:
     classification: EXTERNAL_EFFECTS
