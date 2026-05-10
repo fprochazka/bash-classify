@@ -1,0 +1,15 @@
+# $schema: ../../../schemas/command.schema.json
+command: stdbuf
+description: "Run a command with modified stdio buffering"
+classification: READONLY
+global_options:
+  --help: {overrides: READONLY}
+delegates_to:
+  mode: rest_are_argv
+options:
+  -i: {takes_value: true}
+  --input: {takes_value: true, aliases: [-i]}
+  -o: {takes_value: true}
+  --output: {takes_value: true, aliases: [-o]}
+  -e: {takes_value: true}
+  --error: {takes_value: true, aliases: [-e]}
