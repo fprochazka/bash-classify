@@ -234,6 +234,9 @@ subcommands:
     classification: EXTERNAL_EFFECTS
     risk: HIGH
     strict: false
+    delegates_to:
+      mode: rest_are_argv
+      min_classification: EXTERNAL_EFFECTS
 
   # --- Version bump (writes package.json, creates git commit/tag) ---
   version:
