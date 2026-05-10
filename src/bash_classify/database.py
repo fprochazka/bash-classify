@@ -296,5 +296,6 @@ def _parse_delegation_config(raw: dict | None) -> DelegationConfig | None:
         terminator=raw.get("terminator"),
         flag=raw.get("flag"),
         strip_assignments=raw.get("strip_assignments", False),
+        skip_leading_positionals=raw.get("skip_leading_positionals", 0),
         min_classification=min_class,
     )

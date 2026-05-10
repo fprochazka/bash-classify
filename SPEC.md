@@ -851,6 +851,7 @@ The `delegates_to` field defines how a command (or option like `find -exec`) han
 | `terminator` | `string` | For `terminated_argv`: the token that ends the inner argv |
 | `flag` | `string` | For `flag_value_is_expression`: which flag's value to parse |
 | `strip_assignments` | `bool` | For `rest_are_argv`: strip leading `KEY=VALUE` tokens before the inner command |
+| `skip_leading_positionals` | `int` | For `rest_are_argv`: number of positional tokens that belong to the wrapper itself before the inner command starts (e.g. `timeout DURATION COMMAND...` uses `1`). Default `0`. |
 | `min_classification` | `enum` | Floor classification for the inner command (e.g. `sudo` forces at least `DANGEROUS`, `nohup` and `kubectl exec` force at least `EXTERNAL_EFFECTS`) |
 
 When command-level delegation resolves at least one inner command (and no option override or strict-mode escalation is active), the wrapper's own `classification`/`risk` are ignored — the result is determined by the inner alone, with `min_classification` available to express genuine wrapper-level side-effects (e.g., `nohup` detaches a process, `kubectl exec` runs cluster-side, `sudo` enforces a security floor). The wrapper's declared base classification still applies when delegation does not resolve (e.g., `sh` invoked without `-c`, or a delegation that produces no inner command).

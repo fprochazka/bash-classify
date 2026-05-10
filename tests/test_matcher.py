@@ -230,6 +230,62 @@ class TestDelegationEnvStripAssignments:
         assert inner.argv == ["some_command", "arg"]
 
 
+class TestSkipLeadingPositionals:
+    """Tests for `skip_leading_positionals` on rest_are_argv delegation —
+    used by `timeout` to skip its DURATION before the inner command."""
+
+    def test_timeout_duration_then_readonly_inner(self, database: dict[str, CommandDef]) -> None:
+        """timeout 30 cat /tmp/x -> READONLY/LOW (DURATION skipped, inner is cat)."""
+        result = match_command(_make_invocation(["timeout", "30", "cat", "/tmp/x"]), database)
+        assert len(result.inner_commands) == 1
+        inner = result.inner_commands[0]
+        assert inner.argv == ["cat", "/tmp/x"]
+        assert inner.command == ["cat"]
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_timeout_duration_then_dangerous_inner_elevates(self, database: dict[str, CommandDef]) -> None:
+        """timeout 30 rm -rf / -> DANGEROUS/HIGH (inner elevates past wrapper base)."""
+        result = match_command(_make_invocation(["timeout", "30", "rm", "-rf", "/"]), database)
+        assert len(result.inner_commands) == 1
+        inner = result.inner_commands[0]
+        assert inner.argv == ["rm", "-rf", "/"]
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_timeout_flag_then_duration_then_inner(self, database: dict[str, CommandDef]) -> None:
+        """timeout -s KILL 30 tail -f /var/log/x -> READONLY/LOW.
+
+        Verifies flag-then-positional-then-inner ordering: the wrapper's flags
+        (with values) are consumed first, DURATION is the first positional,
+        then the inner command starts.
+        """
+        result = match_command(
+            _make_invocation(["timeout", "-s", "KILL", "30", "tail", "-f", "/var/log/x"]),
+            database,
+        )
+        assert len(result.inner_commands) == 1
+        inner = result.inner_commands[0]
+        assert inner.argv == ["tail", "-f", "/var/log/x"]
+        assert inner.command == ["tail"]
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_timeout_only_duration_no_inner(self, database: dict[str, CommandDef]) -> None:
+        """timeout 30 -> wrapper base preserved (no inner, command_level_inner_count == 0)."""
+        result = match_command(_make_invocation(["timeout", "30"]), database)
+        assert len(result.inner_commands) == 0
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_timeout_no_args(self, database: dict[str, CommandDef]) -> None:
+        """timeout (no args) -> READONLY/LOW unchanged."""
+        result = match_command(_make_invocation(["timeout"]), database)
+        assert len(result.inner_commands) == 0
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+
 class TestCombinedShortFlags:
     def test_combined_boolean_flags(self, database: dict[str, CommandDef]) -> None:
         """Combined -abc where all three are boolean flags should all be expanded."""

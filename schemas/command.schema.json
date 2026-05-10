@@ -113,6 +113,12 @@
           "type": "boolean",
           "description": "For rest_are_argv mode: strip leading KEY=VALUE tokens before the inner command"
         },
+        "skip_leading_positionals": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "For rest_are_argv mode: number of positional tokens that belong to the wrapper itself before the inner command starts. Used by commands like `timeout` whose syntax is `timeout DURATION COMMAND...`."
+        },
         "min_classification": {
           "$ref": "#/$defs/Classification",
           "description": "Floor classification for the inner command"

@@ -523,7 +523,9 @@ def _classify_options(
 
         if end_of_options or not token.startswith("-"):
             if stop_at_first_positional:
-                # Everything from here is the inner command
+                # Skip N leading positionals that belong to the wrapper itself
+                # (e.g., timeout's DURATION). Then everything from here is the inner.
+                i += command_def.delegates_to.skip_leading_positionals
                 positional.extend(argv[i:])
                 break
             positional.append(token)

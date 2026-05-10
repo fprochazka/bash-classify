@@ -115,6 +115,7 @@ class DelegationConfig:
     terminator: str | None = None
     flag: str | None = None
     strip_assignments: bool = False
+    skip_leading_positionals: int = 0
     min_classification: Classification | None = None
 
 

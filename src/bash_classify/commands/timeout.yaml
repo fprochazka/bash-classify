@@ -6,6 +6,7 @@ global_options:
   --help: {overrides: READONLY}
 delegates_to:
   mode: rest_are_argv
+  skip_leading_positionals: 1
 options:
   -k: {takes_value: true}
   --kill-after: {takes_value: true, aliases: [-k]}
