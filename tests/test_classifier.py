@@ -82,7 +82,12 @@ class TestSpecExamples:
         assert find_cmd.inner_commands[0].classification == Classification.READONLY
 
     def test_kubectl_exec_cat(self, database: dict[str, CommandDef]) -> None:
-        """kubectl exec -it my-pod -- cat /etc/config"""
+        """kubectl exec -it my-pod -- cat /etc/config
+
+        Inner cat is floored to EXTERNAL_EFFECTS by kubectl exec's
+        min_classification, then the system-path elevation rule (touching
+        /etc/config) escalates the whole expression to DANGEROUS.
+        """
         result = classify_expression(
             "kubectl exec -it my-pod -- cat /etc/config",
             database=database,
@@ -97,7 +102,8 @@ class TestSpecExamples:
         inner = kubectl_cmd.inner_commands[0]
         assert inner.delegation_mode == "after_separator"
         assert inner.command == ["cat"]
-        assert inner.classification == Classification.READONLY
+        # Inner is floored by min_classification: EXTERNAL_EFFECTS.
+        assert inner.classification == Classification.EXTERNAL_EFFECTS
 
     def test_sh_c_expression(self, database: dict[str, CommandDef]) -> None:
         """sh -c "ls /tmp | grep log" """
@@ -105,8 +111,8 @@ class TestSpecExamples:
             'sh -c "ls /tmp | grep log"',
             database=database,
         )
-        # sh -c with only READONLY inner commands drops the DANGEROUS floor
-        # via delegated_classification and ends up READONLY.
+        # sh -c with only READONLY inner commands ignores the wrapper's
+        # DANGEROUS base on successful delegation and ends up READONLY.
         assert result.classification == Classification.READONLY
 
         sh_cmd = result.commands[0]

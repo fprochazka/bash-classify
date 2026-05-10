@@ -267,23 +267,18 @@ def match_command(
         inner_results = _handle_option_delegation(opt_name, delegation_config, delegation_tokens, database)
         inner_commands.extend(inner_results)
 
-    # When command-level delegation actually produced inner commands, optionally
-    # drop the wrapper's own base classification to `delegated_classification`.
-    # This only applies when the current classification came from the command's
-    # own base (no option override and no strict-mode escalation) — otherwise
-    # we'd be erasing an intentional escalation.
-    if (
-        matched_def.delegates_to is not None
-        and matched_def.delegates_to.delegated_classification is not None
-        and command_level_inner_count > 0
-        and not all_overrides
-        and not (matched_def.strict and unknown_options)
-    ):
-        final_classification = matched_def.delegates_to.delegated_classification
-        if matched_def.delegates_to.delegated_risk is not None:
-            final_risk = matched_def.delegates_to.delegated_risk
-        else:
-            final_risk = _default_risk(final_classification)
+    # When command-level delegation actually produced inner commands, the
+    # wrapper's own base classification/risk are ignored — the result is
+    # determined by the inner alone (with `min_classification` already applied
+    # per inner inside `_match_inner_command`). This only fires when the current
+    # classification came from the command's own base (no option override and
+    # no strict-mode escalation) — otherwise we'd be erasing an intentional
+    # escalation. Wrappers with genuine side-effects beyond launching (e.g.
+    # `sudo` security floor, `nohup` detach, `kubectl exec` cluster-side run)
+    # express that via `min_classification`.
+    if command_level_inner_count > 0 and not all_overrides and not (matched_def.strict and unknown_options):
+        final_classification = Classification.READONLY
+        final_risk = Risk.LOW
         classification_reason = f"delegated to inner via {matched_rule}"
 
     # Inner command classifications and risks affect the parent

@@ -553,8 +553,10 @@ class TestShFlagEqualsValue:
             pytest.skip("sh -c=value form not supported — known limitation")
 
 
-class TestDelegatedClassification:
-    """Tests for `delegated_classification` on delegates_to — sh/bash -c drops floor."""
+class TestDelegationFloor:
+    """Tests that the wrapper's own base classification is ignored when
+    command-level delegation cleanly resolves at least one inner command —
+    sh/bash -c drop their DANGEROUS base when the inner is recognized."""
 
     def test_sh_c_readonly_inner(self, database: dict[str, CommandDef]) -> None:
         """sh -c 'cat /tmp/x' -> READONLY/LOW (floor dropped, inner is READONLY)."""
@@ -602,11 +604,59 @@ class TestDelegatedClassification:
         """sh -c 'cat x' --bogus -> strict-mode escalation should not be dropped.
 
         sh.yaml has default strict=true; an unknown option should escalate to
-        UNKNOWN/HIGH. The delegated_classification drop must not undo that.
+        UNKNOWN/HIGH. The delegation floor drop must not undo that.
         """
         result = match_command(_make_invocation(["sh", "--bogus", "-c", "cat /tmp/x"]), database)
         # Inner is READONLY, but strict-mode unknown option should keep it non-READONLY.
         assert result.classification != Classification.READONLY
+
+    def test_uv_run_readonly_inner(self, database: dict[str, CommandDef]) -> None:
+        """uv run cat /tmp/x -> READONLY/LOW (wrapper base ignored, inner is READONLY)."""
+        result = match_command(_make_invocation(["uv", "run", "cat", "/tmp/x"]), database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_uv_run_dangerous_inner_elevates(self, database: dict[str, CommandDef]) -> None:
+        """uv run rm -rf /tmp/x -> DANGEROUS (inner elevates above the dropped wrapper base)."""
+        result = match_command(_make_invocation(["uv", "run", "rm", "-rf", "/tmp/x"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_npx_readonly_inner(self, database: dict[str, CommandDef]) -> None:
+        """npx cat /tmp/x -> READONLY/LOW (wrapper base ignored)."""
+        result = match_command(_make_invocation(["npx", "cat", "/tmp/x"]), database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_zsh_c_readonly_inner(self, database: dict[str, CommandDef]) -> None:
+        """zsh -c 'cat /tmp/x' -> READONLY/LOW (symmetric with sh/bash)."""
+        result = match_command(_make_invocation(["zsh", "-c", "cat /tmp/x"]), database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_nohup_min_classification(self, database: dict[str, CommandDef]) -> None:
+        """nohup cat /tmp/x -> EXTERNAL_EFFECTS via min_classification floor."""
+        result = match_command(_make_invocation(["nohup", "cat", "/tmp/x"]), database)
+        assert result.classification == Classification.EXTERNAL_EFFECTS
+
+    def test_kubectl_exec_floor(self, database: dict[str, CommandDef]) -> None:
+        """kubectl exec pod -- ls -> EXTERNAL_EFFECTS via min_classification floor.
+
+        Wrapper subcommand base is DANGEROUS but is now ignored on successful
+        delegation; min_classification: EXTERNAL_EFFECTS keeps the cluster-side
+        execution semantic.
+        """
+        result = match_command(_make_invocation(["kubectl", "exec", "pod", "--", "ls"]), database)
+        assert result.classification == Classification.EXTERNAL_EFFECTS
+
+    def test_kubectl_exec_dangerous_inner_elevates(self, database: dict[str, CommandDef]) -> None:
+        """kubectl exec pod -- rm -rf / -> DANGEROUS (inner elevates above the floor)."""
+        result = match_command(
+            _make_invocation(["kubectl", "exec", "pod", "--", "rm", "-rf", "/"]),
+            database,
+        )
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
 
 
 class TestShXargsIntegration:

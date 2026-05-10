@@ -7,8 +7,6 @@ global_options:
 delegates_to:
   mode: flag_value_is_expression
   flag: -c
-  delegated_classification: READONLY
-  delegated_risk: LOW
 options:
   -c: {takes_value: true}
   -e: {}

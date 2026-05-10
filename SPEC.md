@@ -132,7 +132,7 @@ $ echo 'kubectl exec -it my-pod -- cat /etc/config' | bash-classify
           "delegation_source": "--",
           "command": ["cat"],
           "argv": ["cat", "/etc/config"],
-          "classification": "READONLY",
+          "classification": "EXTERNAL_EFFECTS",
           "matched_rule": "cat",
           "inner_commands": []
         }
@@ -141,6 +141,8 @@ $ echo 'kubectl exec -it my-pod -- cat /etc/config' | bash-classify
   ]
 }
 ```
+
+Note: the `cat` inner is floored to `EXTERNAL_EFFECTS` by `kubectl exec`'s `min_classification`, and the parent expression is then escalated to `DANGEROUS` by the system-path elevation rule (touching `/etc/config`).
 
 ### Nested delegation (sh -c with full expression parsing)
 
@@ -849,9 +851,9 @@ The `delegates_to` field defines how a command (or option like `find -exec`) han
 | `terminator` | `string` | For `terminated_argv`: the token that ends the inner argv |
 | `flag` | `string` | For `flag_value_is_expression`: which flag's value to parse |
 | `strip_assignments` | `bool` | For `rest_are_argv`: strip leading `KEY=VALUE` tokens before the inner command |
-| `min_classification` | `enum` | Floor classification for the inner command (e.g. `sudo` forces at least `EXTERNAL_EFFECTS`) |
-| `delegated_classification` | `enum` | When delegation resolves at least one inner command, the wrapper's own classification drops to this value before inner-elevation is applied. Intended for pure delegation wrappers like `sh -c` / `bash -c` where the wrapper itself has no effect beyond the command it runs. Only applies when the current classification came from the command's own base (not from an option override or strict-mode escalation). |
-| `delegated_risk` | `enum` | Optional companion to `delegated_classification` — the risk floor applied when delegation resolves. Defaults to the default risk for `delegated_classification`. |
+| `min_classification` | `enum` | Floor classification for the inner command (e.g. `sudo` forces at least `DANGEROUS`, `nohup` and `kubectl exec` force at least `EXTERNAL_EFFECTS`) |
+
+When command-level delegation resolves at least one inner command (and no option override or strict-mode escalation is active), the wrapper's own `classification`/`risk` are ignored — the result is determined by the inner alone, with `min_classification` available to express genuine wrapper-level side-effects (e.g., `nohup` detaches a process, `kubectl exec` runs cluster-side, `sudo` enforces a security floor). The wrapper's declared base classification still applies when delegation does not resolve (e.g., `sh` invoked without `-c`, or a delegation that produces no inner command).
 
 ### Database field reference
 

@@ -124,6 +124,7 @@ subcommands:
     delegates_to:
       mode: after_separator
       separator: "--"
+      min_classification: EXTERNAL_EFFECTS
     options:
       -it: {}
       -i: {}

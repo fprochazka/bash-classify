@@ -6,3 +6,4 @@ global_options:
   --help: {overrides: READONLY}
 delegates_to:
   mode: rest_are_argv
+  min_classification: EXTERNAL_EFFECTS

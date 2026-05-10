@@ -289,8 +289,6 @@ def _parse_delegation_config(raw: dict | None) -> DelegationConfig | None:
 
     mode = DelegationMode(raw["mode"])
     min_class = _parse_classification(raw.get("min_classification"))
-    delegated_class = _parse_classification(raw.get("delegated_classification"))
-    delegated_risk = _parse_risk(raw.get("delegated_risk"))
 
     return DelegationConfig(
         mode=mode,
@@ -299,6 +297,4 @@ def _parse_delegation_config(raw: dict | None) -> DelegationConfig | None:
         flag=raw.get("flag"),
         strip_assignments=raw.get("strip_assignments", False),
         min_classification=min_class,
-        delegated_classification=delegated_class,
-        delegated_risk=delegated_risk,
     )
