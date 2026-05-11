@@ -1,0 +1,11 @@
+# $schema: ../../../schemas/command.schema.json
+command: strings
+description: "Display printable strings in files"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY, aliases: [--help]}
+  --version: {overrides: READONLY}
+  -v: {overrides: READONLY, aliases: [--version]}
+  -V: {overrides: READONLY, aliases: [--version]}
