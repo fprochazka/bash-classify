@@ -1,0 +1,140 @@
+# $schema: ../../../schemas/command.schema.json
+command: rtk
+description: "CLI proxy that filters/summarizes command output for LLM context"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY, aliases: [--help]}
+  --version: {overrides: READONLY}
+  -V: {overrides: READONLY, aliases: [--version]}
+  -v: {}
+  --verbose: {aliases: [-v]}
+  --ultra-compact: {}
+  --skip-env: {}
+# Most rtk subcommands are thin passthroughs: `rtk <tool> <args>` runs `<tool> <args>`
+# and only filters stdout. Risk profile is identical to the inner command, so by default
+# delegate to the rest of argv. Only rtk-native subcommands (config, gain, run, etc.)
+# are enumerated below.
+delegates_to:
+  mode: rest_are_argv
+subcommands:
+  # --- rtk-native readonly inspectors / filters ---
+  read:
+    classification: READONLY
+    strict: false
+  smart:
+    classification: READONLY
+    strict: false
+  pipe:
+    classification: READONLY
+    strict: false
+  json:
+    classification: READONLY
+    strict: false
+  log:
+    classification: READONLY
+    strict: false
+  deps:
+    classification: READONLY
+    strict: false
+  rewrite:
+    classification: READONLY
+    strict: false
+  hook:
+    classification: READONLY
+    strict: false
+  hook-audit:
+    classification: READONLY
+    strict: false
+  verify:
+    classification: READONLY
+    strict: false
+  discover:
+    classification: READONLY
+    strict: false
+  session:
+    classification: READONLY
+    strict: false
+  cc-economics:
+    classification: READONLY
+    strict: false
+  gain:
+    classification: READONLY
+    strict: false
+    options:
+      --reset: {overrides: LOCAL_EFFECTS}
+  config:
+    classification: READONLY
+    strict: false
+    options:
+      --create: {overrides: LOCAL_EFFECTS}
+  learn:
+    classification: READONLY
+    strict: false
+    options:
+      -w: {overrides: LOCAL_EFFECTS}
+      --write-rules: {overrides: LOCAL_EFFECTS, aliases: [-w]}
+  telemetry:
+    classification: READONLY
+    strict: false
+    subcommands:
+      status:
+        classification: READONLY
+      enable:
+        classification: LOCAL_EFFECTS
+      disable:
+        classification: LOCAL_EFFECTS
+      forget:
+        classification: LOCAL_EFFECTS
+
+  # --- rtk-native local-effects ---
+  init:
+    classification: LOCAL_EFFECTS
+    strict: false
+  trust:
+    classification: LOCAL_EFFECTS
+    strict: false
+    options:
+      --list: {overrides: READONLY}
+  untrust:
+    classification: LOCAL_EFFECTS
+    strict: false
+
+  # --- rtk-native delegating runners (inner command is arbitrary) ---
+  # `rtk run -c "<sh>"` executes a raw shell expression; `rtk run <argv>` runs argv.
+  run:
+    classification: DANGEROUS
+    strict: false
+    options:
+      -c: {takes_value: true}
+    delegates_to:
+      mode: flag_value_is_expression
+      flag: -c
+  proxy:
+    strict: false
+    delegates_to:
+      mode: rest_are_argv
+  err:
+    strict: false
+    delegates_to:
+      mode: rest_are_argv
+  test:
+    strict: false
+    delegates_to:
+      mode: rest_are_argv
+  summary:
+    strict: false
+    delegates_to:
+      mode: rest_are_argv
+
+  # --- rtk-aliased filters (rtk subcommand name doesn't match a real tool) ---
+  # `rtk lint` runs eslint; `rtk format` is a universal format checker.
+  lint:
+    classification: READONLY
+    strict: false
+    options:
+      --fix: {overrides: LOCAL_EFFECTS}
+  format:
+    classification: READONLY
+    strict: false
