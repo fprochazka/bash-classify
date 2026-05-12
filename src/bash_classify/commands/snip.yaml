@@ -1,0 +1,79 @@
+# $schema: ../../../schemas/command.schema.json
+command: snip
+description: "CLI proxy that filters/compresses tool output for LLM agents"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY, aliases: [--help]}
+  --version: {overrides: READONLY}
+  -V: {overrides: READONLY, aliases: [--version]}
+# Implicit form `snip <tool> <args>` is semantically identical to `<tool> <args>`
+# — same filter pipeline, same risk profile. Explicit `snip run -- <tool> <args>`
+# is the canonical form the Claude Code hook rewrites to. Only snip-native
+# subcommands are enumerated below; everything else falls through to delegation.
+delegates_to:
+  mode: rest_are_argv
+subcommands:
+  # --- snip-native readonly inspectors ---
+  hook:
+    classification: READONLY
+    strict: false
+    subcommands:
+      codex:
+        classification: READONLY
+  hook-audit:
+    classification: READONLY
+    strict: false
+    options:
+      --clear: {overrides: LOCAL_EFFECTS}
+  gain:
+    classification: READONLY
+    strict: false
+  cc-economics:
+    classification: READONLY
+    strict: false
+  config:
+    classification: READONLY
+    strict: false
+  discover:
+    classification: READONLY
+    strict: false
+  verify:
+    classification: READONLY
+    strict: false
+  learn:
+    classification: READONLY
+    strict: false
+    options:
+      --generate: {overrides: LOCAL_EFFECTS}
+
+  # --- snip-native local-effects ---
+  init:
+    classification: LOCAL_EFFECTS
+    strict: false
+    options:
+      --uninstall: {overrides: LOCAL_EFFECTS}
+  trust:
+    classification: LOCAL_EFFECTS
+    strict: false
+  untrust:
+    classification: LOCAL_EFFECTS
+    strict: false
+
+  # --- snip-native delegating runners ---
+  # `snip run -- <cmd> <args>` is the explicit form: classify the inner command.
+  run:
+    strict: false
+    delegates_to:
+      mode: after_separator
+      separator: "--"
+  # `snip proxy <cmd> <args>` skips filtering and execs the inner directly.
+  proxy:
+    strict: false
+    delegates_to:
+      mode: rest_are_argv
+  # `snip check -- <cmd>` is a dry-run that never executes the inner command.
+  check:
+    classification: READONLY
+    strict: false
