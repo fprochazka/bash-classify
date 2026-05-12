@@ -1,0 +1,8 @@
+# $schema: ../../../schemas/command.schema.json
+command: sleep
+description: "Delay for a specified amount of time"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+  --version: {overrides: READONLY}
