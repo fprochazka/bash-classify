@@ -1,0 +1,11 @@
+# $schema: ../../../schemas/command.schema.json
+command: wait
+description: "Wait for background jobs or processes to complete"
+classification: READONLY
+strict: false
+global_options:
+  --help: {overrides: READONLY}
+options:
+  -n: {}
+  -f: {}
+  -p: {takes_value: true}
