@@ -1,6 +1,6 @@
 {
   "name": "bash-classify-hook",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Auto-allows low-risk bash commands in Claude Code using bash-classify",
   "author": {
     "name": "Filip Prochazka"
