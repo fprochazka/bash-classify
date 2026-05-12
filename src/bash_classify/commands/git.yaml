@@ -94,12 +94,35 @@ subcommands:
     classification: LOCAL_EFFECTS
     risk: LOW
     options:
-      -a: {}
-      --all: {aliases: [-a]}
-      -v: {}
-      --verbose: {aliases: [-v]}
+      # --- Listing / query flags (READONLY) ---
+      -a: {overrides: READONLY}
+      --all: {overrides: READONLY, aliases: [-a]}
+      -r: {overrides: READONLY}
+      --remotes: {overrides: READONLY, aliases: [-r]}
+      -v: {overrides: READONLY}
+      --verbose: {overrides: READONLY, aliases: [-v]}
       -l: {overrides: READONLY}
       --list: {overrides: READONLY, aliases: [-l]}
+      --show-current: {overrides: READONLY}
+      --contains: {overrides: READONLY, takes_value: true}
+      --no-contains: {overrides: READONLY, takes_value: true}
+      --merged: {overrides: READONLY, takes_value: true}
+      --no-merged: {overrides: READONLY, takes_value: true}
+      --points-at: {overrides: READONLY, takes_value: true}
+      --sort: {overrides: READONLY, takes_value: true}
+      --format: {overrides: READONLY, takes_value: true}
+      --column: {overrides: READONLY}
+      --no-column: {overrides: READONLY}
+      -i: {overrides: READONLY}
+      --ignore-case: {overrides: READONLY, aliases: [-i]}
+      --abbrev: {overrides: READONLY}
+      --no-abbrev: {overrides: READONLY}
+      --color: {overrides: READONLY}
+      --no-color: {overrides: READONLY}
+      --omit-empty: {overrides: READONLY}
+      -q: {}
+      --quiet: {aliases: [-q]}
+      # --- Mutating actions ---
       -d: {overrides: LOCAL_EFFECTS, risk: MEDIUM}
       -D: {overrides: DANGEROUS}
       --delete: {overrides: LOCAL_EFFECTS, risk: MEDIUM}
@@ -111,7 +134,15 @@ subcommands:
       -C: {overrides: DANGEROUS}
       --edit-description: {overrides: LOCAL_EFFECTS, risk: LOW}
       --set-upstream-to: {overrides: LOCAL_EFFECTS, risk: LOW, takes_value: true}
+      -u: {overrides: LOCAL_EFFECTS, risk: LOW, takes_value: true, aliases: [--set-upstream-to]}
       --unset-upstream: {overrides: LOCAL_EFFECTS, risk: LOW}
+      -t: {overrides: LOCAL_EFFECTS, risk: LOW}
+      --track: {overrides: LOCAL_EFFECTS, risk: LOW, aliases: [-t]}
+      --no-track: {}
+      --create-reflog: {overrides: LOCAL_EFFECTS, risk: LOW}
+      -f: {}
+      --force: {aliases: [-f]}
+      --recurse-submodules: {}
   remote:
     classification: READONLY
     strict: false
