@@ -41,6 +41,7 @@ subcommands:
     strict: false
   rev-parse:
     classification: READONLY
+    strict: false
   ls-files:
     classification: READONLY
     strict: false
@@ -88,6 +89,7 @@ subcommands:
     strict: false
   version:
     classification: READONLY
+    strict: false
 
   # --- Branch / tag / remote management ---
   branch:
