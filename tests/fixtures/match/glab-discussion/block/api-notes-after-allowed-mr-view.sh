@@ -1,0 +1,1 @@
+glab mr view 123 --output=json 2>/dev/null | jq -r '{state, draft, title}' ; echo "=== notes ==="; glab api "projects/:id/merge_requests/123/notes?per_page=100" 2>/dev/null | jq -r '.[] | .author.username' | head -60

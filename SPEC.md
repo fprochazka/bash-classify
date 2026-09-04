@@ -186,6 +186,78 @@ $ echo 'sh -c "ls /tmp | grep log"' | bash-classify
 }
 ```
 
+### match mode
+
+```
+$ echo 'sudo glab mr note 42 -m hi' | bash-classify match --rules blocked-commands.yaml
+```
+
+```json
+{
+  "matches": [
+    {
+      "rule": "mr-note",
+      "command": ["glab", "mr", "note"],
+      "argv": ["glab", "mr", "note", "42", "-m", "hi"],
+      "via": ["sudo"]
+    }
+  ],
+  "parse_warnings": []
+}
+```
+
+`match` answers a narrower question than classification: which of the command shapes
+declared in a rules file does this expression actually invoke? Shell text that only names
+a command — a heredoc body, an `echo` or `printf` argument, a `#` comment, a
+`git commit -m` message, a `grep` pattern — is not an invocation and does not match.
+
+#### The rules file
+
+```yaml
+rules:
+  - name: mr-note                       # required, unique within the file
+    command: [glab, mr, note]           # required; prefix match on the resolved path
+    except: [[glab, mr, note, list]]    # optional; prefix paths excluded from the match
+    any_option: [--comments, -c]           # optional; at least one of these is present
+    any_arg_matches: 'merge_requests/[^/?]+/notes'   # optional; Python re.search
+```
+
+Within one rule every condition that is given must hold (AND). Rules are independent of
+each other (OR), and one invocation may match several rules; each match is reported.
+
+| Field | Meaning |
+|---|---|
+| `name` | Reported back on every match; must be unique within the file |
+| `command` | Prefix match against `command` — the *resolved* path, so `/usr/bin/glab --repo x mr note` matches `[glab, mr, note]` |
+| `except` | Prefix paths excluded from the match, so `[glab, mr, note]` can spare `glab mr note list` |
+| `any_option` | At least one of these must appear in `options`: as typed, values stripped, `--key=value` counting as `--key` and a declared cluster `-wc` counting as `-w` and `-c`. Tokens after `--` are positionals and never match |
+| `any_arg_matches` | Python `re.search` applied to every argument token: `argv[1:]` with the resolved subcommand words removed once each. Option flags, option values and positionals are all included; `argv[0]` and the subcommand words are not. A pattern written for `grep -E` needs `\S` instead of `[^[:space:]]` |
+
+A rule matches an invocation at any depth: top-level commands and, recursively, the inner
+commands that wrappers delegate to (`sudo`, `timeout`, `xargs`, `bash -c`, `find -exec`,
+`eval`, `exec`). Commands inside `$(...)` are top-level invocations in their own right.
+`via` lists the enclosing wrappers, outermost first, each as its resolved path joined by
+spaces; it is empty at the top level.
+
+`parse_warnings` is **always** present in match output, even when empty, because a caller
+has to check it: a non-empty list means the expression could not be fully parsed, so an
+empty `matches` list proves nothing.
+
+#### Exit codes for `match`
+
+- `0` — ran successfully, whether or not anything matched
+- `1` — empty input, or no input on stdin within 5 seconds
+- `2` — bad arguments, a missing or invalid rules file (the message names the file and the
+  offending rule), or an internal error
+
+A caller cannot rely on the exit code alone to detect an old binary. Versions before this
+mode parsed `sys.argv` by hand and ignored anything they did not recognize, so
+`bash-classify match --rules f.yaml` on such a binary classifies stdin and exits `0`,
+printing an ordinary classification document with no `matches` key. The check that works is
+the output shape: require a `matches` key, and treat a non-zero exit, unparseable output or
+a missing `matches` key alike as "cannot answer" — fall back rather than reading it as
+"nothing matched".
+
 ### Exit codes
 
 - `0` — successfully classified
@@ -195,6 +267,8 @@ $ echo 'sh -c "ls /tmp | grep log"' | bash-classify
 A bash syntax error does **not** change the exit code. The parse is best-effort: the tool still exits `0`, records the
 problem in `parse_warnings`, and returns whatever commands it could extract from the partial parse. Consumers rely on
 this — check `parse_warnings` to decide whether the `commands` list can be trusted, not the exit code.
+
+`match` mode has its own, slightly different set — see [Exit codes for `match`](#exit-codes-for-match) above.
 
 ### Classification levels
 
@@ -938,7 +1012,28 @@ Python 3.12+. Dependencies:
 
 ## Output Schema
 
-The `commands` list is recursive — any command entry can contain `inner_commands` when the command delegates execution to another command (via `delegates_to` in the database).
+This is the schema of the default mode. `match` mode has its own, much smaller one:
+
+```json
+{
+  "matches": [
+    {
+      "rule": "string — the name of the rule that matched",
+      "command": ["string — the resolved command path of the invocation"],
+      "argv": ["string — the full argv of the invocation"],
+      "via": ["string — enclosing wrapper commands, outermost first; empty at top level"]
+    }
+  ],
+  "parse_warnings": ["string — non-fatal issues encountered during parsing"]
+}
+```
+
+Both keys are always present in match output, `matches` as `[]` when nothing matched and
+`parse_warnings` as `[]` on a clean parse. A caller must check both: a non-empty
+`parse_warnings` means an empty `matches` proves nothing, and a *missing* `matches` key
+means the output came from a binary that predates this mode.
+
+The `commands` list below is recursive — any command entry can contain `inner_commands` when the command delegates execution to another command (via `delegates_to` in the database).
 
 ```json
 {
@@ -1023,14 +1118,13 @@ builtins, an unknown binary, an empty argv — carry `null` internally and seria
 
 ## Non-goals
 
-- **Not a sandbox.** This is a classifier, not an enforcer. It does not execute or block anything.
+- **Not a sandbox.** This is a classifier, not an enforcer. It does not execute or block anything. `match` mode is no exception: it reports which declared command shapes an expression invokes, and the caller decides what to do about it.
 - **No awk/sed/perl script analysis.** These are classified as a whole command; their embedded programs are opaque. They should simply not be in the READONLY allowlist.
 - **No variable resolution.** `$DIR`, `$(cmd)` in command position → UNKNOWN. We classify what we can see statically.
 - **No alias/function resolution.** We classify the literal command name as written.
 
 ## Future extensions
 
-- `--format=decision` — output only the classification string (for use in hooks)
 - `--database=/path` — custom database directory
 - `--explain` — verbose output showing the matching steps
 - Interactive database builder — run `command --help` and generate a skeleton YAML definition

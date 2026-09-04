@@ -1,0 +1,1 @@
+cd /tmp/work/service && glab api projects/:id/pipelines/1000/jobs 2>&1 | jq -r '.[] | select(.name == "deploy-test") | .id' | xargs -I{} glab api projects/:id/jobs/{}/trace 2>&1 | grep -E "TAG" | head -10

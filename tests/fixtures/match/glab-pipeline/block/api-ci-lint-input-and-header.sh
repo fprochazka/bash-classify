@@ -1,0 +1,1 @@
+cd /tmp/work/scratchpad && glab api -X POST projects/group%2Fproject/ci/lint --input lint-payload.json -H 'Content-Type: application/json' > lint-result.json 2>&1; jq '{valid, errors}' lint-result.json

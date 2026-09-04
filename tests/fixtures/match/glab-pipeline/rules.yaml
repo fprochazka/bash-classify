@@ -1,0 +1,26 @@
+# $schema: ../../../../schemas/match-rules.schema.json
+#
+# The shapes the glab-pipeline PreToolUse hook denies: inspecting pipelines, jobs and job
+# logs through glab's own commands or through the raw API. Agents are meant to use the
+# glab-pipeline CLI, which dumps the whole pipeline state in one pass.
+rules:
+  - name: ci-view
+    command: [glab, ci, view]
+
+  - name: ci-get
+    command: [glab, ci, get]
+
+  - name: ci-trace
+    command: [glab, ci, trace]
+
+  - name: pipelines-api
+    command: [glab, api]
+    any_arg_matches: 'projects/\S+/pipelines/'
+
+  - name: job-trace-api
+    command: [glab, api]
+    any_arg_matches: 'projects/\S+/jobs/\S+/trace'
+
+  - name: ci-lint-api
+    command: [glab, api]
+    any_arg_matches: 'projects/\S+/ci/lint'

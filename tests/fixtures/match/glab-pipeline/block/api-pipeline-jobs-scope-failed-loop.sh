@@ -1,0 +1,1 @@
+cd /tmp/work/project/.worktrees/feature && for p in 1000 1001 1002; do echo "== pipeline $p"; glab api "projects/42/pipelines/$p/jobs?per_page=100&scope[]=failed" 2>/dev/null | jq -r '.[] | [.name, .status] | @tsv'; done | column -t

@@ -1,0 +1,1 @@
+sleep 5 && glab api "projects/group%2Fproject/merge_requests/123?include_diverged_commits_count=true&include_rebase_in_progress=true" --hostname gitlab.example.com | jq '{diverged_commits_count, has_conflicts}'

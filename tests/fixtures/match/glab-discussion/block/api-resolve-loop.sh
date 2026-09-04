@@ -1,0 +1,1 @@
+for disc in 0123456789abcdef0123456789abcdef01234567 89abcdef0123456789abcdef0123456789abcdef; do glab api -X PUT "projects/:id/merge_requests/123/discussions/$disc" -F resolved=true 2>&1 | head -1; done

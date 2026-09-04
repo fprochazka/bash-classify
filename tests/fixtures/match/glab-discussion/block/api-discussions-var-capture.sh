@@ -1,0 +1,1 @@
+cd /tmp/work/project/.worktrees/feature && PROJECT_ID=42 && raw=$(glab api "projects/$PROJECT_ID/merge_requests/123/discussions?per_page=100" --paginate 2>/dev/null) && echo "$raw" | jq -s 'add // []' | jq 'length'

@@ -1,0 +1,1 @@
+for cmd in "glab mr list" "glab mr view 123" "glab mr note 123 -m hi" "glab mr create" "glab mr merge 123" "glab repo clone owner/repo"; do class=$(echo "$cmd" | uv run bash-classify 2>/dev/null | jq -r '.classification'); printf "%-45s %s\n" "$cmd" "$class"; done

@@ -1,0 +1,1 @@
+for cmd in "glab ci list" "glab ci status --compact" "glab ci view 1000" "glab ci trace 2000" "glab ci run"; do class=$(echo "$cmd" | uv run bash-classify 2>/dev/null | jq -r '.classification'); printf "%-45s %s\n" "$cmd" "$class"; done

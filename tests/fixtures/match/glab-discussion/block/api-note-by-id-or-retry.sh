@@ -1,0 +1,1 @@
+glab api --hostname gitlab.example.com "projects/group%2Fproject/merge_requests/123/notes/3000" 2>&1 | jq -r '.body' 2>/dev/null || glab api --hostname gitlab.example.com "projects/group%2Fproject/merge_requests/123/notes/3000" 2>&1 | head -50

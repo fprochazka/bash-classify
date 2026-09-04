@@ -1,0 +1,17 @@
+# $schema: ../../../../schemas/match-rules.schema.json
+#
+# The shapes the glab-discussion PreToolUse hook denies: reading or writing merge
+# request discussions and notes through the raw API or through glab's own commands.
+# Agents are meant to use the glab-discussion CLI instead.
+rules:
+  - name: mr-discussions-api
+    command: [glab, api]
+    any_arg_matches: 'merge_requests/[^/?]+/(discussions|notes)(/|\?|$)'
+
+  - name: mr-view-comments
+    command: [glab, mr, view]
+    any_option: [--comments, -c]
+
+  - name: mr-note
+    command: [glab, mr, note]
+    except: [[glab, mr, note, list]]

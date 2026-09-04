@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fprochazka/bash-classify/schemas/match-rules.schema.json",
+  "title": "bash-classify match rules",
+  "description": "Command shapes for `bash-classify match --rules`. Within one rule every given condition must hold; rules are independent of each other.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rules"],
+  "properties": {
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Rule" },
+      "description": "The command shapes to look for"
+    }
+  },
+  "$defs": {
+    "CommandPath": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "A resolved command path, binary first: [glab, mr, note]"
+    },
+    "Rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "command"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Rule name, unique within the file; reported back on every match"
+        },
+        "command": {
+          "$ref": "#/$defs/CommandPath",
+          "description": "Prefix match against the resolved command path, so [glab, mr, note] also matches `glab --repo x mr note`"
+        },
+        "except": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CommandPath" },
+          "description": "Command paths excluded from the match, also by prefix"
+        },
+        "any_option": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^-" },
+          "description": "At least one of these options must be present, as typed; a declared cluster -wc counts as -w and -c, and --key=value counts as --key"
+        },
+        "any_arg_matches": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Python re.search pattern applied to every argument token: argv[1:] minus the resolved subcommand words"
+        }
+      }
+    }
+  }
+}

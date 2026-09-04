@@ -1,0 +1,1 @@
+git stash && glab api --method POST projects/:id/ci/lint --field "content=$(cat .gitlab-ci.yml)" --field "dry_run=true" --field "ref=feature" 2>&1 | jq '{valid: .valid, errors: .errors}'; git stash pop
