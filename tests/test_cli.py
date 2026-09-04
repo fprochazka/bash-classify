@@ -10,10 +10,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 
 
-def _run_cli(expression: str) -> subprocess.CompletedProcess[str]:
-    """Run bash-classify CLI with the given expression on stdin."""
+def _run_cli(expression: str, *args: str) -> subprocess.CompletedProcess[str]:
+    """Run bash-classify CLI with the given argv extras and the expression on stdin."""
     return subprocess.run(
-        [sys.executable, "-m", "bash_classify"],
+        [sys.executable, "-m", "bash_classify", *args],
         input=expression,
         capture_output=True,
         text=True,
@@ -80,3 +80,48 @@ class TestCliClassificationReason:
         output = json.loads(proc.stdout)
         cmd = output["commands"][0]
         assert "classification_reason" in cmd
+
+
+class TestCliArguments:
+    def test_version_prints_package_version(self) -> None:
+        from importlib.metadata import version
+
+        proc = _run_cli("", "--version")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        assert proc.stdout.strip() == f"bash-classify {version('bash-classify')}"
+
+    def test_short_version_flag(self) -> None:
+        proc = _run_cli("", "-v")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        assert proc.stdout.startswith("bash-classify ")
+
+    def test_help_exits_zero(self) -> None:
+        proc = _run_cli("", "--help")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        assert "bash-classify" in proc.stdout
+
+    def test_unknown_argument_exits_2_without_classifying(self) -> None:
+        # An older binary silently ignored unknown arguments and classified stdin
+        # anyway, which is a fail-open a consumer cannot detect. Now it refuses.
+        proc = _run_cli("ls -la", "bogus-arg")
+        assert proc.returncode == 2
+        assert proc.stdout == ""
+        assert "usage: bash-classify" in proc.stderr
+
+    def test_unknown_option_exits_2_without_classifying(self) -> None:
+        proc = _run_cli("ls -la", "--no-such-option")
+        assert proc.returncode == 2
+        assert proc.stdout == ""
+        assert "usage: bash-classify" in proc.stderr
+
+    def test_default_mode_output_unchanged(self) -> None:
+        proc = _run_cli("ls -la")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert output["expression"] == "ls -la"
+        assert output["classification"] == "READONLY"
+        assert output["risk"] == "LOW"
+        assert output["commands"][0]["command"] == ["ls"]
+        # Pretty-printed with indent 2 and a trailing newline.
+        assert proc.stdout.endswith("}\n")
+        assert proc.stdout == json.dumps(output, indent=2) + "\n"

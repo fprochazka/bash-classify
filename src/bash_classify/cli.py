@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 
@@ -100,32 +101,40 @@ def _result_to_dict(result: ExpressionResult) -> dict:
     return d
 
 
-def main() -> None:
-    """Read bash expressions from stdin, classify, and output JSON.
+_EXIT_CODES_HELP = """exit codes:
+  0  successfully classified
+  1  empty input, or no input on stdin within 5 seconds
+  2  bad arguments or internal error
+"""
 
-    Exit codes:
-        0 - successfully classified
-        1 - parse error (invalid bash syntax)
-        2 - internal error
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser.
+
+    The default mode (no subcommand) reads one bash expression from stdin. Each mode
+    registers the function that runs it via ``set_defaults(run=...)``.
     """
-    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
-        print("Usage: bash-classify < command")
-        print("       echo 'ls -la' | bash-classify")
-        print()
-        print("Reads a bash expression from stdin, classifies it, and outputs JSON.")
-        print()
-        print("Exit codes:")
-        print("  0  successfully classified")
-        print("  1  empty input")
-        print("  2  internal error")
-        sys.exit(0)
+    from importlib.metadata import version
 
-    if len(sys.argv) > 1 and sys.argv[1] in ("-v", "--version"):
-        from importlib.metadata import version
+    parser = argparse.ArgumentParser(
+        prog="bash-classify",
+        description="Read a bash expression from stdin, classify it, and output JSON.",
+        epilog=_EXIT_CODES_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"bash-classify {version('bash-classify')}",
+    )
+    parser.set_defaults(run=_run_default_mode)
+    parser.add_subparsers(dest="mode", metavar="MODE")
+    return parser
 
-        print(f"bash-classify {version('bash-classify')}")
-        sys.exit(0)
 
+def _run_default_mode(args: argparse.Namespace) -> None:
+    """Classify the bash expression on stdin and print the JSON result."""
     try:
         import select
 
@@ -147,3 +156,16 @@ def main() -> None:
     except Exception as e:
         print(f"bash-classify: internal error: {e}", file=sys.stderr)
         sys.exit(2)
+
+
+def main() -> None:
+    """Parse the command line and run the selected mode.
+
+    Exit codes:
+        0 - successfully classified
+        1 - empty input, or no input on stdin within 5 seconds
+        2 - bad arguments or internal error
+    """
+    parser = _build_parser()
+    args = parser.parse_args()
+    args.run(args)
