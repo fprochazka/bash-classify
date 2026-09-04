@@ -82,6 +82,7 @@ class DelegationMode(enum.Enum):
     AFTER_SEPARATOR = "after_separator"
     TERMINATED_ARGV = "terminated_argv"
     FLAG_VALUE_IS_EXPRESSION = "flag_value_is_expression"
+    ARGS_ARE_EXPRESSION = "args_are_expression"
 
 
 @dataclass

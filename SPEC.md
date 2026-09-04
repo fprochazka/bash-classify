@@ -311,10 +311,12 @@ The parser walks the CST and extracts a list of `CommandInvocation` objects, eac
 
 | Construct | Reason |
 |---|---|
-| `eval "..."` | Arbitrary code execution, unparseable |
-| `sh -c "..."` / `bash -c "..."` | Nested shell, unparseable |
-| `source file` / `. file` | Executes external script |
+| `eval "..."` | Arbitrary code execution. The argument is still parsed and the inner command exposed, but a `min_classification: DANGEROUS` floor keeps both the inner and `eval` itself DANGEROUS |
+| `exec cmd` | Replaces the shell with `cmd`. The inner command is exposed, with the same DANGEROUS floor |
+| `source file` / `. file` | Executes external script, whose contents are never visible |
 | Unquoted variable expansion in command position (`$CMD args`) | Command identity unknown at parse time |
+
+`sh` and `bash` are **not** in this table. Their base classification is DANGEROUS, which is what a bare `sh` or `bash` gets, but `-c` is a `flag_value_is_expression` delegation with no `min_classification`: the expression is parsed, the inner commands are exposed, and the wrapper base is erased, so `sh -c "ls"` classifies READONLY.
 
 ## Command Matching Algorithm
 
@@ -845,6 +847,7 @@ The `delegates_to` field defines how a command (or option like `find -exec`) han
 | `after_separator` | Everything after the `separator` token forms the inner argv. | `kubectl exec pod -- ls -la` → inner: `["ls", "-la"]` |
 | `terminated_argv` | Tokens after the flag up to `terminator` form the inner argv. `{}` tokens are stripped (they are `find` placeholders). | `find . -exec rm {} \;` → inner: `["rm"]` |
 | `flag_value_is_expression` | The value of the specified `flag` is a complete shell expression string, parsed from scratch through the bash parser (not just tokenized as argv). | `sh -c "ls \| grep foo"` → inner expression: `ls \| grep foo` (two piped commands) |
+| `args_are_expression` | Every token after the command word is joined with single spaces and the result is parsed as a complete shell expression, the way `eval` concatenates its arguments before running them. Option-looking tokens are included, because a command using this mode has no options of its own. Invocations the parser cannot recover yield no inner command. | `eval "glab mr list"` and `eval glab mr list` → inner: `["glab", "mr", "list"]` |
 
 #### Delegation fields
 
@@ -913,14 +916,15 @@ Directories are reported as-is (not resolved) since variable expansion may be in
 
 ## Special-cased Commands
 
-Most delegation behavior is expressed in the database via `delegates_to`. Only shell builtins that cannot be modeled as regular commands need hardcoded handling:
+Most delegation behavior is expressed in the database via `delegates_to`. Only shell builtins that cannot be modeled as regular commands need hardcoded handling — the full set is three short lists in `matcher.py`:
 
 | Command | Special handling |
 |---|---|
 | `cd`, `pushd`, `popd` | Directory tracking; classified as `READONLY` |
-| `eval` | Always `DANGEROUS` — argument is arbitrary code, no delegation possible |
-| `source`, `.` | Always `DANGEROUS` — executes external script |
-| `exec` (builtin) | Always `DANGEROUS` — replaces the current process |
+| `[`, `[[`, `test` | Always `READONLY` — condition evaluation with no side effects |
+| `source`, `.` | Always `DANGEROUS` — executes an external script whose contents are never visible |
+
+`eval` and `exec` are **not** in that set. They are ordinary database entries (`commands/eval.yaml`, `commands/exec.yaml`) that delegate: `eval` via `args_are_expression`, `exec` via `rest_are_argv`, each with `min_classification: DANGEROUS`. So their inner command is parsed and reported in `inner_commands`, while the floor keeps both the inner and the wrapper at `DANGEROUS`/`HIGH`.
 
 Everything else (`sudo`, `env`, `xargs`, `sh -c`, `nice`, `nohup`, `timeout`, `time`, `find -exec`, `kubectl exec --`, etc.) is handled via `delegates_to` in the database — no special code needed.
 

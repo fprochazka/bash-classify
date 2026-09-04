@@ -1,0 +1,12 @@
+# $schema: ../../../schemas/command.schema.json
+command: exec
+description: "Replace the shell with the given command"
+classification: DANGEROUS
+strict: false
+options:
+  -a: {takes_value: true}
+  -c: {}
+  -l: {}
+delegates_to:
+  mode: rest_are_argv
+  min_classification: DANGEROUS

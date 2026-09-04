@@ -330,20 +330,43 @@ options:
   -c: {takes_value: true}
 ```
 
+### `args_are_expression`
+
+Every argument is joined with single spaces and the result is parsed as a complete shell expression. This is what
+`eval` does: it concatenates its arguments and runs the concatenation as shell source, so `eval ls -la` and
+`eval "ls -la"` are the same command. Unlike `flag_value_is_expression`, no flag selects the expression -- every
+token after the binary is part of it, so a command using this mode must not declare options of its own.
+
+**eval:** `eval "git push --force"` -- the string `git push --force` is parsed as a full expression, producing one
+inner command.
+
+```yaml
+command: eval
+classification: DANGEROUS
+strict: false
+delegates_to:
+  mode: args_are_expression
+  min_classification: DANGEROUS   # eval stays DANGEROUS even when the inner is READONLY
+```
+
+The `min_classification` floor is not optional here. Command-level delegation erases the wrapper's own base
+classification once it resolves an inner command, so without the floor `eval "ls"` would classify READONLY.
+
 ### Delegation fields
 
 | Field | Type | Applies to | Description |
 |-------|------|-----------|-------------|
-| `mode` | enum | all | One of the four modes above |
+| `mode` | enum | all | One of the modes above |
 | `separator` | string | `after_separator` | Token that separates wrapper args from inner args |
 | `terminator` | string | `terminated_argv` | Token that ends the inner argv |
 | `flag` | string | `flag_value_is_expression` | Which flag's value to parse as an expression |
+| `skip_leading_positionals` | integer | `rest_are_argv` | Positional tokens belonging to the wrapper itself before the inner command starts (e.g. `timeout DURATION COMMAND...` uses `1`) |
 | `strip_assignments` | boolean | `rest_are_argv` | Strip leading `KEY=VALUE` tokens before inner command |
 | `min_classification` | enum | all | Floor classification for the inner command |
 
 ### `min_classification`
 
-Forces the inner command to be classified at least at the given level. sudo uses this to ensure that even `sudo ls` is at least EXTERNAL_EFFECTS -- because running anything under elevated privileges is not a no-op.
+Forces the inner command to be classified at least at the given level. sudo uses this to ensure that even `sudo ls` is at least EXTERNAL_EFFECTS -- because running anything under elevated privileges is not a no-op. `eval` and `exec` use it the same way, with a `DANGEROUS` floor.
 
 ## 7. Special Cases
 
@@ -362,9 +385,14 @@ These cannot be modeled as database entries because they are shell builtins with
 | Builtin | Classification | Reason |
 |---------|---------------|--------|
 | `cd`, `pushd`, `popd` | READONLY | Directory navigation only |
-| `eval` | DANGEROUS | Arbitrary code execution, argument is unparseable |
-| `source`, `.` | DANGEROUS | Executes an external script |
-| `exec` (builtin) | DANGEROUS | Replaces the current process |
+| `[`, `[[`, `test` | READONLY | Condition evaluation, no side effects |
+| `source`, `.` | DANGEROUS | Executes an external script, whose contents are never visible |
+
+`eval` and `exec` used to be in this list. They are database entries now -- `commands/eval.yaml`
+delegates via `args_are_expression`, `commands/exec.yaml` via `rest_are_argv`, both with
+`min_classification: DANGEROUS`. Modelling them in YAML exposes the inner command instead of
+hiding it, and the floor is what keeps them DANGEROUS even when the inner command is READONLY.
+Reach for a hardcoded builtin only when the command's argument is genuinely not a command line.
 
 ### Path-qualified commands
 

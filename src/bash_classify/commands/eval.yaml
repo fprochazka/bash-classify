@@ -1,0 +1,8 @@
+# $schema: ../../../schemas/command.schema.json
+command: eval
+description: "Concatenate arguments and execute the result as a shell command"
+classification: DANGEROUS
+strict: false
+delegates_to:
+  mode: args_are_expression
+  min_classification: DANGEROUS

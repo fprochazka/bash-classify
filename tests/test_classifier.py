@@ -790,3 +790,23 @@ class TestIterInvocations:
         by_command = {tuple(inv.command): inv for inv, _ in iter_invocations(result)}
         assert by_command[("ls",)].options == ["-la"]
         assert by_command[("ls",)].positionals == ["/tmp"]
+
+
+class TestEvalExecInnerCommandsAreReachable:
+    """The inner command of eval/exec shows up in iter_invocations, with the right via."""
+
+    def test_eval_inner_is_reachable(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression('eval "git push --force"', database)
+        entries = [(inv.command, via) for inv, via in iter_invocations(result)]
+        assert (["eval"], []) in entries
+        assert (["git", "push"], ["eval"]) in entries
+
+    def test_exec_inner_is_reachable(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("exec ls -la", database)
+        entries = [(inv.command, via) for inv, via in iter_invocations(result)]
+        assert (["ls"], ["exec"]) in entries
+
+    def test_eval_stays_dangerous_at_expression_level(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression('eval "ls -la"', database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH

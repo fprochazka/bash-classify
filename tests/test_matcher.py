@@ -354,6 +354,8 @@ class TestSpecialBuiltins:
     def test_eval_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["eval", "some code"]), database)
         assert result.classification == Classification.DANGEROUS
+        assert result.matched_rule == "eval"
+        assert len(result.inner_commands) == 1
 
     def test_source_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["source", "script.sh"]), database)
@@ -366,6 +368,8 @@ class TestSpecialBuiltins:
     def test_exec_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["exec", "some_binary"]), database)
         assert result.classification == Classification.DANGEROUS
+        assert result.matched_rule == "exec"
+        assert len(result.inner_commands) == 1
 
 
 class TestEmptyArgv:
@@ -897,6 +901,8 @@ class TestRiskBuiltins:
     def test_eval_high_risk(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["eval", "code"]), database)
         assert result.risk == Risk.HIGH
+        assert result.matched_rule == "eval"
+        assert len(result.inner_commands) == 1
 
     def test_test_builtin_low_risk(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["test", "-f", "file"]), database)
@@ -1091,3 +1097,106 @@ class TestPresentOptionsAndPositionals:
         result = match_command(_make_invocation(["definitely-not-a-command", "-x"]), database)
         assert result.options is None
         assert result.positionals is None
+
+
+class TestEvalAndExecExposeTheirInner:
+    """eval and exec stay DANGEROUS/HIGH but no longer hide what they run."""
+
+    def test_eval_quoted_expression(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["eval", "git push --force"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+        assert len(result.inner_commands) == 1
+        inner = result.inner_commands[0]
+        assert inner.command == ["git", "push"]
+        assert inner.delegation_mode == "args_are_expression"
+        assert inner.delegation_source == "eval"
+
+    def test_eval_unquoted_arguments_are_joined(self, database: dict[str, CommandDef]) -> None:
+        """`eval git push --force` and `eval "git push --force"` are the same command."""
+        result = match_command(_make_invocation(["eval", "git", "push", "--force"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert len(result.inner_commands) == 1
+        inner = result.inner_commands[0]
+        assert inner.argv == ["git", "push", "--force"]
+        assert inner.command == ["git", "push"]
+        assert inner.options == ["--force"]
+        # eval takes no options of its own; every token after it is the payload.
+        assert result.options == []
+        assert result.positionals == ["git", "push", "--force"]
+
+    def test_eval_keeps_trailing_options_of_the_inner_command(self, database: dict[str, CommandDef]) -> None:
+        """A flag after the inner command belongs to the inner command, not to eval."""
+        result = match_command(_make_invocation(["eval", "glab", "mr", "view", "42", "-c"]), database)
+        assert len(result.inner_commands) == 1
+        inner = result.inner_commands[0]
+        assert inner.argv == ["glab", "mr", "view", "42", "-c"]
+        assert inner.command == ["glab", "mr", "view"]
+        assert inner.options == ["-c"]
+        assert result.options == []
+
+    def test_eval_floor_holds_over_a_readonly_inner(self, database: dict[str, CommandDef]) -> None:
+        """The wrapper's own base is erased by delegation; min_classification is what holds the line."""
+        result = match_command(_make_invocation(["eval", "ls -la"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+        inner = result.inner_commands[0]
+        assert inner.command == ["ls"]
+        assert inner.classification == Classification.DANGEROUS
+        assert inner.risk == Risk.HIGH
+
+    def test_eval_multiple_inner_commands(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["eval", "echo hi; ls /tmp"]), database)
+        assert [inner.command for inner in result.inner_commands] == [["echo"], ["ls"]]
+
+    def test_eval_with_unparseable_argument_has_no_inner(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["eval", "((("]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+        assert result.inner_commands == []
+
+    def test_eval_without_arguments_has_no_inner(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["eval"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+        assert result.inner_commands == []
+
+    def test_exec_rest_are_argv(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["exec", "git", "push", "--force"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert len(result.inner_commands) == 1
+        inner = result.inner_commands[0]
+        assert inner.command == ["git", "push"]
+        assert inner.delegation_mode == "rest_are_argv"
+
+    def test_exec_a_flag_does_not_swallow_the_command(self, database: dict[str, CommandDef]) -> None:
+        """`-a NAME` sets argv[0] for the replacement; NAME is not the inner command."""
+        result = match_command(_make_invocation(["exec", "-a", "name", "ls"]), database)
+        assert len(result.inner_commands) == 1
+        assert result.inner_commands[0].command == ["ls"]
+
+    def test_exec_floor_holds_over_a_readonly_inner(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["exec", "ls"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+        assert result.inner_commands[0].classification == Classification.DANGEROUS
+
+    def test_exec_without_arguments_has_no_inner(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["exec"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+        assert result.inner_commands == []
+
+    def test_source_still_a_builtin_with_no_inner(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["source", "script.sh"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+        assert result.matched_rule is None
+        assert result.inner_commands == []
+
+    def test_dot_still_a_builtin_with_no_inner(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation([".", "script.sh"]), database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+        assert result.matched_rule is None
+        assert result.inner_commands == []

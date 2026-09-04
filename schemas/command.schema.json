@@ -94,7 +94,13 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["rest_are_argv", "after_separator", "terminated_argv", "flag_value_is_expression"],
+          "enum": [
+            "rest_are_argv",
+            "after_separator",
+            "terminated_argv",
+            "flag_value_is_expression",
+            "args_are_expression"
+          ],
           "description": "Delegation mode"
         },
         "separator": {

@@ -21,7 +21,7 @@ from .models import (
 # Shell builtins that are special-cased (not from database)
 _BUILTIN_DIRECTORY_COMMANDS = {"cd", "pushd", "popd"}
 _BUILTIN_READONLY_COMMANDS = {"[", "[[", "test"}
-_BUILTIN_DANGEROUS_COMMANDS = {"eval", "source", ".", "exec"}
+_BUILTIN_DANGEROUS_COMMANDS = {"source", "."}
 
 # Regex for KEY=VALUE assignments (used by strip_assignments)
 _ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
@@ -339,7 +339,12 @@ def _handle_readonly_builtin(invocation: CommandInvocation) -> CommandResult:
 
 
 def _handle_dangerous_builtin(invocation: CommandInvocation) -> CommandResult:
-    """Handle eval, source, ., exec builtins."""
+    """Handle the source and . builtins, which run an external script sight unseen.
+
+    ``eval`` and ``exec`` used to be handled here too. They are database entries now
+    (``commands/eval.yaml``, ``commands/exec.yaml``) so that their inner command is
+    visible; a ``min_classification: DANGEROUS`` floor keeps them DANGEROUS/HIGH.
+    """
     return CommandResult(
         command=[invocation.argv[0]],
         argv=list(invocation.argv),
@@ -510,10 +515,11 @@ def _classify_options(
     present_flags: list[str] = []
     options = command_def.options
 
-    # For rest_are_argv delegation: once we hit the first positional arg,
-    # everything from that point is the inner command (not our options).
-    stop_at_first_positional = (
-        command_def.delegates_to is not None and command_def.delegates_to.mode == DelegationMode.REST_ARE_ARGV
+    # For rest_are_argv and args_are_expression delegation: once we hit the first
+    # positional arg, everything from that point is the inner command (not our options).
+    stop_at_first_positional = command_def.delegates_to is not None and command_def.delegates_to.mode in (
+        DelegationMode.REST_ARE_ARGV,
+        DelegationMode.ARGS_ARE_EXPRESSION,
     )
 
     i = 0
@@ -763,7 +769,7 @@ def _handle_delegation(
     full_argv: list[str],
     command_def: CommandDef,
 ) -> list[InnerCommandResult]:
-    """Handle command-level delegation (rest_are_argv, after_separator, flag_value_is_expression)."""
+    """Handle command-level delegation (rest_are_argv, after_separator, *_expression)."""
     results: list[InnerCommandResult] = []
 
     if delegation.mode == DelegationMode.REST_ARE_ARGV:
@@ -803,6 +809,26 @@ def _handle_delegation(
                     database,
                     delegation_mode="after_separator",
                     delegation_source=separator,
+                    min_classification=delegation.min_classification,
+                )
+                results.append(result)
+
+    elif delegation.mode == DelegationMode.ARGS_ARE_EXPRESSION:
+        # eval concatenates *every* argument with spaces and runs the result as shell
+        # source, so `eval ls -la` and `eval "ls -la"` are the same command. It has no
+        # options of its own, hence full_argv[1:] rather than the positionals: a token
+        # like `--force` belongs to the inner command, not to eval.
+        expression_value = " ".join(full_argv[1:])
+        if expression_value.strip():
+            from .parser import parse_expression
+
+            inner_invocations, _warnings = parse_expression(expression_value)
+            for inv in inner_invocations:
+                result = _match_inner_command(
+                    inv.argv,
+                    database,
+                    delegation_mode="args_are_expression",
+                    delegation_source=command_def.command,
                     min_classification=delegation.min_classification,
                 )
                 results.append(result)
