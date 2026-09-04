@@ -465,3 +465,143 @@ class TestBuildTools:
     def test_gradle_dry_run(self, database):
         result = classify_expression("gradle --dry-run clean build", database)
         assert result.classification == Classification.READONLY
+
+
+class TestGlabOptions:
+    """The flags the deny-hook rules key on are modelled, so they land in `options`
+    and the endpoint path stays the only positional."""
+
+    def test_mr_view_comments_long(self, database):
+        result = classify_expression("glab mr view 42 --comments", database)
+        assert result.classification == Classification.READONLY
+        command = result.commands[0]
+        assert command.command == ["glab", "mr", "view"]
+        assert command.options == ["--comments"]
+        assert command.positionals == ["42"]
+        assert command.remaining_options is None
+
+    def test_mr_view_comments_short(self, database):
+        result = classify_expression("glab mr view -c 42", database)
+        command = result.commands[0]
+        assert command.options == ["-c"]
+        assert command.positionals == ["42"]
+
+    def test_mr_view_comments_cluster(self, database):
+        """A declared cluster expands, so -c is visible inside -wc."""
+        result = classify_expression("glab mr view -wc 42", database)
+        command = result.commands[0]
+        assert command.options == ["-w", "-c"]
+        assert command.positionals == ["42"]
+
+    def test_mr_view_output_format_is_not_comments(self, database):
+        result = classify_expression("glab mr view 42 -F json", database)
+        command = result.commands[0]
+        assert command.options == ["-F"]
+        assert command.positionals == ["42"]
+
+    def test_mr_view_output_long_form(self, database):
+        result = classify_expression("glab mr view 42 --output json", database)
+        command = result.commands[0]
+        assert command.options == ["--output"]
+        assert command.positionals == ["42"]
+
+    def test_mr_view_paging_flags_take_values(self, database):
+        result = classify_expression("glab mr view 123 --comments -F json -P 100", database)
+        command = result.commands[0]
+        assert command.options == ["--comments", "-F", "-P"]
+        assert command.positionals == ["123"]
+
+    def test_mr_note_message_is_not_a_positional(self, database):
+        result = classify_expression("glab mr note 123 -m hello", database)
+        assert result.classification == Classification.EXTERNAL_EFFECTS
+        command = result.commands[0]
+        assert command.command == ["glab", "mr", "note"]
+        assert command.options == ["-m"]
+        assert command.positionals == ["123"]
+
+    def test_mr_note_list_is_a_separate_subcommand(self, database):
+        result = classify_expression("glab mr note list 123 --output json", database)
+        assert result.classification == Classification.READONLY
+        command = result.commands[0]
+        assert command.command == ["glab", "mr", "note", "list"]
+        assert command.options == ["--output"]
+        assert command.positionals == ["123"]
+
+    def test_api_post_endpoint_is_the_only_positional(self, database):
+        result = classify_expression(
+            "glab api -X POST projects/group%2Fproject/merge_requests/42/notes -f body=x",
+            database,
+        )
+        command = result.commands[0]
+        assert command.command == ["glab", "api"]
+        assert command.options == ["-X", "-f"]
+        assert command.positionals == ["projects/group%2Fproject/merge_requests/42/notes"]
+
+    def test_api_paginate_and_hostname(self, database):
+        result = classify_expression(
+            "glab api --hostname gitlab.example.com --paginate projects/42/merge_requests/123/discussions",
+            database,
+        )
+        command = result.commands[0]
+        assert command.options == ["--hostname", "--paginate"]
+        assert command.positionals == ["projects/42/merge_requests/123/discussions"]
+
+    def test_api_flags_after_the_endpoint(self, database):
+        result = classify_expression(
+            "glab api projects/42/merge_requests/123/discussions -X GET -f per_page=100 --paginate",
+            database,
+        )
+        command = result.commands[0]
+        assert command.options == ["-X", "-f", "--paginate"]
+        assert command.positionals == ["projects/42/merge_requests/123/discussions"]
+
+    def test_api_raw_field_and_header(self, database):
+        result = classify_expression(
+            "glab api -X PUT projects/1/merge_requests/2/discussions/abc"
+            " -F resolved=true -H 'Accept: application/json'",
+            database,
+        )
+        command = result.commands[0]
+        assert command.options == ["-X", "-F", "-H"]
+        assert command.positionals == ["projects/1/merge_requests/2/discussions/abc"]
+
+    def test_ci_get_with_job_details(self, database):
+        result = classify_expression("glab ci get -p 1000 --with-job-details -F json", database)
+        assert result.classification == Classification.READONLY
+        command = result.commands[0]
+        assert command.command == ["glab", "ci", "get"]
+        assert command.options == ["-p", "--with-job-details", "-F"]
+        assert command.positionals == []
+
+    def test_ci_trace_job_name_stays_positional(self, database):
+        result = classify_expression("glab ci trace deploy-test -p 1000", database)
+        command = result.commands[0]
+        assert command.command == ["glab", "ci", "trace"]
+        assert command.options == ["-p"]
+        assert command.positionals == ["deploy-test"]
+
+    def test_ci_view_web(self, database):
+        result = classify_expression("glab ci view 1000 --web", database)
+        command = result.commands[0]
+        assert command.command == ["glab", "ci", "view"]
+        assert command.options == ["--web"]
+        assert command.positionals == ["1000"]
+
+    def test_ci_status_pipeline_id(self, database):
+        result = classify_expression("glab ci status --pipeline-id 1000 --compact", database)
+        command = result.commands[0]
+        assert command.options == ["--pipeline-id", "--compact"]
+        assert command.positionals == []
+
+    def test_ci_list_per_page(self, database):
+        result = classify_expression("glab ci list --per-page 8", database)
+        command = result.commands[0]
+        assert command.options == ["--per-page"]
+        assert command.positionals == []
+
+    def test_glab_classifications_unchanged(self, database):
+        """Declaring options must not move any classification or risk."""
+        assert classify_expression("glab mr view 42", database).classification == Classification.READONLY
+        assert classify_expression("glab ci get", database).classification == Classification.READONLY
+        assert classify_expression("glab api projects/42", database).classification == Classification.EXTERNAL_EFFECTS
+        assert classify_expression("glab mr note 42 -m x", database).classification == Classification.EXTERNAL_EFFECTS

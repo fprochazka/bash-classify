@@ -18,6 +18,17 @@ subcommands:
       view:
         classification: READONLY
         strict: false
+        options:
+          -c: {}
+          --comments: {aliases: [-c]}
+          -w: {}
+          --web: {aliases: [-w]}
+          -F: {takes_value: true}
+          --output: {takes_value: true, aliases: [-F]}
+          -P: {takes_value: true}
+          --page: {takes_value: true, aliases: [-P]}
+          -p: {takes_value: true}
+          --per-page: {takes_value: true, aliases: [-p]}
       diff:
         classification: READONLY
         strict: false
@@ -66,10 +77,16 @@ subcommands:
       note:
         classification: EXTERNAL_EFFECTS
         strict: false
+        options:
+          -m: {takes_value: true}
+          --message: {takes_value: true, aliases: [-m]}
         subcommands:
           list:
             classification: READONLY
             strict: false
+            options:
+              -F: {takes_value: true}
+              --output: {takes_value: true, aliases: [-F]}
           resolve:
             classification: EXTERNAL_EFFECTS
             strict: false
@@ -238,18 +255,50 @@ subcommands:
       list:
         classification: READONLY
         strict: false
+        options:
+          -b: {takes_value: true}
+          --branch: {takes_value: true, aliases: [-b]}
+          -P: {takes_value: true}
+          --page: {takes_value: true, aliases: [-P]}
+          --per-page: {takes_value: true}
+          --status: {takes_value: true}
+          -F: {takes_value: true}
+          --output: {takes_value: true, aliases: [-F]}
       status:
         classification: READONLY
         strict: false
+        options:
+          -b: {takes_value: true}
+          --branch: {takes_value: true, aliases: [-b]}
+          --compact: {}
+          --pipeline-id: {takes_value: true}
       view:
         classification: READONLY
         strict: false
+        options:
+          -b: {takes_value: true}
+          --branch: {takes_value: true, aliases: [-b]}
+          -w: {}
+          --web: {aliases: [-w]}
       get:
         classification: READONLY
         strict: false
+        options:
+          -b: {takes_value: true}
+          --branch: {takes_value: true, aliases: [-b]}
+          -p: {takes_value: true}
+          --pipeline: {takes_value: true, aliases: [-p]}
+          -F: {takes_value: true}
+          --output: {takes_value: true, aliases: [-F]}
+          --with-job-details: {}
       trace:
         classification: READONLY
         strict: false
+        options:
+          -b: {takes_value: true}
+          --branch: {takes_value: true, aliases: [-b]}
+          -p: {takes_value: true}
+          --pipeline-id: {takes_value: true, aliases: [-p]}
       lint:
         classification: READONLY
         strict: false
@@ -738,3 +787,19 @@ subcommands:
   api:
     classification: EXTERNAL_EFFECTS
     strict: false
+    options:
+      -X: {takes_value: true}
+      --method: {takes_value: true, aliases: [-X]}
+      -f: {takes_value: true}
+      --field: {takes_value: true, aliases: [-f]}
+      -F: {takes_value: true}
+      --raw-field: {takes_value: true, aliases: [-F]}
+      -H: {takes_value: true}
+      --header: {takes_value: true, aliases: [-H]}
+      --hostname: {takes_value: true}
+      --input: {takes_value: true}
+      --output: {takes_value: true}
+      -i: {}
+      --include: {aliases: [-i]}
+      --paginate: {}
+      --silent: {}
