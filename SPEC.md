@@ -949,6 +949,8 @@ The `commands` list is recursive — any command entry can contain `inner_comman
       "argv": ["string — full original argv for this command"],
       "classification": "READONLY | LOCAL_EFFECTS | EXTERNAL_EFFECTS | DANGEROUS | UNKNOWN",
       "matched_rule": "string — dotted path in database, or null",
+      "options": ["string — every option present, canonical flag only, no values; always present, empty when none"],
+      "positionals": ["string — non-option tokens left after subcommand and option parsing; always present, empty when none"],
       "ignored_options": ["string — global options that were stripped"],
       "remaining_options": ["string — options that were not in database"],
       "classification_reason": "string — why this classification was chosen",
@@ -963,6 +965,8 @@ The `commands` list is recursive — any command entry can contain `inner_comman
           "argv": ["..."],
           "classification": "...",
           "matched_rule": "...",
+          "options": ["... — same meaning as on the enclosing command"],
+          "positionals": ["... — same meaning as on the enclosing command"],
           "inner_commands": ["... — recursive, can nest further"]
         }
       ]
@@ -978,6 +982,27 @@ The `commands` list is recursive — any command entry can contain `inner_comman
   "parse_warnings": ["string — non-fatal issues encountered during parsing. A non-empty list means the parse was best-effort and the commands list may be incomplete."]
 }
 ```
+
+#### `options` and `positionals`
+
+`options` records which options an invocation actually carries, with option values stripped and each option in
+its canonical form: `--key=value` contributes `--key`, `-fvalue` contributes `-f`, and a cluster whose every
+character is declared in the database (`-wc`) contributes each character (`-w`, `-c`). Options the database does
+not model are included too — present means present. Tokens after `--` are positionals and contribute nothing.
+
+Two consequences of matching against a database that models only part of a real CLI. In a cluster whose first
+character is declared but a later one is not (`-wx` with only `-w` declared), the undeclared characters are not
+reported anywhere — not in `options`, not in `remaining_options` — so a check against `options` can miss such an
+option but can never falsely fire on one. In the other direction, an option the database does not model but that
+really takes a value has its value reported as a second option (`-e -foo` yields `-e` and `-foo`, because nothing
+says `-e` consumes the next token), so `options` errs toward over-reporting for unmodelled options. Declaring the
+option in the database fixes both.
+
+`positionals` holds the non-option tokens that remain once the subcommand chain and the options have been
+consumed, including `--` itself and everything after it.
+
+Both are always serialized, as `[]` when the command has none. Results that never reach option parsing — shell
+builtins, an unknown binary, an empty argv — carry `null` internally and serialize as `[]`.
 
 ### Recursive classification rules
 

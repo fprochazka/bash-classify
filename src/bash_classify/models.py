@@ -162,6 +162,8 @@ class InnerCommandResult:
     ignored_options: list[str] | None = None
     remaining_options: list[str] | None = None
     overriding_option: str | None = None
+    options: list[str] | None = None
+    positionals: list[str] | None = None
 
 
 @dataclass
@@ -181,6 +183,8 @@ class CommandResult:
     directories: list[str] | None = None
     write_paths: list[str] | None = None
     read_paths: list[str] | None = None
+    options: list[str] | None = None
+    positionals: list[str] | None = None
 
 
 @dataclass

@@ -975,3 +975,119 @@ class TestMatchAllSubcommandMode:
         result = match_command(_make_invocation(["builder", "--dry-run", "clean"]), database)
         assert result.classification == Classification.READONLY
         assert result.risk == Risk.LOW
+
+
+class TestPresentOptionsAndPositionals:
+    """`options` reports the flags an invocation carries; `positionals` what is left."""
+
+    @staticmethod
+    def _make_command() -> CommandDef:
+        return CommandDef(
+            command="mycmd",
+            classification=Classification.READONLY,
+            options={
+                "--opt": OptionDef(takes_value=True),
+                "--key": OptionDef(takes_value=True),
+                "--flag": OptionDef(),
+                "-w": OptionDef(),
+                "-c": OptionDef(),
+                "-f": OptionDef(takes_value=True),
+            },
+        )
+
+    def _match(self, argv: list[str]):
+        return match_command(_make_invocation(argv), {"mycmd": self._make_command()})
+
+    def test_separated_value_is_not_an_option(self) -> None:
+        result = self._match(["mycmd", "--opt", "value"])
+        assert result.options == ["--opt"]
+        assert result.positionals == []
+        assert result.remaining_options is None
+
+    def test_equals_form_contributes_the_key(self) -> None:
+        result = self._match(["mycmd", "--key=value"])
+        assert result.options == ["--key"]
+        assert result.positionals == []
+
+    def test_declared_cluster_expands_to_each_flag(self) -> None:
+        result = self._match(["mycmd", "-wc"])
+        assert result.options == ["-w", "-c"]
+        assert result.remaining_options is None
+
+    def test_undeclared_cluster_stays_one_token(self) -> None:
+        result = self._match(["mycmd", "-xy"])
+        assert result.options == ["-xy"]
+        assert result.remaining_options == ["-xy"]
+
+    def test_partially_declared_cluster_reports_only_the_declared_lead(self) -> None:
+        """`-wx` with only `-w` declared: `-x` is reported nowhere, not even as remaining."""
+        result = self._match(["mycmd", "-wx"])
+        assert result.options == ["-w"]
+        assert result.remaining_options is None
+        assert result.positionals == []
+
+    def test_cluster_with_undeclared_lead_stays_one_token(self) -> None:
+        """The lead character decides: `-xw` never reaches the cluster branch at all."""
+        result = self._match(["mycmd", "-xw"])
+        assert result.options == ["-xw"]
+        assert result.remaining_options == ["-xw"]
+
+    def test_value_of_an_unmodelled_option_is_reported_as_an_option(self) -> None:
+        """An undeclared option that really takes a value over-reports: the value looks like a flag."""
+        result = self._match(["mycmd", "--unmodelled", "-value", "target"])
+        assert result.options == ["--unmodelled", "-value"]
+        assert result.remaining_options == ["--unmodelled", "-value"]
+        assert result.positionals == ["target"]
+
+    def test_joined_short_value_contributes_the_flag(self) -> None:
+        result = self._match(["mycmd", "-fvalue"])
+        assert result.options == ["-f"]
+        assert result.positionals == []
+
+    def test_end_of_options_marker_makes_the_rest_positional(self) -> None:
+        result = self._match(["mycmd", "--flag", "--", "-w", "arg"])
+        assert result.options == ["--flag"]
+        assert result.positionals == ["--", "-w", "arg"]
+
+    def test_unknown_option_is_still_present(self) -> None:
+        result = self._match(["mycmd", "--nope"])
+        assert result.options == ["--nope"]
+        assert result.remaining_options == ["--nope"]
+
+    def test_unknown_equals_form_contributes_the_key(self) -> None:
+        result = self._match(["mycmd", "--nope=1"])
+        assert result.options == ["--nope"]
+        assert result.remaining_options == ["--nope=1"]
+
+    def test_positionals_and_options_are_separated(self) -> None:
+        result = self._match(["mycmd", "--opt", "value", "target", "--flag"])
+        assert result.options == ["--opt", "--flag"]
+        assert result.positionals == ["target"]
+
+    def test_no_options_gives_empty_lists(self) -> None:
+        result = self._match(["mycmd"])
+        assert result.options == []
+        assert result.positionals == []
+
+    def test_subcommand_words_are_not_positionals(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["git", "commit", "--amend", "-m", "msg"]), database)
+        assert result.command == ["git", "commit"]
+        assert result.options == ["--amend", "-m"]
+        assert result.positionals == []
+
+    def test_inner_command_carries_its_own_options(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["sudo", "ls", "-la", "/tmp"]), database)
+        inner = result.inner_commands[0]
+        assert inner.command == ["ls"]
+        assert inner.options == ["-la"]
+        assert inner.positionals == ["/tmp"]
+
+    def test_builtin_leaves_both_unset(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["cd", "/tmp"]), database)
+        assert result.options is None
+        assert result.positionals is None
+
+    def test_unknown_binary_leaves_both_unset(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["definitely-not-a-command", "-x"]), database)
+        assert result.options is None
+        assert result.positionals is None

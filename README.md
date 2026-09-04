@@ -105,6 +105,30 @@ print(result.classification)  # Classification.READONLY
 print(result.risk)            # Risk.LOW
 ```
 
+Each command result carries the options it actually uses and the positionals left after parsing. Option values
+are stripped, so `--key=value` shows up as `--key` and `-fvalue` as `-f`:
+
+```python
+command = classify_expression("git commit --amend -m 'wip'").commands[0]
+print(command.command)      # ['git', 'commit']
+print(command.options)      # ['--amend', '-m']
+print(command.positionals)  # []
+```
+
+`iter_invocations` walks every invocation in an expression depth-first — top-level commands and, recursively,
+the inner commands that wrappers such as `sudo`, `timeout` or `bash -c` delegate to. It yields each invocation
+with its `via` chain: the enclosing wrappers, outermost first, empty at the top level.
+
+```python
+from bash_classify import classify_expression, iter_invocations
+
+for invocation, via in iter_invocations(classify_expression("sudo timeout 5 ls")):
+    print(via, invocation.command)
+# [] ['sudo']
+# ['sudo'] ['timeout']
+# ['sudo', 'timeout'] ['ls']
+```
+
 See [SPEC.md](SPEC.md) for the full specification.
 
 ## Development

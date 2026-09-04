@@ -130,6 +130,7 @@ def match_command(
         option_directories,
         option_delegations,
         remaining_positional,
+        present_options,
     ) = _classify_options(remaining, matched_def)
 
     # Merge global overrides with subcommand overrides
@@ -306,6 +307,8 @@ def match_command(
         classification_reason=classification_reason,
         overriding_option=overriding_option,
         directories=all_directories if all_directories else None,
+        options=present_options,
+        positionals=list(remaining_positional),
     )
 
 
@@ -487,8 +490,16 @@ def _classify_options(
     list[str],  # directories
     list[tuple[str, DelegationConfig, list[str]]],  # option_delegations
     list[str],  # remaining_positional (non-option tokens)
+    list[str],  # present_flags (every option present, canonical flag only, no values)
 ]:
-    """Classify options in remaining argv against the matched command's options."""
+    """Classify options in remaining argv against the matched command's options.
+
+    ``present_flags`` records which options the invocation actually carries, modelled
+    or not, with option values stripped: ``--key=value`` contributes ``--key``,
+    ``-fvalue`` contributes ``-f``, and a cluster whose every character is declared
+    (``-wc``) contributes each character (``-w``, ``-c``). Tokens after ``--`` are
+    positionals and contribute nothing.
+    """
     known: list[str] = []
     unknown: list[str] = []
     overrides: list[tuple[str, Classification]] = []
@@ -496,6 +507,7 @@ def _classify_options(
     directories: list[str] = []
     delegations: list[tuple[str, DelegationConfig, list[str]]] = []
     positional: list[str] = []
+    present_flags: list[str] = []
     options = command_def.options
 
     # For rest_are_argv delegation: once we hit the first positional arg,
@@ -539,6 +551,7 @@ def _classify_options(
             opt_def = options.get(key)
             if opt_def is not None:
                 known.append(token)
+                present_flags.append(key)
                 if opt_def.overrides is not None:
                     overrides.append((key, opt_def.overrides))
                 if opt_def.risk is not None:
@@ -547,6 +560,7 @@ def _classify_options(
                     directories.append(value)
             else:
                 unknown.append(token)
+                present_flags.append(key)
             i += 1
             continue
 
@@ -555,6 +569,7 @@ def _classify_options(
             opt_def = options.get(token)
             if opt_def is not None:
                 known.append(token)
+                present_flags.append(token)
                 if opt_def.overrides is not None:
                     overrides.append((token, opt_def.overrides))
                 if opt_def.risk is not None:
@@ -573,6 +588,7 @@ def _classify_options(
                         directories.append(value)
             else:
                 unknown.append(token)
+                present_flags.append(token)
             i += 1
             continue
 
@@ -581,6 +597,7 @@ def _classify_options(
         opt_def = options.get(token)
         if opt_def is not None:
             known.append(token)
+            present_flags.append(token)
             if opt_def.overrides is not None:
                 overrides.append((token, opt_def.overrides))
             if opt_def.risk is not None:
@@ -608,6 +625,7 @@ def _classify_options(
             if opt_def is not None and opt_def.takes_value and len(token) > 2:
                 # Joined short option with value: -fvalue
                 known.append(token)
+                present_flags.append(short_flag)
                 value = token[2:]
                 if opt_def.overrides is not None:
                     overrides.append((short_flag, opt_def.overrides))
@@ -624,12 +642,14 @@ def _classify_options(
                 all_known = True
                 pending_overrides: list[tuple[str, Classification]] = []
                 pending_risk_overrides: list[tuple[str, Risk]] = []
+                pending_flags: list[str] = []
                 for j in range(1, len(token)):
                     char_flag = f"-{token[j]}"
                     char_def = options.get(char_flag)
                     if char_def is None:
                         all_known = False
                         break
+                    pending_flags.append(char_flag)
                     if char_def.takes_value:
                         # This flag takes a value: remaining chars are the joined value
                         if char_def.overrides is not None:
@@ -656,6 +676,7 @@ def _classify_options(
 
                 if all_known:
                     known.append(token)
+                    present_flags.extend(pending_flags)
                     overrides.extend(pending_overrides)
                     risk_overrides.extend(pending_risk_overrides)
                     i += 1
@@ -664,6 +685,7 @@ def _classify_options(
             # Single char short option with separate value
             if opt_def is not None:
                 known.append(token)
+                present_flags.append(short_flag)
                 if opt_def.overrides is not None:
                     overrides.append((short_flag, opt_def.overrides))
                 if opt_def.risk is not None:
@@ -679,9 +701,10 @@ def _classify_options(
 
         # Unknown option
         unknown.append(token)
+        present_flags.append(token)
         i += 1
 
-    return known, unknown, overrides, risk_overrides, directories, delegations, positional
+    return known, unknown, overrides, risk_overrides, directories, delegations, positional, present_flags
 
 
 def _is_terminator(token: str, terminator: str | None) -> bool:
@@ -875,6 +898,8 @@ def _match_inner_command(
         ignored_options=inner_result.ignored_options,
         remaining_options=inner_result.remaining_options,
         overriding_option=inner_result.overriding_option,
+        options=inner_result.options,
+        positionals=inner_result.positionals,
     )
 
 

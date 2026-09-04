@@ -25,6 +25,8 @@ def _inner_command_to_dict(result: InnerCommandResult) -> dict:
         "classification": result.classification.value,
         "risk": result.risk.value,
         "matched_rule": result.matched_rule,
+        "options": result.options or [],
+        "positionals": result.positionals or [],
     }
 
     if result.ignored_options:
@@ -47,6 +49,8 @@ def _command_to_dict(result: CommandResult) -> dict:
         "classification": result.classification.value,
         "risk": result.risk.value,
         "matched_rule": result.matched_rule,
+        "options": result.options or [],
+        "positionals": result.positionals or [],
     }
 
     if result.ignored_options:

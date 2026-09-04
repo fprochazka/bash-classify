@@ -358,3 +358,67 @@ class TestWriteReadPaths:
         d = _result_to_dict(result)
         assert "write_paths" not in d
         assert "read_paths" not in d
+
+
+class TestOptionsAndPositionalsSerialization:
+    """`options` and `positionals` are always serialized, as [] when unset."""
+
+    def test_command_populated(self) -> None:
+        result = CommandResult(
+            command=["git", "commit"],
+            argv=["git", "commit", "--amend", "-m", "msg"],
+            classification=Classification.LOCAL_EFFECTS,
+            risk=Risk.MEDIUM,
+            matched_rule="git.commit",
+            inner_commands=[],
+            options=["--amend", "-m"],
+            positionals=["target"],
+        )
+        d = _command_to_dict(result)
+        assert d["options"] == ["--amend", "-m"]
+        assert d["positionals"] == ["target"]
+
+    def test_command_none_serializes_as_empty_lists(self) -> None:
+        result = CommandResult(
+            command=["cd"],
+            argv=["cd", "/tmp"],
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            matched_rule=None,
+            inner_commands=[],
+        )
+        d = _command_to_dict(result)
+        assert d["options"] == []
+        assert d["positionals"] == []
+
+    def test_inner_command_populated(self) -> None:
+        inner = InnerCommandResult(
+            delegation_mode="rest_are_argv",
+            delegation_source="sudo",
+            command=["ls"],
+            argv=["ls", "-la", "/tmp"],
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            matched_rule="ls",
+            inner_commands=[],
+            options=["-la"],
+            positionals=["/tmp"],
+        )
+        d = _inner_command_to_dict(inner)
+        assert d["options"] == ["-la"]
+        assert d["positionals"] == ["/tmp"]
+
+    def test_inner_command_none_serializes_as_empty_lists(self) -> None:
+        inner = InnerCommandResult(
+            delegation_mode="rest_are_argv",
+            delegation_source="sudo",
+            command=["ls"],
+            argv=["ls"],
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            matched_rule="ls",
+            inner_commands=[],
+        )
+        d = _inner_command_to_dict(inner)
+        assert d["options"] == []
+        assert d["positionals"] == []

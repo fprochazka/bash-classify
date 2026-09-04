@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 
 from .database import load_database
 from .matcher import match_command
@@ -300,3 +300,29 @@ def _collect_inner_directories(results: list[InnerCommandResult]) -> list[str]:
         directories.extend(_collect_inner_directories(result.inner_commands))
 
     return directories
+
+
+def iter_invocations(
+    result: ExpressionResult,
+) -> Iterator[tuple[CommandResult | InnerCommandResult, list[str]]]:
+    """Yield every command invocation in the result, depth-first, with its wrapper chain.
+
+    Each pair is ``(invocation, via)``. ``via`` lists the enclosing wrapper commands,
+    outermost first, each as its resolved command path joined by spaces (``"sudo"``,
+    ``"bash"``, ``"find"``); it is empty for a top-level invocation. Commands inside
+    ``$(...)`` are already top-level entries of ``commands``, so they too get an empty
+    ``via``.
+    """
+    for command in result.commands:
+        yield command, []
+        yield from _iter_inner_invocations(command.inner_commands, [" ".join(command.command)])
+
+
+def _iter_inner_invocations(
+    results: list[InnerCommandResult],
+    via: list[str],
+) -> Iterator[tuple[InnerCommandResult, list[str]]]:
+    """Yield inner invocations depth-first, carrying the wrapper chain that reached them."""
+    for result in results:
+        yield result, list(via)
+        yield from _iter_inner_invocations(result.inner_commands, [*via, " ".join(result.command)])

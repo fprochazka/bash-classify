@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bash_classify.classifier import _is_system_path, classify_expression
+from bash_classify.classifier import _is_system_path, classify_expression, iter_invocations
 from bash_classify.models import Classification, CommandDef, Risk
 
 
@@ -752,3 +752,41 @@ class TestAliasOfClassification:
         db = load_database(tmp_path)
         with pytest.raises(ValueError, match="alias chain too deep"):
             classify_expression("myalias foo", database=db)
+
+
+class TestIterInvocations:
+    """`iter_invocations` walks every invocation depth-first with its wrapper chain."""
+
+    def test_nested_wrappers(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("sudo timeout 5 env FOO=1 ls", database)
+        entries = list(iter_invocations(result))
+        assert [inv.command for inv, _ in entries] == [["sudo"], ["timeout"], ["env"], ["ls"]]
+        assert [via for _, via in entries] == [
+            [],
+            ["sudo"],
+            ["sudo", "timeout"],
+            ["sudo", "timeout", "env"],
+        ]
+
+    def test_top_level_commands_have_empty_via(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("ls -la && grep -r foo .", database)
+        entries = list(iter_invocations(result))
+        assert [inv.command for inv, _ in entries] == [["ls"], ["grep"]]
+        assert all(via == [] for _, via in entries)
+
+    def test_command_substitution_is_top_level(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo $(ls /tmp)", database)
+        entries = list(iter_invocations(result))
+        assert ["ls"] in [inv.command for inv, _ in entries]
+        assert all(via == [] for _, via in entries)
+
+    def test_via_uses_resolved_command_path_joined_by_spaces(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("bash -c 'ls /tmp'", database)
+        entries = list(iter_invocations(result))
+        assert (["ls"], ["bash"]) in [(inv.command, via) for inv, via in entries]
+
+    def test_options_are_visible_on_every_invocation(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("sudo ls -la /tmp", database)
+        by_command = {tuple(inv.command): inv for inv, _ in iter_invocations(result)}
+        assert by_command[("ls",)].options == ["-la"]
+        assert by_command[("ls",)].positionals == ["/tmp"]
