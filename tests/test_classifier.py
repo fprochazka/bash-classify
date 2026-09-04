@@ -810,3 +810,26 @@ class TestEvalExecInnerCommandsAreReachable:
         result = classify_expression('eval "ls -la"', database)
         assert result.classification == Classification.DANGEROUS
         assert result.risk == Risk.HIGH
+
+
+class TestHeredocFollowerClassification:
+    """A command piped from a heredoc opener must reach classification."""
+
+    def test_pipe_to_a_dangerous_command(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat <<EOF | rm -rf x\nbody\nEOF", database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+        assert [c.command for c in result.commands] == [["cat"], ["rm"]]
+        assert result.parse_warnings == []
+
+    def test_and_chain_to_a_dangerous_command(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat > f <<EOF && rm -rf x\nbody\nEOF", database)
+        assert result.classification == Classification.DANGEROUS
+        assert [c.command for c in result.commands] == [["cat"], ["rm"]]
+
+    def test_heredoc_body_still_does_not_classify(self, database: dict[str, CommandDef]) -> None:
+        """The body names a dangerous command; only the piped `wc` is real, so this is READONLY."""
+        result = classify_expression("cat <<EOF | wc -l\nrm -rf /\nEOF", database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+        assert [c.command for c in result.commands] == [["cat"], ["wc"]]

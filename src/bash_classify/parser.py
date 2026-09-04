@@ -184,7 +184,7 @@ def _walk_pipeline_node(
 ) -> list[CommandInvocation]:
     """Walk a pipeline node, extracting each command with its pipeline position."""
     # Collect command nodes in the pipeline (skip | operators)
-    command_nodes = [child for child in node.children if child.type not in ("|", "|&")]
+    command_nodes = _flatten_pipeline_members(node)
     pipe_len = len(command_nodes)
 
     results: list[CommandInvocation] = []
@@ -220,6 +220,15 @@ def _walk_redirected_statement(
     if body_node is None:
         return results
 
+    # A heredoc opener can be followed on the same line by a pipeline or by a `&&` / `||`
+    # list, and tree-sitter nests those inside the heredoc_redirect node. Collect them once:
+    # the same collection decides how long the redirected command's pipeline really is and
+    # how the followers themselves are walked.
+    followers = _heredoc_follower_segments(node)
+    pipeline_length += sum(
+        len(_flatten_pipeline_members(child)) for _op, child in followers if _continues_pipeline(_op, child)
+    )
+
     # Get the commands from the body
     inner = _walk_node(
         body_node,
@@ -243,7 +252,114 @@ def _walk_redirected_statement(
 
     results.extend(inner)
 
-    # Also extract nested commands from redirect targets (shouldn't normally happen, but be safe)
+    # Whatever follows the heredoc opener on the same line
+    results.extend(
+        _walk_heredoc_followers(
+            followers,
+            context=context,
+            pipeline_position=pipeline_position,
+            pipeline_length=pipeline_length,
+        )
+    )
+
+    return results
+
+
+# Children of a heredoc_redirect that describe the heredoc itself rather than a command.
+_HEREDOC_STRUCTURE_NODES = frozenset({"<<", "<<-", "heredoc_start", "heredoc_body", "heredoc_end"})
+_LIST_OPERATORS = frozenset({"&&", "||"})
+
+
+def _heredoc_redirects(node: tree_sitter.Node) -> list[tree_sitter.Node]:
+    """Return the heredoc_redirect children of a redirected_statement."""
+    return [child for child in node.children if child.type == "heredoc_redirect"]
+
+
+def _flatten_pipeline_members(node: tree_sitter.Node) -> list[tree_sitter.Node]:
+    """Return a pipeline's command nodes, flattening nested pipeline nodes.
+
+    A plain `a | b | c` parses as one flat pipeline, but the pipeline that follows a
+    heredoc opener nests to the right — `pipeline(|, pipeline(b, |, c))` — so it has to be
+    flattened before its members can be numbered.
+    """
+    members: list[tree_sitter.Node] = []
+    for child in node.children:
+        if child.type in ("|", "|&"):
+            continue
+        if child.type == "pipeline":
+            members.extend(_flatten_pipeline_members(child))
+        else:
+            members.append(child)
+    return members
+
+
+def _heredoc_follower_segments(node: tree_sitter.Node) -> list[tuple[str | None, tree_sitter.Node]]:
+    """Return what is written after a heredoc opener, as (operator, node) pairs in source order.
+
+    tree-sitter-bash nests everything after `<<DELIM` — a pipeline, or a `&&` / `||` operator
+    with its right-hand side — inside the heredoc_redirect node, between the delimiter and the
+    body. A walker that reads only the delimiter loses it: `cat <<EOF | rm -rf x` would report
+    `cat` alone. The operator is `None` when the node directly continues the redirected command.
+    """
+    segments: list[tuple[str | None, tree_sitter.Node]] = []
+
+    for redirect in _heredoc_redirects(node):
+        pending_operator: str | None = None
+        for child in redirect.children:
+            if child.type in _HEREDOC_STRUCTURE_NODES:
+                continue
+            if child.type in _LIST_OPERATORS:
+                pending_operator = child.type
+                continue
+            segments.append((pending_operator, child))
+            pending_operator = None
+
+    return segments
+
+
+def _continues_pipeline(operator: str | None, child: tree_sitter.Node) -> bool:
+    """True when the segment extends the redirected command's own pipeline.
+
+    `cat <<EOF | wc -l` does — `cat` becomes member 0 of a two-member pipeline. A pipeline
+    behind a list operator (`cat <<EOF && ls | wc -l`) does not: it is a pipeline of its own,
+    and `cat` stays a pipeline of one.
+    """
+    return operator is None and child.type == "pipeline"
+
+
+def _walk_heredoc_followers(
+    segments: list[tuple[str | None, tree_sitter.Node]],
+    *,
+    context: str,
+    pipeline_position: int,
+    pipeline_length: int,
+) -> list[CommandInvocation]:
+    """Walk the segments collected by `_heredoc_follower_segments`.
+
+    The heredoc body itself stays dropped; only these sibling commands are recovered.
+    """
+    results: list[CommandInvocation] = []
+    position = pipeline_position
+
+    for operator, child in segments:
+        if _continues_pipeline(operator, child):
+            for member in _flatten_pipeline_members(child):
+                position += 1
+                results.extend(
+                    _walk_node(
+                        member,
+                        context=context,
+                        operator_before=None,
+                        pipeline_position=position,
+                        pipeline_length=pipeline_length,
+                    )
+                )
+            continue
+
+        # Anything else starts fresh: a pipeline behind `&&` gets its own coordinates from
+        # the generic walker, and a bare command is a list member.
+        results.extend(_walk_node(child, context=context, operator_before=operator))
+
     return results
 
 

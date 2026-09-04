@@ -435,3 +435,101 @@ class TestParseWarnings:
         _, warnings = parse_expression("if then fi else")
         assert len(warnings) >= 1
         assert "syntax error" in warnings[0]
+
+
+class TestCommandsFollowingAHeredocOpener:
+    """A heredoc opener can be followed on the same line by a pipeline or a && / || list.
+
+    tree-sitter nests those commands inside the heredoc_redirect node, between the
+    delimiter and the body, so a walker that reads only the delimiter loses them.
+    """
+
+    def test_pipe_after_heredoc_opener(self) -> None:
+        result, warnings = parse_expression("cat <<EOF | wc -l\nbody\nEOF")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["wc", "-l"]]
+        assert [r.position_in_pipeline for r in result] == [0, 1]
+        assert [r.pipeline_length for r in result] == [2, 2]
+
+    def test_and_after_heredoc_opener(self) -> None:
+        result, warnings = parse_expression("cat > f <<EOF && rm -rf x\nbody\nEOF")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["rm", "-rf", "x"]]
+        assert result[1].operator_before == "&&"
+
+    def test_or_after_heredoc_opener(self) -> None:
+        result, warnings = parse_expression("cat > f <<EOF || echo fail\nbody\nEOF")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["echo", "fail"]]
+        assert result[1].operator_before == "||"
+
+    def test_semicolon_after_heredoc_opener_is_flagged_not_silently_dropped(self) -> None:
+        """tree-sitter cannot parse `<<EOF ; cmd`, so the follower is unrecoverable.
+
+        What matters is that it says so: an empty parse_warnings must never accompany a
+        command list that quietly lost a command.
+        """
+        result, warnings = parse_expression("cat > f <<EOF ; echo done\nbody\nEOF")
+        assert warnings, "a follower that cannot be recovered must produce a parse warning"
+        assert result[0].argv == ["cat"]
+
+    def test_multi_member_pipeline_after_heredoc_opener(self) -> None:
+        """The pipeline after a heredoc nests to the right; members are still numbered flat."""
+        result, warnings = parse_expression("cat <<EOF | tee out.txt | grep x\nbody\nEOF")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["tee", "out.txt"], ["grep", "x"]]
+        assert [r.position_in_pipeline for r in result] == [0, 1, 2]
+        assert [r.pipeline_length for r in result] == [3, 3, 3]
+
+    def test_and_then_a_pipeline_after_heredoc_opener(self) -> None:
+        """`cat <<EOF && ls | wc -l` is a list whose right side is its own pipeline.
+
+        `cat` stays a pipeline of one; `ls | wc -l` is numbered independently.
+        """
+        result, warnings = parse_expression("cat <<EOF && ls | wc -l\nbody\nEOF")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["ls"], ["wc", "-l"]]
+        assert [r.operator_before for r in result] == [None, "&&", None]
+        assert [(r.position_in_pipeline, r.pipeline_length) for r in result] == [(0, 1), (0, 2), (1, 2)]
+
+    def test_or_then_a_pipeline_after_heredoc_opener(self) -> None:
+        result, warnings = parse_expression("cat <<EOF || ls | wc -l\nbody\nEOF")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["ls"], ["wc", "-l"]]
+        assert [r.operator_before for r in result] == [None, "||", None]
+        assert [(r.position_in_pipeline, r.pipeline_length) for r in result] == [(0, 1), (0, 2), (1, 2)]
+
+    def test_tab_stripping_heredoc_operator_with_a_pipe(self) -> None:
+        """`<<-` behaves like `<<`; only the body indentation differs."""
+        result, warnings = parse_expression("cat <<-EOF | wc -l\nbody\nEOF")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["wc", "-l"]]
+        assert [(r.position_in_pipeline, r.pipeline_length) for r in result] == [(0, 2), (1, 2)]
+        assert result[0].redirects[0].operator == "<<-"
+
+    def test_tab_stripping_heredoc_operator_with_an_and_chain(self) -> None:
+        result, warnings = parse_expression("cat <<-EOF && rm -rf x\nbody\nEOF")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["rm", "-rf", "x"]]
+        assert result[1].operator_before == "&&"
+
+    def test_the_body_is_still_dropped(self) -> None:
+        result, warnings = parse_expression("cat <<EOF | wc -l\nls -la\nrm -rf /\nEOF")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["wc", "-l"]]
+
+    def test_the_redirect_record_is_unchanged(self) -> None:
+        result, _ = parse_expression("cat > f <<EOF && rm -rf x\nbody\nEOF")
+        assert [(r.operator, r.target) for r in result[0].redirects] == [(">", "f"), ("<<", "EOF")]
+        assert result[1].redirects == []
+
+    def test_quoted_delimiter_with_a_pipe(self) -> None:
+        result, warnings = parse_expression("cat <<'EOF' | wc -l\nbody\nEOF")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["wc", "-l"]]
+        assert result[0].redirects[0].target == "'EOF'"
+
+    def test_plain_heredoc_with_nothing_after_it_is_unaffected(self) -> None:
+        result, warnings = parse_expression("cat > f <<'EOF'\nbody\nEOF\necho after")
+        assert warnings == []
+        assert [r.argv for r in result] == [["cat"], ["echo", "after"]]

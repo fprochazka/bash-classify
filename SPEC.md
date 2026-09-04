@@ -377,7 +377,7 @@ The parser walks the CST and extracts a list of `CommandInvocation` objects, eac
 | Command substitution `$(cmd)` | Inner command extracted recursively |
 | Process substitution `<(cmd)` / `>(cmd)` | Inner command extracted recursively |
 | Subshells `(cmd)` | Inner command extracted recursively |
-| Heredocs `<<EOF` | Body is dropped entirely — it is never parsed as commands and never appears in any `argv`; only the operator and the delimiter are recorded as a redirect |
+| Heredocs `<<EOF` | Body is dropped entirely — it is never parsed as commands and never appears in any `argv`; only the operator and the delimiter are recorded as a redirect. Commands written *after* the opener on the same line (`cat <<EOF \| wc -l`, `cat <<EOF && rm x`) are extracted like any other pipeline or list member — tree-sitter nests them inside the heredoc node, but they are real commands. A `;` or `&` in that position is a tree-sitter parse error: the follower cannot be recovered and a `parse_warnings` entry says so |
 | Variable assignments `X=1 cmd` | Prefix assignments stripped, `cmd` extracted |
 | Backgrounding `cmd &` | Classified as EXTERNAL_EFFECTS (side effect: background process) |
 
