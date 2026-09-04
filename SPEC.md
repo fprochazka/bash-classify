@@ -189,8 +189,12 @@ $ echo 'sh -c "ls /tmp | grep log"' | bash-classify
 ### Exit codes
 
 - `0` — successfully classified
-- `1` — parse error (invalid bash syntax)
+- `1` — empty input, or no input arrived on stdin within 5 seconds
 - `2` — internal error
+
+A bash syntax error does **not** change the exit code. The parse is best-effort: the tool still exits `0`, records the
+problem in `parse_warnings`, and returns whatever commands it could extract from the partial parse. Consumers rely on
+this — check `parse_warnings` to decide whether the `commands` list can be trusted, not the exit code.
 
 ### Classification levels
 
@@ -299,7 +303,7 @@ The parser walks the CST and extracts a list of `CommandInvocation` objects, eac
 | Command substitution `$(cmd)` | Inner command extracted recursively |
 | Process substitution `<(cmd)` / `>(cmd)` | Inner command extracted recursively |
 | Subshells `(cmd)` | Inner command extracted recursively |
-| Heredocs `<<EOF` | Content captured but not parsed as commands |
+| Heredocs `<<EOF` | Body is dropped entirely — it is never parsed as commands and never appears in any `argv`; only the operator and the delimiter are recorded as a redirect |
 | Variable assignments `X=1 cmd` | Prefix assignments stripped, `cmd` extracted |
 | Backgrounding `cmd &` | Classified as EXTERNAL_EFFECTS (side effect: background process) |
 
@@ -971,7 +975,7 @@ The `commands` list is recursive — any command entry can contain `inner_comman
       "affects_classification": "bool"
     }
   ],
-  "parse_warnings": ["string — non-fatal issues encountered during parsing"]
+  "parse_warnings": ["string — non-fatal issues encountered during parsing. A non-empty list means the parse was best-effort and the commands list may be incomplete."]
 }
 ```
 
