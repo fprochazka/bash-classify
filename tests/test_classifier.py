@@ -833,3 +833,51 @@ class TestHeredocFollowerClassification:
         assert result.classification == Classification.READONLY
         assert result.risk == Risk.LOW
         assert [c.command for c in result.commands] == [["cat"], ["wc"]]
+
+
+class TestNestedExpressionParseWarnings:
+    """A syntax error inside `bash -c` or `eval` must reach the top-level result.
+
+    Otherwise `parse_warnings == []` would promise a trustworthy command list while the
+    nested expression had silently produced nothing.
+    """
+
+    BROKEN = "for x in; ls"
+
+    def test_shell_dash_c(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"bash -c '{self.BROKEN}'", database)
+        assert result.parse_warnings
+        assert self.BROKEN in result.parse_warnings[0]
+
+    def test_eval(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f'eval "{self.BROKEN}"', database)
+        assert result.parse_warnings
+        assert self.BROKEN in result.parse_warnings[0]
+
+    def test_nested_two_deep(self, database: dict[str, CommandDef]) -> None:
+        """The wrapper delegates to the shell, which parses the broken expression."""
+        result = classify_expression(f"sudo bash -c '{self.BROKEN}'", database)
+        assert result.parse_warnings
+        assert self.BROKEN in result.parse_warnings[0]
+
+    def test_nested_three_deep(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"timeout 5 env FOO=1 bash -c '{self.BROKEN}'", database)
+        assert result.parse_warnings
+
+    def test_reached_through_option_delegation(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"find . -exec bash -c '{self.BROKEN}' \\;", database)
+        assert result.parse_warnings
+
+    def test_identical_warnings_are_reported_once(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"bash -c '{self.BROKEN}' && bash -c '{self.BROKEN}'", database)
+        assert len(result.parse_warnings) == 1
+
+    def test_a_clean_nested_expression_warns_about_nothing(self, database: dict[str, CommandDef]) -> None:
+        assert classify_expression("bash -c 'ls /tmp'", database).parse_warnings == []
+        assert classify_expression('eval "ls -la"', database).parse_warnings == []
+        assert classify_expression("sudo bash -c 'ls /tmp && rm -rf /var/tmp/x'", database).parse_warnings == []
+
+    def test_a_broken_outer_expression_still_warns(self, database: dict[str, CommandDef]) -> None:
+        """The outer parse and the nested one both feed the same list."""
+        result = classify_expression(f"bash -c '{self.BROKEN}'; if then fi (", database)
+        assert len(result.parse_warnings) == 2

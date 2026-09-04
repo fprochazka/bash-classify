@@ -295,6 +295,17 @@ class TestParseWarnings:
         result = match_expression("glab mr note 42 -m hi", [Rule(name="n", command=["glab"])], db)
         assert result.parse_warnings == []
 
+    def test_propagated_from_a_nested_shell_expression(self, db) -> None:
+        """A rule can still match inside `bash -c`, but the warning must come with it."""
+        result = match_expression("bash -c 'rm -rf x; for x in;'", [Rule(name="n", command=["rm"])], db)
+        assert _names(result.matches) == ["n"]
+        assert result.parse_warnings
+        assert "for x in;" in result.parse_warnings[0]
+
+    def test_propagated_from_a_nested_eval_expression(self, db) -> None:
+        result = match_expression('eval "for x in; ls"', [Rule(name="n", command=["ls"])], db)
+        assert result.parse_warnings
+
     def test_propagated_for_a_broken_expression(self, db) -> None:
         result = match_expression("glab mr note 42 -m hi; if then fi (", [Rule(name="n", command=["glab"])], db)
         assert result.parse_warnings

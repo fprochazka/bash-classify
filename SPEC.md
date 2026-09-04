@@ -1029,9 +1029,11 @@ This is the schema of the default mode. `match` mode has its own, much smaller o
 ```
 
 Both keys are always present in match output, `matches` as `[]` when nothing matched and
-`parse_warnings` as `[]` on a clean parse. A caller must check both: a non-empty
-`parse_warnings` means an empty `matches` proves nothing, and a *missing* `matches` key
-means the output came from a binary that predates this mode.
+`parse_warnings` as `[]` on a clean parse. As in the default mode, `parse_warnings` covers
+nested expressions: a syntax error inside `bash -c "..."` or `eval "..."` surfaces here too.
+A caller must check both: a non-empty `parse_warnings` means an empty `matches` proves
+nothing, and a *missing* `matches` key means the output came from a binary that predates
+this mode.
 
 The `commands` list below is recursive — any command entry can contain `inner_commands` when the command delegates execution to another command (via `delegates_to` in the database).
 
@@ -1081,6 +1083,12 @@ The `commands` list below is recursive — any command entry can contain `inner_
   "parse_warnings": ["string — non-fatal issues encountered during parsing. A non-empty list means the parse was best-effort and the commands list may be incomplete."]
 }
 ```
+
+`parse_warnings` covers **nested** expressions as well as the outer one. A syntax error inside
+`bash -c "..."`, `sh -c`, `zsh -c` or `eval "..."` surfaces here at any wrapper depth
+(`sudo bash -c '...'`, `find . -exec bash -c '...' \;`), and the warning text names the nested
+expression it came from, so a caller can tell which part of the command could not be read.
+Identical warnings are reported once.
 
 #### `options` and `positionals`
 

@@ -27,6 +27,19 @@ _BUILTIN_DANGEROUS_COMMANDS = {"source", "."}
 _ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 
+def _record_warnings(collector: list[str] | None, warnings: list[str]) -> None:
+    """Append parse warnings to the collector, skipping ones already recorded.
+
+    The same nested expression can be reached more than once (a wrapper that delegates to a
+    shell twice, say), and one warning per distinct problem is what a caller can act on.
+    """
+    if collector is None:
+        return
+    for warning in warnings:
+        if warning not in collector:
+            collector.append(warning)
+
+
 def _default_risk(classification: Classification) -> Risk:
     """Return the default risk level for a given classification."""
     if classification in (Classification.DANGEROUS, Classification.UNKNOWN):
@@ -47,11 +60,16 @@ def _clamp_risk(classification: Classification, risk: Risk) -> Risk:
 def match_command(
     invocation: CommandInvocation,
     database: Mapping[str, CommandDef],
+    parse_warnings: list[str] | None = None,
 ) -> CommandResult:
     """Match a parsed CommandInvocation against the command database.
 
     Performs binary lookup, global option stripping, subcommand matching,
     option classification, and delegation handling.
+
+    `parse_warnings`, when given, collects warnings raised while parsing nested shell
+    expressions (`bash -c "..."`, `eval "..."`). Those parses happen deep inside delegation
+    handling but belong on the top-level result, so the caller passes a list to fill.
     """
     argv = invocation.argv
     if not argv:
@@ -259,13 +277,16 @@ def match_command(
             database,
             argv,
             matched_def,
+            parse_warnings,
         )
         command_level_inner_count = len(command_level_inner)
         inner_commands.extend(command_level_inner)
 
     # Option-level delegation (e.g., find -exec)
     for opt_name, delegation_config, delegation_tokens in option_delegations:
-        inner_results = _handle_option_delegation(opt_name, delegation_config, delegation_tokens, database)
+        inner_results = _handle_option_delegation(
+            opt_name, delegation_config, delegation_tokens, database, parse_warnings
+        )
         inner_commands.extend(inner_results)
 
     # When command-level delegation actually produced inner commands, the
@@ -768,6 +789,7 @@ def _handle_delegation(
     database: Mapping[str, CommandDef],
     full_argv: list[str],
     command_def: CommandDef,
+    parse_warnings: list[str] | None = None,
 ) -> list[InnerCommandResult]:
     """Handle command-level delegation (rest_are_argv, after_separator, *_expression)."""
     results: list[InnerCommandResult] = []
@@ -787,6 +809,7 @@ def _handle_delegation(
                 delegation_mode="rest_are_argv",
                 delegation_source=command_def.command,
                 min_classification=delegation.min_classification,
+                parse_warnings=parse_warnings,
             )
             results.append(result)
 
@@ -810,6 +833,7 @@ def _handle_delegation(
                     delegation_mode="after_separator",
                     delegation_source=separator,
                     min_classification=delegation.min_classification,
+                    parse_warnings=parse_warnings,
                 )
                 results.append(result)
 
@@ -822,7 +846,8 @@ def _handle_delegation(
         if expression_value.strip():
             from .parser import parse_expression
 
-            inner_invocations, _warnings = parse_expression(expression_value)
+            inner_invocations, nested_warnings = parse_expression(expression_value)
+            _record_warnings(parse_warnings, nested_warnings)
             for inv in inner_invocations:
                 result = _match_inner_command(
                     inv.argv,
@@ -830,6 +855,7 @@ def _handle_delegation(
                     delegation_mode="args_are_expression",
                     delegation_source=command_def.command,
                     min_classification=delegation.min_classification,
+                    parse_warnings=parse_warnings,
                 )
                 results.append(result)
 
@@ -844,7 +870,8 @@ def _handle_delegation(
             # Parse the expression recursively
             from .parser import parse_expression
 
-            inner_invocations, _warnings = parse_expression(expression_value)
+            inner_invocations, nested_warnings = parse_expression(expression_value)
+            _record_warnings(parse_warnings, nested_warnings)
             for inv in inner_invocations:
                 result = _match_inner_command(
                     inv.argv,
@@ -852,6 +879,7 @@ def _handle_delegation(
                     delegation_mode="flag_value_is_expression",
                     delegation_source=flag,
                     min_classification=delegation.min_classification,
+                    parse_warnings=parse_warnings,
                 )
                 results.append(result)
 
@@ -863,6 +891,7 @@ def _handle_option_delegation(
     delegation: DelegationConfig,
     delegation_tokens: list[str],
     database: Mapping[str, CommandDef],
+    parse_warnings: list[str] | None = None,
 ) -> list[InnerCommandResult]:
     """Handle option-level delegation (e.g., find -exec)."""
     if delegation.mode == DelegationMode.TERMINATED_ARGV:
@@ -875,6 +904,7 @@ def _handle_option_delegation(
                 delegation_mode="terminated_argv",
                 delegation_source=option_name,
                 min_classification=delegation.min_classification,
+                parse_warnings=parse_warnings,
             )
             return [result]
     return []
@@ -887,6 +917,7 @@ def _match_inner_command(
     delegation_mode: str,
     delegation_source: str,
     min_classification: Classification | None = None,
+    parse_warnings: list[str] | None = None,
 ) -> InnerCommandResult:
     """Recursively match an inner command and return an InnerCommandResult."""
     # Create a synthetic invocation for the inner command
@@ -900,8 +931,8 @@ def _match_inner_command(
         is_background=False,
     )
 
-    # Recursively match
-    inner_result = match_command(inner_invocation, database)
+    # Recursively match, so a nested `bash -c` inside a wrapper still reports its warnings
+    inner_result = match_command(inner_invocation, database, parse_warnings)
 
     classification = inner_result.classification
     risk = inner_result.risk

@@ -117,7 +117,9 @@ def classify_expression(
                 classification_reason="variable expansion in command position",
             )
         else:
-            result = match_command(invocation, database)
+            # match_command fills parse_warnings with anything it hits while parsing a
+            # nested expression (`bash -c "..."`, `eval "..."`), at any depth.
+            result = match_command(invocation, database, parse_warnings)
 
         # Collect file paths from redirects
         write_paths: list[str] = []

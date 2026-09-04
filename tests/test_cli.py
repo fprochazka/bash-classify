@@ -189,6 +189,16 @@ class TestCliMatchMode:
         assert output["parse_warnings"]
         assert len(output["matches"]) == 1
 
+    def test_parse_warnings_from_a_nested_shell_expression(self, tmp_path: Path) -> None:
+        """A syntax error inside `bash -c` must reach the caller, matches or not."""
+        rules = self._rules_file(tmp_path, "rules:\n  - name: remove\n    command: [rm]\n")
+        proc = _run_cli("bash -c 'rm -rf x; for x in;'", "match", "--rules", str(rules))
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert [m["rule"] for m in output["matches"]] == ["remove"]
+        assert output["parse_warnings"], "a nested syntax error must not be silently swallowed"
+        assert "for x in;" in output["parse_warnings"][0]
+
     def test_via_reports_the_wrapper_chain(self, tmp_path: Path) -> None:
         rules = self._rules_file(tmp_path)
         proc = _run_cli("sudo timeout 5 glab mr note 42 -m hi", "match", "--rules", str(rules))
