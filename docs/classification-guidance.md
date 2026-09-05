@@ -84,6 +84,25 @@ options:                            # options that affect classification
 | `subcommands` | map | -- | Nested subcommand definitions (recursive) |
 | `delegates_to` | object | -- | How the command hands off to an inner command |
 
+#### Subcommand fields
+
+A subcommand takes the same fields as the top level, minus `command`, `description` and `global_options`, plus:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `aliases` | list | Alternative names for this subcommand (e.g. `pipe` and `pipeline` for `glab ci`) |
+
+An alias is another name for the same definition, not a copy of it: `glab pipeline view` classifies exactly as `glab ci view` and is reported as `["glab", "ci", "view"]`, while `argv` keeps the word that was typed. Declare aliases only for names the tool itself accepts (`glab ci --help` lists `pipe` and `pipeline`), and never a name a sibling subcommand already uses — that is rejected when the file loads.
+
+```yaml
+subcommands:
+  ci:
+    aliases: [pipe, pipeline]
+    subcommands:
+      list:
+        classification: READONLY
+```
+
 #### Option fields
 
 | Field | Type | Description |

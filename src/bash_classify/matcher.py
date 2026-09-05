@@ -452,6 +452,10 @@ def _match_subcommand(
 ) -> tuple[CommandDef, list[str], list[str]]:
     """Match subcommand chain from argv.
 
+    The chain holds canonical subcommand names: a word typed as a declared alias
+    (`glab pipeline view` for `glab ci view`) resolves to the definition it names, and it
+    is that definition's own name that lands in the chain. `argv` keeps the typed word.
+
     Returns (matched_def, command_chain, remaining_argv).
     """
     matched_def = command_def
@@ -466,8 +470,8 @@ def _match_subcommand(
             break
 
         if token in matched_def.subcommands:
-            command_chain.append(token)
             matched_def = matched_def.subcommands[token]
+            command_chain.append(matched_def.command)
             remaining = remaining[1:]
         else:
             break
@@ -496,8 +500,9 @@ def _match_all_subcommands(
             # Options pass through for _classify_options later
             remaining.append(token)
         elif token in command_def.subcommands:
-            matched_names.append(token)
-            matched_defs.append(command_def.subcommands[token])
+            matched = command_def.subcommands[token]
+            matched_names.append(matched.command)
+            matched_defs.append(matched)
         else:
             # Unrecognized goal — pass through as positional
             remaining.append(token)

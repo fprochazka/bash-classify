@@ -134,10 +134,17 @@ class OptionDef:
 
 @dataclass
 class CommandDef:
-    """Definition of a command (or subcommand) from the database."""
+    """Definition of a command (or subcommand) from the database.
+
+    ``command`` is the canonical name. A subcommand may additionally be reachable under
+    the names in ``aliases``: the parent's ``subcommands`` map holds the very same
+    definition object under each of them, so a matched alias still reports the canonical
+    name in the resolved command path.
+    """
 
     command: str
     alias_of: str | None = None
+    aliases: list[str] = field(default_factory=list)
     classification: Classification | None = None
     risk: Risk | None = None
     global_options: dict[str, OptionDef] = field(default_factory=dict)

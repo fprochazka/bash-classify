@@ -251,6 +251,8 @@ subcommands:
 
   # ── CI/CD: Pipelines ──────────────────────────────────────────
   ci:
+    # `pipe` and `pipeline` are glab's own deprecated aliases for `ci`
+    aliases: [pipe, pipeline]
     subcommands:
       list:
         classification: READONLY

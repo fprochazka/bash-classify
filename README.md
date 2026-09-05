@@ -151,6 +151,7 @@ Risk defaults are derived from classification (`READONLY`→LOW, `LOCAL_EFFECTS`
 - **Tree-sitter parsing** -- bash expressions are parsed into an AST for accurate command extraction, handling pipes, subshells, and command substitution
 - **YAML command database** -- each command has classification rules with subcommand and option matching
 - **Subcommand matching** -- `kubectl get` and `kubectl delete` can have different classifications
+- **Subcommand aliases** -- a subcommand can declare other names for itself, so `glab pipeline view` resolves to `glab ci view` and any rule written for the canonical name catches the aliased spelling
 - **Multi-goal build tools** -- `subcommand_mode: match_all` handles commands like `mvn clean install` and `gradle clean build test` where multiple goals can be combined in any order
 - **Delegation for wrappers** -- commands like `xargs`, `sudo`, and `env` delegate classification to the inner command
 - **File path detection** -- redirect operators (`>`, `>>`, `<`) are parsed into `write_paths`/`read_paths` in the output; writes to `/tmp` and `/var/tmp` stay at LOW risk

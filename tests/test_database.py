@@ -238,6 +238,73 @@ class TestAliasOf:
         assert db["myalias"].alias_of == "target"
 
 
+class TestSubcommandAliases:
+    def test_alias_maps_to_the_same_definition_object(self, database: dict[str, CommandDef]) -> None:
+        """`glab pipe` and `glab pipeline` are glab's own deprecated names for `glab ci`."""
+        glab = database["glab"]
+        ci = glab.subcommands["ci"]
+        assert glab.subcommands["pipe"] is ci
+        assert glab.subcommands["pipeline"] is ci
+
+    def test_alias_keeps_the_canonical_name(self, database: dict[str, CommandDef]) -> None:
+        glab = database["glab"]
+        assert glab.subcommands["pipeline"].command == "ci"
+        assert glab.subcommands["ci"].aliases == ["pipe", "pipeline"]
+
+    def test_subcommand_without_aliases_has_an_empty_list(self, database: dict[str, CommandDef]) -> None:
+        assert database["glab"].subcommands["mr"].aliases == []
+
+    def test_nested_alias_is_registered(self, tmp_path: Path) -> None:
+        """Aliases work at any depth, not only on the first level."""
+        (tmp_path / "tool.yaml").write_text(
+            "command: tool\n"
+            "subcommands:\n"
+            "  remote:\n"
+            "    subcommands:\n"
+            "      list:\n"
+            "        aliases: [ls]\n"
+            "        classification: READONLY\n"
+        )
+        db = load_database(tmp_path)
+        remote = db["tool"].subcommands["remote"]
+        assert remote.subcommands["ls"] is remote.subcommands["list"]
+
+    def test_alias_colliding_with_a_sibling_subcommand_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text(
+            "command: tool\nsubcommands:\n  ci:\n    aliases: [status]\n  status:\n    classification: READONLY\n"
+        )
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*alias 'status'.*already a subcommand"):
+            db["tool"]
+
+    def test_alias_claimed_by_two_siblings_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text(
+            "command: tool\nsubcommands:\n  ci:\n    aliases: [p]\n  publish:\n    aliases: [p]\n"
+        )
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*alias 'p'.*already an alias of subcommand 'ci'"):
+            db["tool"]
+
+    def test_alias_repeating_its_own_subcommand_name_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\nsubcommands:\n  ci:\n    aliases: [ci]\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*alias 'ci'.*already a subcommand"):
+            db["tool"]
+
+    def test_top_level_aliases_key_is_rejected(self, tmp_path: Path) -> None:
+        """A command file names itself by its filename; a second name is an alias_of file."""
+        (tmp_path / "tool.yaml").write_text("command: tool\naliases: [t]\nclassification: READONLY\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*'aliases' is only valid on subcommands"):
+            db["tool"]
+
+    def test_aliases_must_be_a_list(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\nsubcommands:\n  ci:\n    aliases: pipe\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*'aliases' must be a list"):
+            db["tool"]
+
+
 class TestUserCommandsDir:
     def test_user_override_replaces_builtin(self, tmp_path: Path) -> None:
         """User YAML overrides built-in command definition."""

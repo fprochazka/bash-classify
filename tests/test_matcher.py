@@ -837,6 +837,66 @@ class TestRiskOptionOverrides:
         assert result.risk == Risk.HIGH
 
 
+class TestSubcommandAliases:
+    """A subcommand reached through an alias reports the canonical name.
+
+    `command` and `matched_rule` are what a rule or an allowlist is written against, so
+    they must name the subcommand the database defines. `argv` is what the user typed and
+    stays untouched.
+    """
+
+    def test_alias_resolves_to_the_canonical_command_path(self, database: dict[str, CommandDef]) -> None:
+        result = match_command(_make_invocation(["glab", "pipeline", "view", "1000"]), database)
+        assert result.command == ["glab", "ci", "view"]
+        assert result.argv == ["glab", "pipeline", "view", "1000"]
+        assert result.matched_rule == "glab.ci.view"
+
+    def test_alias_classifies_exactly_as_the_canonical_subcommand(self, database: dict[str, CommandDef]) -> None:
+        typed = match_command(_make_invocation(["glab", "pipe", "get", "-p", "1000", "-F", "json"]), database)
+        canonical = match_command(_make_invocation(["glab", "ci", "get", "-p", "1000", "-F", "json"]), database)
+        assert typed.command == canonical.command
+        assert typed.classification == canonical.classification
+        assert typed.risk == canonical.risk
+        assert typed.options == canonical.options
+        assert typed.positionals == canonical.positionals
+
+    def test_alias_only_shadows_at_its_own_level(self, database: dict[str, CommandDef]) -> None:
+        """`pipeline` is an alias of `glab ci`, not a word that means `ci` everywhere."""
+        result = match_command(_make_invocation(["glab", "mr", "pipeline"]), database)
+        assert result.command == ["glab", "mr"]
+
+    def test_nested_alias_reports_the_canonical_path(self) -> None:
+        inner = CommandDef(command="list", aliases=["ls"], classification=Classification.READONLY)
+        outer = CommandDef(command="remote", subcommands={"list": inner, "ls": inner})
+        database = {"tool": CommandDef(command="tool", subcommands={"remote": outer})}
+        result = match_command(_make_invocation(["tool", "remote", "ls", "origin"]), database)
+        assert result.command == ["tool", "remote", "list"]
+        assert result.argv == ["tool", "remote", "ls", "origin"]
+        assert result.matched_rule == "tool.remote.list"
+        assert result.classification == Classification.READONLY
+
+    def test_alias_inherits_strict_mode(self) -> None:
+        """The alias is the same definition, so an unknown option is UNKNOWN either way."""
+        sub = CommandDef(command="build", aliases=["b"], classification=Classification.LOCAL_EFFECTS, strict=True)
+        database = {"tool": CommandDef(command="tool", subcommands={"build": sub, "b": sub})}
+        result = match_command(_make_invocation(["tool", "b", "--no-such-flag"]), database)
+        assert result.command == ["tool", "build"]
+        assert result.classification == Classification.UNKNOWN
+
+    def test_alias_in_match_all_mode_reports_the_canonical_goal(self) -> None:
+        clean = CommandDef(command="clean", aliases=["clobber"], classification=Classification.LOCAL_EFFECTS)
+        database = {
+            "build-tool": CommandDef(
+                command="build-tool",
+                subcommand_mode=SubcommandMode.MATCH_ALL,
+                subcommands={"clean": clean, "clobber": clean},
+            )
+        }
+        result = match_command(_make_invocation(["build-tool", "clobber"]), database)
+        assert result.command == ["build-tool", "clean"]
+        assert result.classification == Classification.LOCAL_EFFECTS
+
+
 class TestRiskExplicitOverrideInCommandDef:
     def test_explicit_risk_in_command_def(self) -> None:
         """A command with explicit risk: LOW should use that risk."""

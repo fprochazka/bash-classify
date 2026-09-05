@@ -599,6 +599,32 @@ class TestGlabOptions:
         assert command.options == ["--per-page"]
         assert command.positionals == []
 
+    def test_ci_pipeline_alias(self, database):
+        """`glab pipeline` is glab's own deprecated spelling of `glab ci`."""
+        result = classify_expression("glab pipeline view 1000 --web", database)
+        assert result.classification == Classification.READONLY
+        command = result.commands[0]
+        assert command.command == ["glab", "ci", "view"]
+        assert command.argv == ["glab", "pipeline", "view", "1000", "--web"]
+        assert command.matched_rule == "glab.ci.view"
+        assert command.options == ["--web"]
+        assert command.positionals == ["1000"]
+
+    def test_ci_pipe_alias(self, database):
+        result = classify_expression("glab pipe get -p 1000 --with-job-details -F json", database)
+        assert result.classification == Classification.READONLY
+        command = result.commands[0]
+        assert command.command == ["glab", "ci", "get"]
+        assert command.argv[1] == "pipe"
+        assert command.options == ["-p", "--with-job-details", "-F"]
+
+    def test_ci_alias_inside_a_wrapper(self, database):
+        """The alias resolves the same way in a delegated inner command."""
+        result = classify_expression("timeout 60 glab pipeline trace deploy-test -p 1000", database)
+        inner = result.commands[0].inner_commands[0]
+        assert inner.command == ["glab", "ci", "trace"]
+        assert inner.argv == ["glab", "pipeline", "trace", "deploy-test", "-p", "1000"]
+
     def test_glab_classifications_unchanged(self, database):
         """Declaring options must not move any classification or risk."""
         assert classify_expression("glab mr view 42", database).classification == Classification.READONLY

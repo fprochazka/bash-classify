@@ -181,8 +181,19 @@ _ALIAS_FORBIDDEN_KEYS = frozenset(
 )
 
 
-def _parse_command_def(data: dict, command_name: str) -> CommandDef:
-    """Parse a raw YAML dict into a CommandDef structure."""
+def _parse_command_def(data: dict, command_name: str, is_subcommand: bool = False) -> CommandDef:
+    """Parse a raw YAML dict into a CommandDef structure.
+
+    `is_subcommand` distinguishes an entry under a `subcommands` map from the top level of
+    a command file. Only the former may carry `aliases`; a command file names itself by its
+    filename, so a second name for it is a separate `alias_of` file.
+    """
+    if "aliases" in data and not is_subcommand:
+        raise ValueError(
+            f"command '{command_name}': 'aliases' is only valid on subcommands; "
+            f"use an alias_of file for a command-level alias"
+        )
+
     alias_of = data.get("alias_of")
     if alias_of is not None:
         conflicting = sorted(_ALIAS_FORBIDDEN_KEYS & data.keys())
@@ -205,6 +216,7 @@ def _parse_command_def(data: dict, command_name: str) -> CommandDef:
 
     return CommandDef(
         command=command_name,
+        aliases=_parse_aliases(data.get("aliases"), command_name),
         classification=classification,
         risk=risk,
         global_options=global_options,
@@ -267,8 +279,23 @@ def _parse_options(raw: dict | None) -> dict[str, OptionDef]:
     return options
 
 
+def _parse_aliases(raw: object, command_name: str) -> list[str]:
+    """Parse the `aliases` list of a subcommand definition."""
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise ValueError(f"subcommand '{command_name}': 'aliases' must be a list of strings")
+    return [_yaml_str(alias) for alias in raw]
+
+
 def _parse_subcommands(raw: dict | None) -> dict[str, CommandDef]:
-    """Parse a subcommands map recursively."""
+    """Parse a subcommands map recursively.
+
+    Each alias is registered in the same map as the definition it belongs to, pointing at
+    that very object, so `_match_subcommand` finds it by the typed word and still reports
+    the canonical name. An alias that would shadow a real sibling subcommand, or that two
+    siblings claim, is rejected here rather than silently resolving to one of them.
+    """
     if not raw:
         return {}
 
@@ -277,7 +304,26 @@ def _parse_subcommands(raw: dict | None) -> dict[str, CommandDef]:
     for name, props in raw.items():
         if props is None:
             props = {}
-        subcommands[name] = _parse_command_def(props, name)
+        canonical = _yaml_str(name)
+        subcommands[canonical] = _parse_command_def(props, canonical, is_subcommand=True)
+
+    aliased_by: dict[str, str] = {}
+    for canonical, definition in list(subcommands.items()):
+        for alias in definition.aliases:
+            if alias in subcommands:
+                raise ValueError(
+                    f"subcommand '{canonical}' declares alias '{alias}', "
+                    f"which is already a subcommand of the same parent"
+                )
+            if alias in aliased_by:
+                raise ValueError(
+                    f"subcommand '{canonical}' declares alias '{alias}', "
+                    f"which is already an alias of subcommand '{aliased_by[alias]}'"
+                )
+            aliased_by[alias] = canonical
+
+    for alias, canonical in aliased_by.items():
+        subcommands[alias] = subcommands[canonical]
 
     return subcommands
 

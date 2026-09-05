@@ -398,7 +398,7 @@ This is the core of the tool. Given an `argv` like `["kubectl", "--context=prod"
 
 1. **Look up the binary** (`kubectl`) in the database
 2. **Separate global options** from the rest of `argv`, using the database definition of which options are global and whether they take a value
-3. **Match the subcommand chain** from the remaining tokens (e.g. `get` → resolve to `kubectl.get`)
+3. **Match the subcommand chain** from the remaining tokens (e.g. `get` → resolve to `kubectl.get`), resolving any declared subcommand alias to its canonical name
 4. **Classify remaining options** against the matched subcommand's option definitions
 5. **Determine the final classification** based on subcommand default + any option overrides
 
@@ -450,6 +450,14 @@ The `subcommand_mode` field controls how positional arguments are matched agains
 The default mode. Subcommands are matched as a greedy chain through nested subcommand dictionaries. Each matched subcommand narrows the context to its own subcommand dict.
 
 Example: `kubectl rollout status` matches `kubectl` → `rollout` → `status`, walking the tree.
+
+#### Subcommand aliases
+
+A subcommand may declare `aliases`. Every alias is another name for the same definition, so matching a word against a subcommand dictionary tries the canonical names and the aliases alike. What is reported is always the canonical name: `glab pipeline view 1000` yields `command: ["glab", "ci", "view"]` and `matched_rule: "glab.ci.view"`, while `argv` keeps `["glab", "pipeline", "view", "1000"]` — the word that was actually typed. Classification, options and `strict` behaviour are the canonical subcommand's, since it is literally the same definition.
+
+This matters to `match` mode: a rule written as `command: [glab, ci, view]` catches the aliased spelling too, without listing it.
+
+Aliases live in one namespace with their siblings. An alias that names a sibling subcommand, or that two siblings both claim, is rejected when the database file is loaded — the error names the file and the alias.
 
 #### `match_all`
 
@@ -952,6 +960,14 @@ When command-level delegation resolves at least one inner command (and no option
 | `subcommand_mode` | `enum` | How subcommands are matched: `hierarchical` (default, chained tree walk) or `match_all` (each positional arg matched independently) |
 | `delegates_to` | `object` | How this command delegates execution to an inner command (see delegation modes) |
 
+#### Subcommand level
+
+A subcommand entry takes the same fields as the command level, minus `command` and `global_options` — its name is the key it is filed under — plus:
+
+| Field | Type | Description |
+|---|---|---|
+| `aliases` | `list[str]` | Alternative names for this subcommand (e.g. `pipe` and `pipeline` for `glab ci`). Each alias resolves to this same definition; the resolved `command` path and `matched_rule` name the canonical subcommand, while `argv` keeps the word that was typed. An alias that collides with a sibling subcommand, or that two siblings both claim, is a load-time error. |
+
 #### Option level
 
 | Field | Type | Description |
@@ -1129,7 +1145,7 @@ builtins, an unknown binary, an empty argv — carry `null` internally and seria
 - **Not a sandbox.** This is a classifier, not an enforcer. It does not execute or block anything. `match` mode is no exception: it reports which declared command shapes an expression invokes, and the caller decides what to do about it.
 - **No awk/sed/perl script analysis.** These are classified as a whole command; their embedded programs are opaque. They should simply not be in the READONLY allowlist.
 - **No variable resolution.** `$DIR`, `$(cmd)` in command position → UNKNOWN. We classify what we can see statically.
-- **No alias/function resolution.** We classify the literal command name as written.
+- **No shell alias/function resolution.** We classify the literal command name as written.
 
 ## Future extensions
 
