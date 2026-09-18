@@ -533,3 +533,59 @@ class TestCommandsFollowingAHeredocOpener:
         result, warnings = parse_expression("cat > f <<'EOF'\nbody\nEOF\necho after")
         assert warnings == []
         assert [r.argv for r in result] == [["cat"], ["echo", "after"]]
+
+
+class TestFileRedirectsAfterAHeredocOpener:
+    """A file redirect written after the heredoc operator on the same line must be captured.
+
+    tree-sitter-bash nests it inside the heredoc_redirect node as a labeled `redirect:`
+    child rather than as a sibling on the parent redirected_statement. The parser lifts
+    it out so that `cat <<EOF > file` produces the same redirect list as `cat > file <<EOF`.
+    """
+
+    def test_output_redirect_after_heredoc(self) -> None:
+        result, warnings = parse_expression("cat <<EOF > /tmp/x\nbody\nEOF")
+        assert warnings == []
+        assert result[0].argv == ["cat"]
+        assert [(r.operator, r.target) for r in result[0].redirects] == [("<<", "EOF"), (">", "/tmp/x")]
+
+    def test_same_redirects_regardless_of_ordering(self) -> None:
+        """Both orderings must produce the same set of redirects (order aside)."""
+        before, _ = parse_expression("cat > /tmp/x <<EOF\nbody\nEOF")
+        after, _ = parse_expression("cat <<EOF > /tmp/x\nbody\nEOF")
+        before_set = {(r.operator, r.target) for r in before[0].redirects}
+        after_set = {(r.operator, r.target) for r in after[0].redirects}
+        assert before_set == after_set
+
+    def test_multiple_trailing_redirects(self) -> None:
+        """Multiple file redirects after the heredoc operator are all captured."""
+        result, warnings = parse_expression("cat <<EOF > a 2> b\nbody\nEOF")
+        assert warnings == []
+        assert [(r.operator, r.target) for r in result[0].redirects] == [("<<", "EOF"), (">", "a"), ("2>", "b")]
+
+    def test_tab_stripping_heredoc_with_redirect(self) -> None:
+        result, warnings = parse_expression("cat <<-EOF > /tmp/x\nbody\nEOF")
+        assert warnings == []
+        assert [(r.operator, r.target) for r in result[0].redirects] == [("<<-", "EOF"), (">", "/tmp/x")]
+
+    def test_quoted_delimiter_with_redirect(self) -> None:
+        result, warnings = parse_expression("cat <<'EOF' > /tmp/x\nbody\nEOF")
+        assert warnings == []
+        assert [(r.operator, r.target) for r in result[0].redirects] == [("<<", "'EOF'"), (">", "/tmp/x")]
+
+    def test_double_quoted_delimiter_with_redirect(self) -> None:
+        result, warnings = parse_expression('cat <<"EOF" > /tmp/x\nbody\nEOF')
+        assert warnings == []
+        assert [(r.operator, r.target) for r in result[0].redirects] == [("<<", '"EOF"'), (">", "/tmp/x")]
+
+    def test_redirect_after_heredoc_does_not_create_a_second_command(self) -> None:
+        """The file redirect is attached to the existing command, not treated as a follower."""
+        result, warnings = parse_expression("cat <<EOF > /tmp/x\nbody\nEOF")
+        assert warnings == []
+        assert len(result) == 1
+
+    def test_body_still_not_scanned_as_paths(self) -> None:
+        """The heredoc body must not be treated as a redirect target even when a real redirect follows."""
+        result, warnings = parse_expression("cat <<EOF > /tmp/x\n~/.ssh/id_rsa\nEOF")
+        assert warnings == []
+        assert [(r.operator, r.target) for r in result[0].redirects] == [("<<", "EOF"), (">", "/tmp/x")]

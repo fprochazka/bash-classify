@@ -265,8 +265,12 @@ def _walk_redirected_statement(
     return results
 
 
-# Children of a heredoc_redirect that describe the heredoc itself rather than a command.
-_HEREDOC_STRUCTURE_NODES = frozenset({"<<", "<<-", "heredoc_start", "heredoc_body", "heredoc_end"})
+# Children of a heredoc_redirect that are not command continuations and must be skipped
+# when collecting follower segments. file_redirect is included because the grammar (since
+# PRs #193/#197) nests same-line file redirects — the `> file` of `cat <<EOF > file` —
+# inside the heredoc_redirect node rather than as siblings on redirected_statement.
+# _parse_heredoc_redirect extracts them; they must not also appear as command segments.
+_HEREDOC_STRUCTURE_NODES = frozenset({"<<", "<<-", "heredoc_start", "heredoc_body", "heredoc_end", "file_redirect"})
 _LIST_OPERATORS = frozenset({"&&", "||"})
 
 
@@ -513,9 +517,7 @@ def _extract_redirects_from_node(node: tree_sitter.Node) -> list[Redirect]:
             if redirect is not None:
                 redirects.append(redirect)
         elif child.type == "heredoc_redirect":
-            redirect = _parse_heredoc_redirect(child)
-            if redirect is not None:
-                redirects.append(redirect)
+            redirects.extend(_parse_heredoc_redirect(child))
         elif child.type == "herestring_redirect":
             redirect = _parse_herestring_redirect(child)
             if redirect is not None:
@@ -554,19 +556,32 @@ def _parse_file_redirect(node: tree_sitter.Node) -> Redirect | None:
     return Redirect(operator=operator, target=target, affects_classification=affects)
 
 
-def _parse_heredoc_redirect(node: tree_sitter.Node) -> Redirect | None:
-    """Parse a heredoc_redirect node into a Redirect."""
-    # Extract the heredoc delimiter
+def _parse_heredoc_redirect(node: tree_sitter.Node) -> list[Redirect]:
+    """Parse a heredoc_redirect node into its Redirect objects.
+
+    Returns the `<<` (or `<<-`) redirect for the heredoc itself, plus any file redirects
+    nested inside the node. The grammar (since tree-sitter-bash PRs #193 and #197) places
+    same-line file redirects — the `> file` part of `cat <<EOF > file` — as labeled
+    `redirect:` children of the heredoc_redirect node rather than as siblings on the
+    parent redirected_statement. Extracting them here ensures that both orderings —
+    `cat <<EOF > file` and `cat > file <<EOF` — produce the same redirect list.
+    """
     operator = "<<"
     target = ""
+    extra: list[Redirect] = []
 
     for child in node.children:
         if child.type in ("<<", "<<-"):
             operator = child.text.decode()
         elif child.type == "heredoc_start":
             target = child.text.decode()
+        elif child.type == "file_redirect":
+            redirect = _parse_file_redirect(child)
+            if redirect is not None:
+                extra.append(redirect)
 
-    return Redirect(operator=operator, target=target, affects_classification=False)
+    heredoc = Redirect(operator=operator, target=target, affects_classification=False)
+    return [heredoc, *extra]
 
 
 def _parse_herestring_redirect(node: tree_sitter.Node) -> Redirect | None:
