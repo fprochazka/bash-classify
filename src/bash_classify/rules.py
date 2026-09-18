@@ -138,15 +138,7 @@ def _parse_rule(path: str | Path, index: int, raw: object) -> Rule:
         for excluded in raw_except:
             except_paths.append(_parse_command_path(where, "except entry", excluded))
 
-    any_option: list[str] = []
-    if "any_option" in raw:
-        raw_any_option = raw["any_option"]
-        if not isinstance(raw_any_option, list) or not raw_any_option:
-            raise RulesError(f"{where}: 'any_option' must be a non-empty list of option strings")
-        for option in raw_any_option:
-            if not isinstance(option, str) or not option.startswith("-"):
-                raise RulesError(f"{where}: 'any_option' entries must be strings starting with '-', got {option!r}")
-            any_option.append(option)
+    any_option = _parse_option_list(where, "any_option", raw)
 
     any_arg_matches: re.Pattern[str] | None = None
     if "any_arg_matches" in raw:
@@ -175,6 +167,21 @@ def _parse_command_path(where: str, key: str, raw: object) -> list[str]:
         if not isinstance(word, str) or not word:
             raise RulesError(f"{where}: '{key}' entries must be non-empty strings, got {word!r}")
     return list(raw)
+
+
+def _parse_option_list(where: str, key: str, raw: Mapping[str, object]) -> list[str]:
+    """Validate one of the option-list keys: a non-empty list of strings starting with '-'."""
+    if key not in raw:
+        return []
+    value = raw[key]
+    if not isinstance(value, list) or not value:
+        raise RulesError(f"{where}: '{key}' must be a non-empty list of option strings")
+    options: list[str] = []
+    for option in value:
+        if not isinstance(option, str) or not option.startswith("-"):
+            raise RulesError(f"{where}: '{key}' entries must be strings starting with '-', got {option!r}")
+        options.append(option)
+    return options
 
 
 def match_expression(
