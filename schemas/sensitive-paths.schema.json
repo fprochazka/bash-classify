@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fprochazka/bash-classify/schemas/sensitive-paths.schema.json",
+  "title": "bash-classify sensitive paths",
+  "description": "Paths that hold a credential. A token naming one of these floors the risk of the expression at HIGH. The file bundled with the package is extended by $BASH_CLASSIFY_CONFIG_DIR/sensitive-paths.yaml or ~/.config/bash-classify/sensitive-paths.yaml; a user rule that reuses a bundled name replaces that rule.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rules"],
+  "properties": {
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Rule" },
+      "description": "The paths to look for"
+    }
+  },
+  "$defs": {
+    "Rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "paths"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Rule name, unique within the file; reported back on every hit"
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Path" },
+          "description": "Spellings of the same secret; a token that matches any of them hits the rule"
+        },
+        "except_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Path" },
+          "description": "Specific files exempted from this rule, such as a committed .env.example. Matched the same way as paths, except that a glob in the token is not honored, so a token cannot exempt itself by writing .e*"
+        }
+      }
+    },
+    "Path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "[^/]",
+      "description": "Slash-separated path segments that must appear in the token, in order and next to each other. Never anchored, so a leading slash is decoration. A segment may carry a glob (*, ?, [...]) for a part that varies, such as /proc/*/environ"
+    }
+  }
+}

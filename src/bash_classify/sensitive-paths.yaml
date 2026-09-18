@@ -1,0 +1,85 @@
+# $schema: ../../schemas/sensitive-paths.schema.json
+#
+# Paths that hold a credential. A token that names one of these floors `risk` at HIGH.
+#
+# The bar for a rule is that the file holds a secret. A file that is merely uninteresting to
+# read does not belong here: `~/.aws/config` and `.git/config` are routine debugging and are
+# deliberately absent. Every false positive is a reason for somebody to switch the whole
+# gate off.
+#
+# Every path is a sequence of segments that has to appear somewhere in the token, in order
+# and next to each other. Nothing is anchored, so `~/.ssh/id_rsa`, `/home/me/.ssh/id_rsa`
+# and `../.ssh/id_rsa` all hit the same rule, and a rule stays correct wherever the user
+# keeps the file. Segments are compared whole: `.github` and `.gitignore` are not `.git`.
+#
+# A segment may carry a glob (`*`, `?`, `[...]`) when the real path has a part that varies,
+# such as the pid in /proc. Keep the rest of the segment literal: a pattern loose enough to
+# match a normal working file makes the whole feature something people switch off.
+#
+# `except_paths` exempts a specific file from a rule that would otherwise catch it. An
+# exemption never accepts a glob, so a token cannot exempt itself by writing `.e*`.
+#
+# Add your own rules in $BASH_CLASSIFY_CONFIG_DIR/sensitive-paths.yaml, or in
+# ~/.config/bash-classify/sensitive-paths.yaml. A rule there is added to this set, and one
+# that reuses a name below replaces that rule outright.
+rules:
+  - name: ssh
+    paths:
+      - .ssh
+
+  - name: aws-credentials
+    paths:
+      - .aws/credentials
+
+  - name: gcloud
+    paths:
+      - .config/gcloud
+
+  - name: kube
+    paths:
+      - .kube/config
+
+  # `.env.*` covers .env.local and friends. It does not cover .env itself, because a glob
+  # segment still has to match the whole segment, so both spellings are listed.
+  #
+  # The exempted names are the ones projects commit on purpose, with placeholder values. A
+  # file genuinely named .env.example that does hold a secret is not reported; the cost of
+  # the other choice is a gate that fires every time somebody opens a repository's template.
+  - name: dotenv
+    paths:
+      - .env
+      - .env.*
+    except_paths:
+      - .env.example
+      - .env.sample
+      - .env.template
+      - .env.dist
+      - .env.defaults
+
+  - name: shadow
+    paths:
+      - /etc/shadow
+      - /etc/sudoers
+
+  - name: gpg
+    paths:
+      - .gnupg
+
+  - name: netrc
+    paths:
+      - .netrc
+      - _netrc
+
+  - name: npmrc-pypirc
+    paths:
+      - .npmrc
+      - .pypirc
+
+  - name: docker-config
+    paths:
+      - .docker/config.json
+
+  # The environment of any running process, which is where an agent's API keys live.
+  - name: proc-environ
+    paths:
+      - /proc/*/environ

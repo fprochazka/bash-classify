@@ -514,7 +514,30 @@ This means `cat > /tmp/foo.txt` is classified as `LOCAL_EFFECTS` with risk `LOW`
 
 The tool also reports `write_paths` and `read_paths` in the output, extracted from redirect operators. These fields are omitted from the JSON output when empty.
 
-## 11. Common Patterns
+## 11. Sensitive Paths
+
+Credential paths are **not** part of the command database, and you should not try to express them there. A command definition says what a command does; it never says which of its arguments are paths, let alone which of those hold secrets. The two questions are separate and are answered in separate files.
+
+The denylist lives in `src/bash_classify/sensitive-paths.yaml`, validated against `schemas/sensitive-paths.schema.json`. A token that matches one of its rules floors the command's risk at `HIGH` and leaves its classification alone, so `cat ~/.ssh/id_rsa` stays `READONLY` and stops being auto-approved.
+
+Two consequences when you write a command definition:
+
+- Do not lower a command's risk to work around a sensitive-path hit. The hit is a floor and is applied after your definition; a `risk: LOW` on `cat` does not undo it, and the hook prompts either way.
+- Do not add a rule to the denylist for a path that is merely uninteresting to read. Every false positive is a reason for somebody to switch the whole gate off. A rule belongs there when the file holds a credential, which is why `~/.aws/config` and `.git/config` are deliberately absent while `~/.aws/credentials` is there.
+
+Add a rule when a tool you define keeps its credentials somewhere the bundled rules miss. Match whole segments, keep the segments literal, and give the rule a name that says what the secret is:
+
+```yaml
+rules:
+  - name: acme-cli
+    paths:
+      - .acme/credentials
+      - .config/acme/token
+```
+
+See the "Sensitive Path Detection" section of [SPEC.md](../SPEC.md) for how tokens are read and what the feature deliberately misses.
+
+## 12. Common Patterns
 
 | Pattern | Example | Classification |
 |---------|---------|---------------|

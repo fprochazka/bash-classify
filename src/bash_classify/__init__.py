@@ -2,8 +2,9 @@
 
 from bash_classify.classifier import classify_expression, iter_invocations
 from bash_classify.database import CommandDatabase, load_database
-from bash_classify.models import Classification, CommandResult, ExpressionResult, Risk
+from bash_classify.models import Classification, CommandResult, ExpressionResult, Risk, SensitiveHit
 from bash_classify.rules import Match, MatchResult, Rule, RulesError, load_rules, match_expression
+from bash_classify.sensitive import SensitivePathsError, SensitiveRule, load_sensitive_paths
 
 __all__ = [
     "classify_expression",
@@ -20,4 +21,8 @@ __all__ = [
     "MatchResult",
     "load_rules",
     "match_expression",
+    "SensitiveHit",
+    "SensitiveRule",
+    "SensitivePathsError",
+    "load_sensitive_paths",
 ]

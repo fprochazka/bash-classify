@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 
 from .database import load_database
 from .matcher import match_command
@@ -15,8 +15,10 @@ from .models import (
     InnerCommandResult,
     Redirect,
     Risk,
+    SensitiveHit,
 )
 from .parser import parse_expression
+from .sensitive import SensitiveRule, dedupe_hits, load_sensitive_paths, scan_argv, scan_redirects
 
 _SYSTEM_DIRS = (
     "/etc",
@@ -80,6 +82,7 @@ def _is_system_path(path: str) -> bool:
 def classify_expression(
     expression: str,
     database: Mapping[str, CommandDef] | None = None,
+    sensitive_rules: Sequence[SensitiveRule] | None = None,
 ) -> ExpressionResult:
     """Classify a bash expression.
 
@@ -89,6 +92,8 @@ def classify_expression(
     Args:
         expression: A bash expression string.
         database: Optional pre-loaded command database. If None, loads the default.
+        sensitive_rules: Optional pre-loaded sensitive-path denylist. If None, loads the
+            bundled one plus the user's own.
 
     Returns:
         An ExpressionResult with the overall classification and per-command details.
@@ -96,6 +101,8 @@ def classify_expression(
     # Step 1: Load database if not provided
     if database is None:
         database = load_database()
+    if sensitive_rules is None:
+        sensitive_rules = load_sensitive_paths()
 
     # Step 2: Parse the expression
     invocations, parse_warnings = parse_expression(expression)
@@ -198,6 +205,11 @@ def classify_expression(
                 ) + f"; elevated to DANGEROUS: system path {system_paths_found[0]}"
                 result.risk = Risk.HIGH
 
+        # Step 6b: Report the tokens that name a credential and floor their risk at HIGH.
+        # Deliberately outside the `>= LOCAL_EFFECTS` guard above: `cat ~/.ssh/id_rsa` is
+        # READONLY and is exactly the case this exists for.
+        _apply_sensitive_paths(result, invocation.redirects, sensitive_rules)
+
         result.write_paths = write_paths if write_paths else None
         result.read_paths = read_paths if read_paths else None
 
@@ -227,6 +239,10 @@ def classify_expression(
         overall = Classification.READONLY  # empty input
         overall_risk = Risk.LOW
 
+    # Step 8b: Collect the hits found at every depth. No separate floor is needed here: each
+    # command that carries a hit is already HIGH, and step 8 takes the maximum.
+    all_sensitive_paths = dedupe_hits(hit for r in command_results for hit in r.sensitive_paths)
+
     return ExpressionResult(
         expression=expression,
         classification=overall,
@@ -237,7 +253,30 @@ def classify_expression(
         commands=command_results,
         redirects=all_redirects,
         parse_warnings=parse_warnings,
+        sensitive_paths=all_sensitive_paths,
     )
+
+
+def _apply_sensitive_paths(
+    result: CommandResult | InnerCommandResult,
+    redirects: Sequence[Redirect],
+    rules: Sequence[SensitiveRule],
+) -> list[SensitiveHit]:
+    """Attach the sensitive-path hits of one invocation and of everything below it.
+
+    Every level reports its own argv and its own redirects, plus the hits of its inner
+    commands, so a caller that reads only the top of the tree still sees what a wrapper
+    hid. A level with any hit gets risk HIGH; classification is left alone.
+    """
+    hits = scan_argv(result.argv, result.command, result.positionals, rules)
+    hits.extend(scan_redirects(redirects, rules))
+    for inner in result.inner_commands:
+        hits.extend(_apply_sensitive_paths(inner, (), rules))
+
+    result.sensitive_paths = dedupe_hits(hits)
+    if result.sensitive_paths:
+        result.risk = Risk.HIGH
+    return result.sensitive_paths
 
 
 def _extract_directories_from_argv(command: list[str], argv: list[str]) -> list[str]:

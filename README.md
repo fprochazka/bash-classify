@@ -92,6 +92,58 @@ Exit codes are `0` whether or not anything matched, `1` for empty input or no in
 5 seconds, and `2` for bad arguments, an unreadable or invalid rules file, or an internal
 error.
 
+## Sensitive paths
+
+Classification says what a command does to the system. It says nothing about what the command touches. Reading a private key really is read-only, so `cat ~/.ssh/id_rsa` is `READONLY`, and anything that auto-approves on `risk: LOW` auto-approves it.
+
+So every argv token and every redirect target is checked against a denylist of paths that hold credentials. A hit leaves classification alone and floors `risk` at `HIGH`.
+
+```bash
+$ echo 'cat ~/.ssh/id_rsa' | bash-classify | jq '{classification, risk, sensitive_paths}'
+{
+  "classification": "READONLY",
+  "risk": "HIGH",
+  "sensitive_paths": [
+    {
+      "token": "~/.ssh/id_rsa",
+      "rule": "ssh",
+      "source": "argv",
+      "spelling": "literal"
+    }
+  ]
+}
+```
+
+`sensitive_paths` is always present, on the expression and on every command and inner command, so a caller that wants a different policy reads the detail instead of the verdict. A hit found inside `sudo`, `xargs`, `sh -c` or `find -exec` is reported at that depth and again on every level above it, up to the expression.
+
+`source` says where the token came from: `argv`, `redirect_read`, `redirect_write` or `env_dump`. `argv` is vague on purpose. `cat X` reads and `tee X` writes, and telling those apart needs per-command knowledge the database does not carry; only a redirect knows its direction, because the operator says so.
+
+Paths match on whole segments and are never anchored, so `~/.ssh/id_rsa`, `/home/me/.ssh/id_rsa` and `../.ssh/id_rsa` all hit the `ssh` rule, while `.gitignore` and `.github` are not `.git`. A `.` segment is dropped and a `..` is resolved against the one before it, so `/etc/./shadow` and `~/.aws/x/../credentials` hit while `.ssh/../notes` does not. Each token is read three ways — as written, with `\` as a Windows separator, and with `\x` read as the POSIX escape `x` — so `~/.s\sh/id_rsa` is caught. A glob segment is matched backwards, the denylisted name against the token as the pattern, so `~/.ss?/id_rsa`, `~/.[^x]sh/id_rsa` and `.e*` are caught too. `spelling` reports which reading matched: `literal`, `posix_escape`, `windows` or `glob`.
+
+Nothing here reads the environment of the process doing the classifying. `~` and `$HOME` stay unresolved segments, so the verdict depends on the expression alone and a hook gives the same answer whatever `HOME` it runs under.
+
+A rule can exempt specific files. The bundled `dotenv` rule exempts the template names projects commit on purpose — `.env.example`, `.env.sample`, `.env.template`, `.env.dist`, `.env.defaults` — while `.env`, `.env.local` and `.env.production` stay hits.
+
+Bare `env` and `printenv` are reported with `source: "env_dump"`. They print every variable, which is where an agent's API keys live. An argument that names a secret-bearing variable is reported as well: `$GITHUB_TOKEN` and `${ANTHROPIC_API_KEY}` under any command, and a bare `ANTHROPIC_API_KEY` only under `env`, `printenv`, `export` and `unset`. Everywhere else a bare all-caps word is a search string, so `grep -rn TOKEN src` is not a hit.
+
+**This is a speed bump against an agent being careless, not a control against one being evaded.** It raises the cost of an accident. Anyone who knows the rule can walk around it, and [SPEC.md](SPEC.md) lists how. The short version: a path computed at runtime is invisible to a static matcher, and a glob with fewer than two literal characters is ignored on purpose, so `cat .*` is not reported — a rule that fires on `ls *` is a rule people switch off.
+
+It also over-reports in one direction. A token that only *mentions* a path is a hit, so `git commit -m "document ~/.ssh/config setup"` and `grep -rn "\.ssh/config" docs/` are both reported. This is the opposite of what `match` mode does, where a `grep` pattern that names a command is not an invocation. The two are not alike: telling a path a command opens from one it merely carries needs per-command argument knowledge that the database does not have.
+
+Extend the denylist at `~/.config/bash-classify/sensitive-paths.yaml`, or at `$BASH_CLASSIFY_CONFIG_DIR/sensitive-paths.yaml`. It uses the same format as the bundled `src/bash_classify/sensitive-paths.yaml`, validated against a [JSON Schema](schemas/sensitive-paths.schema.json):
+
+```yaml
+rules:
+  - name: company-vault
+    paths:
+      - .acme/vault
+      - .config/acme/token
+    except_paths:
+      - .acme/vault/README
+```
+
+A rule there is added to the bundled set. A rule that reuses a bundled name replaces it, which is how you narrow or drop one.
+
 ## Claude Code plugin
 
 The repo includes a Claude Code plugin that auto-allows low-risk bash commands via a `PreToolUse` hook.
@@ -113,7 +165,7 @@ claude plugin marketplace update fprochazka-bash-classify
 claude plugin update bash-classify-hook@fprochazka-bash-classify
 ```
 
-Once installed, any Bash tool call with `risk: LOW` is auto-approved — no permission prompt. This includes all `READONLY` commands plus safe routine operations like `git add`, `git commit`, `mkdir`, package installs, code formatters, and more. Commands with `MEDIUM` or `HIGH` risk still require confirmation.
+Once installed, any Bash tool call with `risk: LOW` is auto-approved — no permission prompt. This includes all `READONLY` commands plus safe routine operations like `git add`, `git commit`, `mkdir`, package installs, code formatters, and more. Commands with `MEDIUM` or `HIGH` risk still require confirmation. A command that names a sensitive path is never `LOW`, so the hook prompts for it even when the command itself is read-only.
 
 ## Command database
 
@@ -155,6 +207,7 @@ Risk defaults are derived from classification (`READONLY`→LOW, `LOCAL_EFFECTS`
 - **Multi-goal build tools** -- `subcommand_mode: match_all` handles commands like `mvn clean install` and `gradle clean build test` where multiple goals can be combined in any order
 - **Delegation for wrappers** -- commands like `xargs`, `sudo`, and `env` delegate classification to the inner command
 - **File path detection** -- redirect operators (`>`, `>>`, `<`) are parsed into `write_paths`/`read_paths` in the output; writes to `/tmp` and `/var/tmp` stay at LOW risk
+- **Sensitive path detection** -- argv tokens and redirect targets are matched against a denylist of credential paths; a hit floors risk at HIGH and is reported in `sensitive_paths`
 
 ## Python API
 

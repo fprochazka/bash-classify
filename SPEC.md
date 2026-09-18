@@ -994,6 +994,74 @@ Output redirects affect the overall classification:
 | `< file` | No effect (input redirect is reading) |
 | `\| tee file` | `tee` is classified as `EXTERNAL_EFFECTS` via its own database entry |
 
+## Sensitive Path Detection
+
+Classification describes the scope of a command's side effects. It has no notion of what the command touches, so `cat ~/.ssh/id_rsa` is `READONLY` and, on the classification axis, correctly so. Risk is the axis for "how much should a human care". A token that names a credential therefore floors `risk` at `HIGH` and leaves `classification` alone.
+
+The floor is deliberately **not** guarded by a minimum classification, unlike the system-path clamp in the same step. A read of a private key is the case this exists for.
+
+### What is scanned
+
+- Every argv token of every invocation, at every delegation depth. `sudo cat`, `xargs cat`, `sh -c "cat …"`, `find . -exec cat {} \;`, `env cat` and `timeout 5 cat` are all covered.
+- Every redirect target whose operator names a file. Writes are `>` and `>>`, each optionally with the `>|` no-clobber override and with the leading file descriptor bash allows, so `1>` is `>` and `4>>` is `>>`; `&>`, `&>>` and `>&` count too. Reads are `<`, again with an optional descriptor. A `<<` target is the heredoc delimiter, a `<<<` target is the herestring text, and a `<&` target is a descriptor number, so none of the three is scanned. A file redirect on the same command as a heredoc is an ordinary write and is scanned regardless of whether it appears before or after the `<<` operator — both `cat > .env <<EOF` and `cat <<EOF > .env` hit.
+
+Tokens are scanned one at a time and never joined, so `git config` is two words and not the path `.git/config`.
+
+A hit is reported on the invocation that carries it, and again on every level above it up to the expression, deduplicated by token, rule, source and spelling. A caller that reads only `ExpressionResult.sensitive_paths` still sees what a wrapper hid.
+
+### The denylist
+
+Rules are data, in `src/bash_classify/sensitive-paths.yaml`, extended by `$BASH_CLASSIFY_CONFIG_DIR/sensitive-paths.yaml` or `~/.config/bash-classify/sensitive-paths.yaml`. A user rule is added to the bundled set; one that reuses a bundled name replaces it.
+
+Each rule lists path spellings of the same secret. A path is a sequence of segments that has to appear in the token, in order and next to each other, and nothing is anchored — `~/.ssh/id_rsa`, `/home/me/.ssh/id_rsa` and `../.ssh/id_rsa` all hit the `ssh` rule. Segments are compared whole, which is why `.gitignore` and `.github` do not hit `.git`. A segment may carry a glob for a part that varies, such as the pid in `/proc/*/environ`.
+
+A `.` segment is dropped and a `..` segment is resolved against the one before it, because they are what a path traversal is made of and neither names a directory of its own. Without that, `/etc/./shadow` has no two adjacent segments spelling `/etc/shadow` while the shell still opens the file. The resolution cuts both ways: `.ssh/../notes` opens `notes` and is correctly not a hit.
+
+A rule may also list `except_paths`, which exempt a specific file from it. The bundled `dotenv` rule uses them for the template names projects commit on purpose — `.env.example`, `.env.sample`, `.env.template`, `.env.dist` and `.env.defaults` — while `.env`, `.env.local` and `.env.production` stay hits. A file genuinely named `.env.example` that does hold a secret is therefore not reported. The other choice is a gate that fires every time somebody opens a repository's template, and that gate gets switched off. An exemption never accepts a glob in the token: `fnmatch(".env.example", ".e*")` is true, so reading one backwards would let `cat .e*` exempt itself from the rule it just matched.
+
+The bundled rules are `ssh`, `aws-credentials`, `gcloud`, `kube`, `dotenv`, `shadow`, `gpg`, `netrc`, `npmrc-pypirc`, `docker-config` and `proc-environ`. The bar for a rule is that the file holds a credential. `~/.aws/config` and `.git/config` are routine debugging and are deliberately absent, which is the same bar `docs/classification-guidance.md` sets for the command database.
+
+### The three readings of a token
+
+A backslash means opposite things on the two platforms, and only reading a token both ways is safe. On POSIX an unquoted `\` is an escape, so `~/.s\sh/id_rsa` opens `~/.ssh/id_rsa`; on Windows it is a separator. Normalizing `\` to `/` for the Windows spelling is what *creates* the POSIX hole, because `.s\sh` then reads as the two segments `.s` and `sh` and matches nothing.
+
+So every token is split three ways and a hit under any of them counts. `spelling` reports which one matched:
+
+- `literal` — split on `/`, with a leading `~`, `~user`, `$HOME` or `${HOME}` resolved first. Quotes are already gone by this point: the parser hands over one token, so `~/.s'sh'/id_rsa` needs no special handling.
+- `posix_escape` — `\x` read as `x`, then split on `/`.
+- `windows` — split on `/` and `\`.
+- `glob` — not a fourth split, but a segment that matched in reverse. See below.
+
+### Globs
+
+`cat ~/.ss?/id_rsa`, `~/.s*h/id_rsa`, `~/.[s]sh/id_rsa`, `cat .en?` and `cat .e*` all expand to the real file. They are caught by matching backwards: the denylisted name becomes the subject and the token's segment becomes the pattern, so `fnmatch(".ssh", ".ss?")` is true.
+
+Bash spells bracket negation both `[!x]` and `[^x]`; fnmatch understands only the first. A leading `^` inside a bracket group is therefore rewritten before matching, or `~/.[^x]sh/id_rsa` reads as a literal `[^x]` and matches nothing while the shell opens the real key. Only a group that closes is rewritten: an unterminated `[` is a literal bracket to both, and a `^` that is not leading is an ordinary member of the group.
+
+That rule needs a floor or it matches everything, because `fnmatch(".ssh", "*")` is also true. A segment is read as a pattern only when it carries at least **two** characters that are not `*`, `?`, `[` or `]`. `.e*` is the tightest real evasion and has exactly two, while `*`, `.*`, `?` and `**` fall below it. The cost is that `cat .*` is not reported. That is a deliberate trade: a rule that fires on `ls *` is a rule people switch off.
+
+### Environment dumps
+
+Bare `env` and `printenv` print every variable, which is where an agent's API keys live. An invocation whose resolved binary is one of the two and whose `positionals` are empty is reported with `source: "env_dump"`, so `env | grep KEY` and `/usr/bin/printenv` are hits while `env FOO=1 make` and `printenv PATH` are not.
+
+Separately, an argument that names a secret-bearing environment variable is reported under the rule `secret-env-var`. The name must be a conventional all-caps variable name, and one of its `_`-separated segments must be built from `API`, `SECRET`, `TOKEN`, `PASSWORD`, `KEY` or `CREDENTIAL`. Whole segments, so `APIKEY` and `CREDENTIALS` hit while `MONKEY` and `KEYBOARD` do not.
+
+The `$NAME` and `${NAME}` forms count under any command, because the `$` says the token is a variable wherever it appears. A bare `API_KEY` counts only when the invocation's binary is `env`, `printenv`, `export` or `unset`. Everywhere else a bare all-caps word is a search string, and reporting `grep -rn TOKEN src` or `git log --grep TOKEN` is how a gate ends up switched off.
+
+### What this does not catch
+
+Name these when you describe the feature, so nobody reads it as stronger than it is. All of them defeat any static matcher:
+
+- Command substitution: `cat $(find ~ -name id_rsa)`. A substitution whose text happens to spell the path is still seen, because the token carries the segments, but that is an accident and not a guarantee.
+- A path held in a variable: `P=~/.ssh/id_rsa; cat "$P"`.
+- Encoding detours: `base64`, `xxd`, `rev`, or a `sed` that reassembles the path.
+- A glob below the two-character floor, such as `cat .*`.
+- The direction of an `argv` hit. `cat X` reads and `tee X` writes; telling them apart needs per-command read/write knowledge that the database does not carry and that this feature does not add.
+- A redirect inside a nested expression. `sh -c "cat < ~/.ssh/id_rsa"` is caught through the `-c` argument text, not through the redirect, because inner commands carry no redirects of their own.
+- A token that only *mentions* a path. `git commit -m "document ~/.ssh/config setup"`, `grep -rn "\.ssh/config" docs/` and `find . -path "*/.git/config"` are all reported, because the scan reads tokens and not the meaning a command gives them. Note the contrast with `match` mode, which is careful about exactly this: there a heredoc body, an `echo` string or a `grep` pattern that names a command is not an invocation and does not match. The two do not behave alike. Separating a path that a command opens from one it merely carries needs per-command argument knowledge, and that is out of scope here.
+
+**This is a speed bump against an agent being careless, not a control against one being evaded.** It raises the cost of an accident. It does not stop an attacker who knows the rule.
+
 ## Directory Detection
 
 The tool extracts working directories from:
@@ -1062,6 +1130,14 @@ The `commands` list below is recursive — any command entry can contain `inner_
   "directories": ["string — detected directories"],
   "write_paths": ["string — files targeted by output redirects (optional, omitted when empty)"],
   "read_paths": ["string — files targeted by input redirects (optional, omitted when empty)"],
+  "sensitive_paths": [
+    {
+      "token": "string — the argv token or redirect target, exactly as written",
+      "rule": "string — the denylist entry that matched, e.g. ssh",
+      "source": "argv | redirect_read | redirect_write | env_dump",
+      "spelling": "literal | posix_escape | windows | glob"
+    }
+  ],
   "commands": [
     {
       "command": ["string — binary + subcommand chain (without inner command tokens)"],
@@ -1076,6 +1152,7 @@ The `commands` list below is recursive — any command entry can contain `inner_
       "overriding_option": "string | null — the option that elevated classification",
       "write_paths": ["string — files targeted by output redirects (optional, omitted when empty)"],
       "read_paths": ["string — files targeted by input redirects (optional, omitted when empty)"],
+      "sensitive_paths": ["... — this command's own hits plus its inner commands'; always present, empty when none"],
       "inner_commands": [
         {
           "delegation_mode": "string — how this inner command was extracted",
@@ -1086,6 +1163,7 @@ The `commands` list below is recursive — any command entry can contain `inner_
           "matched_rule": "...",
           "options": ["... — same meaning as on the enclosing command"],
           "positionals": ["... — same meaning as on the enclosing command"],
+          "sensitive_paths": ["... — same meaning as on the enclosing command"],
           "inner_commands": ["... — recursive, can nest further"]
         }
       ]
@@ -1126,6 +1204,16 @@ option in the database fixes both.
 `positionals` holds the non-option tokens that remain once the subcommand chain and the options have been
 consumed, including `--` itself and everything after it.
 
+#### `sensitive_paths`
+
+Always serialized, as `[]` when nothing matched, at the expression level and on every command and inner command.
+A caller can therefore tell a clean verdict from the output of a binary that predates the feature: a *missing*
+`sensitive_paths` key means the latter. Never read a missing key as "nothing matched".
+
+A hit floors `risk` at `HIGH` on the level that carries it and on every level above it, up to the expression.
+`classification` is not touched. See [Sensitive Path Detection](#sensitive-path-detection) for what is scanned
+and what is missed.
+
 Both are always serialized, as `[]` when the command has none. Results that never reach option parsing — shell
 builtins, an unknown binary, an empty argv — carry `null` internally and serialize as `[]`.
 
@@ -1148,6 +1236,8 @@ builtins, an unknown binary, an empty argv — carry `null` internally and seria
 - **No awk/sed/perl script analysis.** These are classified as a whole command; their embedded programs are opaque. They should simply not be in the READONLY allowlist.
 - **No variable resolution.** `$DIR`, `$(cmd)` in command position → UNKNOWN. We classify what we can see statically.
 - **No shell alias/function resolution.** We classify the literal command name as written.
+- **Sensitive path detection is a speed bump, not a control.** It raises the cost of an accident by a careless agent. It does not stop one that is being evaded: a path computed at runtime, held in a variable, or reassembled through an encoding detour is invisible to it, and so is a glob below the two-character floor. The section above lists the whole set.
+- **No read/write direction for an `argv` hit.** Separating `cat X` from `tee X` needs per-command read/write knowledge in the database. `source` reports where the token came from and the caller decides.
 
 ## Future extensions
 

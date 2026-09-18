@@ -13,8 +13,19 @@ from .models import (
     ExpressionResult,
     InnerCommandResult,
     Redirect,
+    SensitiveHit,
 )
 from .rules import MatchResult, RulesError, load_rules, match_expression
+
+
+def _sensitive_hit_to_dict(hit: SensitiveHit) -> dict:
+    """Convert a SensitiveHit to a JSON-serializable dict."""
+    return {
+        "token": hit.token,
+        "rule": hit.rule,
+        "source": hit.source,
+        "spelling": hit.spelling,
+    }
 
 
 def _inner_command_to_dict(result: InnerCommandResult) -> dict:
@@ -29,6 +40,7 @@ def _inner_command_to_dict(result: InnerCommandResult) -> dict:
         "matched_rule": result.matched_rule,
         "options": result.options or [],
         "positionals": result.positionals or [],
+        "sensitive_paths": [_sensitive_hit_to_dict(h) for h in result.sensitive_paths],
     }
 
     if result.ignored_options:
@@ -53,6 +65,7 @@ def _command_to_dict(result: CommandResult) -> dict:
         "matched_rule": result.matched_rule,
         "options": result.options or [],
         "positionals": result.positionals or [],
+        "sensitive_paths": [_sensitive_hit_to_dict(h) for h in result.sensitive_paths],
     }
 
     if result.ignored_options:
@@ -90,6 +103,7 @@ def _result_to_dict(result: ExpressionResult) -> dict:
         "classification": result.classification.value,
         "risk": result.risk.value,
         "directories": result.directories,
+        "sensitive_paths": [_sensitive_hit_to_dict(h) for h in result.sensitive_paths],
         "commands": [_command_to_dict(cmd) for cmd in result.commands],
     }
 

@@ -85,6 +85,32 @@ class DelegationMode(enum.Enum):
     ARGS_ARE_EXPRESSION = "args_are_expression"
 
 
+@dataclass(frozen=True)
+class SensitiveHit:
+    """One token of an expression that names a credential.
+
+    `source` says where the token came from, and `argv` is deliberately vague: `cat X` reads
+    and `tee X` writes, and telling them apart needs per-command knowledge the database does
+    not carry. Only a redirect knows its direction, because the operator says so. The caller
+    owns the policy and gets the detail to write it.
+    """
+
+    token: str
+    """The argv token or redirect target, exactly as it was written."""
+
+    rule: str
+    """The denylist entry that matched, such as `ssh` or `aws-credentials`."""
+
+    source: str
+    """Where the token was found: `argv`, `redirect_read`, `redirect_write` or `env_dump`."""
+
+    spelling: str = "literal"
+    """Which reading of the token matched: `literal`, `posix_escape`, `windows` or `glob`.
+
+    `literal` for a hit that read no path at all, such as an environment dump.
+    """
+
+
 @dataclass
 class Redirect:
     """A shell redirect extracted from parsing."""
@@ -172,6 +198,7 @@ class InnerCommandResult:
     overriding_option: str | None = None
     options: list[str] | None = None
     positionals: list[str] | None = None
+    sensitive_paths: list[SensitiveHit] = field(default_factory=list)
 
 
 @dataclass
@@ -193,6 +220,7 @@ class CommandResult:
     read_paths: list[str] | None = None
     options: list[str] | None = None
     positionals: list[str] | None = None
+    sensitive_paths: list[SensitiveHit] = field(default_factory=list)
 
 
 @dataclass
@@ -208,3 +236,4 @@ class ExpressionResult:
     commands: list[CommandResult]
     redirects: list[Redirect]
     parse_warnings: list[str]
+    sensitive_paths: list[SensitiveHit] = field(default_factory=list)

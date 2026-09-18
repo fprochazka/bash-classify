@@ -9,6 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 PROJECT_ROOT = Path(__file__).parent.parent
 
 # An empty config dir: no `commands/` subdirectory, so load_database() finds no overrides.
@@ -253,3 +255,154 @@ class TestCliMatchMode:
         assert proc.returncode == 0, f"stderr: {proc.stderr}"
         assert "--rules" in proc.stdout
         assert "exit codes" in proc.stdout
+
+
+class TestCliSensitivePaths:
+    """The acceptance cases, through the real binary.
+
+    A unit test can pass against an implementation that never ships: the hook calls the
+    CLI, so the evasion spellings and the false positives are both pinned here.
+    """
+
+    @staticmethod
+    def _hits(expression: str) -> list[tuple[str, str, str]]:
+        proc = _run_cli(expression)
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        return [(h["rule"], h["source"], h["spelling"]) for h in output["sensitive_paths"]]
+
+    def test_reading_a_private_key_is_readonly_and_high_risk(self) -> None:
+        proc = _run_cli("cat ~/.ssh/id_rsa")
+        output = json.loads(proc.stdout)
+        assert output["classification"] == "READONLY"
+        assert output["risk"] == "HIGH"
+        assert output["sensitive_paths"] == [
+            {"token": "~/.ssh/id_rsa", "rule": "ssh", "source": "argv", "spelling": "literal"}
+        ]
+        assert output["commands"][0]["sensitive_paths"] == output["sensitive_paths"]
+
+    @pytest.mark.parametrize(
+        ("expression", "expected"),
+        [
+            ("cat ~/.ssh/id_rsa", ("ssh", "argv", "literal")),
+            ("cat ~/.s\\sh/id_rsa", ("ssh", "argv", "posix_escape")),
+            ("cat .en\\v", ("dotenv", "argv", "posix_escape")),
+            ("cat /etc/sha\\dow", ("shadow", "argv", "posix_escape")),
+            ("cat ~/.a\\ws/credentials", ("aws-credentials", "argv", "posix_escape")),
+            ("cat ~/.ss?/id_rsa", ("ssh", "argv", "glob")),
+            ("cat ~/.s*h/id_rsa", ("ssh", "argv", "glob")),
+            ("cat ~/.[s]sh/id_rsa", ("ssh", "argv", "glob")),
+            ("cat .en?", ("dotenv", "argv", "glob")),
+            ("cat .e*", ("dotenv", "argv", "glob")),
+            ("cat ~/.s'sh'/id_rsa", ("ssh", "argv", "literal")),
+            ('cat ~/".ssh"/id_rsa', ("ssh", "argv", "literal")),
+            ("cat $HOME/.ssh/id_rsa", ("ssh", "argv", "literal")),
+            ('cat "$HOME"/.ssh/id_rsa', ("ssh", "argv", "literal")),
+            ("cat ${HOME}/.ssh/id_rsa", ("ssh", "argv", "literal")),
+            ("cat ~user/.ssh/id_rsa", ("ssh", "argv", "literal")),
+            ("cat ~/.[^x]sh/id_rsa", ("ssh", "argv", "glob")),
+            ("cat /etc/./shadow", ("shadow", "argv", "literal")),
+            ("cat ~/.aws/./credentials", ("aws-credentials", "argv", "literal")),
+            ("cat ~/.aws/x/../credentials", ("aws-credentials", "argv", "literal")),
+            ("cat < .env", ("dotenv", "redirect_read", "literal")),
+            ("echo k >> ~/.ssh/authorized_keys", ("ssh", "redirect_write", "literal")),
+            ("echo k >| ~/.ssh/authorized_keys", ("ssh", "redirect_write", "literal")),
+            ("echo k 1> ~/.ssh/authorized_keys", ("ssh", "redirect_write", "literal")),
+            ("echo k 3> ~/.ssh/authorized_keys", ("ssh", "redirect_write", "literal")),
+            ("cat .env.local", ("dotenv", "argv", "literal")),
+            ("printenv ANTHROPIC_API_KEY", ("secret-env-var", "argv", "literal")),
+            ("env", ("env-dump", "env_dump", "literal")),
+            ("printenv", ("env-dump", "env_dump", "literal")),
+            ("/usr/bin/printenv", ("env-dump", "env_dump", "literal")),
+            ("echo $ANTHROPIC_API_KEY", ("secret-env-var", "argv", "literal")),
+        ],
+    )
+    def test_every_evasion_spelling_is_caught(self, expression: str, expected: tuple[str, str, str]) -> None:
+        assert expected in self._hits(expression)
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "sudo cat ~/.ssh/id_rsa",
+            "xargs cat ~/.ssh/id_rsa",
+            "sh -c 'cat ~/.ssh/id_rsa'",
+            'sh -c "sh -c \\"cat ~/.ssh/id_rsa\\""',
+            r"find . -name x -exec cat /etc/shadow \;",
+            "env cat ~/.ssh/id_rsa",
+        ],
+    )
+    def test_a_hit_at_any_depth_reaches_the_top(self, expression: str) -> None:
+        proc = _run_cli(expression)
+        output = json.loads(proc.stdout)
+        assert output["sensitive_paths"] != []
+        assert output["risk"] == "HIGH"
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "ls *",
+            "cat .*",
+            "git status",
+            "grep -rn foo src",
+            "env FOO=1 make",
+            "printenv PATH",
+            "cat .gitignore",
+            "ls .github",
+            "grep -rn TOKEN src",
+            "git log --grep TOKEN",
+            "echo API_KEY",
+            "cat .env.example",
+            "cat .env.template",
+            "cat .git/config",
+            "cat ~/.gitconfig",
+            "cat ~/.aws/config",
+            "ls ~/projects",
+            "cat .ssh/../notes",
+        ],
+    )
+    def test_the_false_positive_list_stays_clean(self, expression: str) -> None:
+        proc = _run_cli(expression)
+        output = json.loads(proc.stdout)
+        assert output["sensitive_paths"] == []
+        assert all(cmd["sensitive_paths"] == [] for cmd in output["commands"])
+
+    def test_the_key_is_always_present(self) -> None:
+        """A caller can tell an older binary from a clean verdict only if the key is there."""
+        output = json.loads(_run_cli("ls -la").stdout)
+        assert output["sensitive_paths"] == []
+        assert output["commands"][0]["sensitive_paths"] == []
+
+    def test_a_heredoc_delimiter_is_not_a_path(self) -> None:
+        assert self._hits("cat <<.env\nhello\n.env") == []
+
+    def test_the_verdict_does_not_depend_on_the_hooks_own_home(self, tmp_path: Path) -> None:
+        """A hook runs under whatever HOME the agent has. The answer must not move with it."""
+        env = {**os.environ, "BASH_CLASSIFY_CONFIG_DIR": _EMPTY_CONFIG_DIR, "HOME": "/tmp/.ssh"}
+        proc = subprocess.run(
+            [sys.executable, "-m", "bash_classify"],
+            input="ls ~/projects",
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=env,
+        )
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert output["sensitive_paths"] == []
+        assert output["risk"] == "LOW"
+
+    def test_a_user_file_extends_the_denylist(self, tmp_path: Path) -> None:
+        (tmp_path / "sensitive-paths.yaml").write_text("rules:\n  - name: acme\n    paths: [.acme/vault]\n")
+        env = {**os.environ, "BASH_CLASSIFY_CONFIG_DIR": str(tmp_path)}
+        proc = subprocess.run(
+            [sys.executable, "-m", "bash_classify"],
+            input="cat ~/.acme/vault",
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=env,
+        )
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert [h["rule"] for h in output["sensitive_paths"]] == ["acme"]
+        assert output["risk"] == "HIGH"
