@@ -46,6 +46,12 @@
           "items": { "type": "string", "pattern": "^-" },
           "description": "At least one of these options must be present, as typed; a declared cluster -wc counts as -w and -c, and --key=value counts as --key"
         },
+        "except_option": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^-" },
+          "description": "None of these options may be present; matched the same way as any_option"
+        },
         "any_arg_matches": {
           "type": "string",
           "minLength": 1,

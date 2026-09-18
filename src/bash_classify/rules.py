@@ -21,7 +21,7 @@ import yaml
 from .classifier import classify_expression, iter_invocations
 from .models import CommandDef, CommandResult, InnerCommandResult
 
-_RULE_KEYS = frozenset({"name", "command", "except", "any_option", "any_arg_matches"})
+_RULE_KEYS = frozenset({"name", "command", "except", "any_option", "except_option", "any_arg_matches"})
 
 
 class RulesError(ValueError):
@@ -40,6 +40,7 @@ class Rule:
     command: list[str]
     except_: list[list[str]] = field(default_factory=list)
     any_option: list[str] = field(default_factory=list)
+    except_option: list[str] = field(default_factory=list)
     any_arg_matches: re.Pattern[str] | None = None
 
 
@@ -139,6 +140,7 @@ def _parse_rule(path: str | Path, index: int, raw: object) -> Rule:
             except_paths.append(_parse_command_path(where, "except entry", excluded))
 
     any_option = _parse_option_list(where, "any_option", raw)
+    except_option = _parse_option_list(where, "except_option", raw)
 
     any_arg_matches: re.Pattern[str] | None = None
     if "any_arg_matches" in raw:
@@ -155,6 +157,7 @@ def _parse_rule(path: str | Path, index: int, raw: object) -> Rule:
         command=command,
         except_=except_paths,
         any_option=any_option,
+        except_option=except_option,
         any_arg_matches=any_arg_matches,
     )
 
@@ -224,9 +227,11 @@ def _rule_matches(rule: Rule, invocation: CommandResult | InnerCommandResult) ->
         if command[: len(excluded)] == excluded:
             return False
 
-    if rule.any_option:
+    if rule.any_option or rule.except_option:
         options = invocation.options or []
-        if not any(option in options for option in rule.any_option):
+        if rule.any_option and not any(option in options for option in rule.any_option):
+            return False
+        if any(option in options for option in rule.except_option):
             return False
 
     if rule.any_arg_matches is not None:

@@ -122,6 +122,49 @@ class TestAnyOption:
         assert result.matches == []
 
 
+class TestExceptOption:
+    def _view_rule(self, options: list[str]) -> Rule:
+        return Rule(name="view", command=["glab", "mr", "view"], except_option=options)
+
+    def test_long_option_present_does_not_match(self, db) -> None:
+        result = match_expression("glab mr view 42 --comments", [self._view_rule(["--comments", "-c"])], db)
+        assert result.matches == []
+
+    def test_short_option_present_does_not_match(self, db) -> None:
+        result = match_expression("glab mr view -c 42", [self._view_rule(["--comments", "-c"])], db)
+        assert result.matches == []
+
+    def test_declared_cluster_expands(self, db) -> None:
+        """`-wc` carries `-c`, so the exclusion fires."""
+        result = match_expression("glab mr view -wc 42", [self._view_rule(["--comments", "-c"])], db)
+        assert result.matches == []
+
+    def test_equals_form_excludes_the_long_option(self, db) -> None:
+        result = match_expression("glab mr view 42 --comments=true", [self._view_rule(["--comments"])], db)
+        assert result.matches == []
+
+    def test_option_absent_matches(self, db) -> None:
+        result = match_expression("glab mr view 42 -F json", [self._view_rule(["--comments", "-c"])], db)
+        assert _names(result.matches) == ["view"]
+
+    def test_after_end_of_options_marker_is_a_positional(self, db) -> None:
+        """glab stops flag parsing at `--`, so the option is not present and the rule still matches."""
+        result = match_expression("glab mr view -- 42 --comments", [self._view_rule(["--comments", "-c"])], db)
+        assert _names(result.matches) == ["view"]
+
+    def test_undeclared_option_still_counts(self, db) -> None:
+        """`-c` is not declared on python3, but it reaches `options` all the same."""
+        rule = Rule(name="python-script", command=["python3"], except_option=["-c"])
+        assert match_expression('python3 -c "print(1)"', [rule], db).matches == []
+        assert _names(match_expression("python3 script.py", [rule], db).matches) == ["python-script"]
+
+    def test_combines_with_any_option(self, db) -> None:
+        rule = Rule(name="view", command=["glab", "mr", "view"], any_option=["-F"], except_option=["--comments"])
+        assert _names(match_expression("glab mr view 42 -F json", [rule], db).matches) == ["view"]
+        assert match_expression("glab mr view 42 -F json --comments", [rule], db).matches == []
+        assert match_expression("glab mr view 42", [rule], db).matches == []
+
+
 class TestAnyArgMatches:
     def _api_rule(self, pattern: str) -> Rule:
         return Rule(name="api", command=["glab", "api"], any_arg_matches=re.compile(pattern))
@@ -326,6 +369,7 @@ class TestLoadRules:
             "    command: [glab, mr, note]\n"
             "    except: [[glab, mr, note, list]]\n"
             "    any_option: [--comments, -c]\n"
+            "    except_option: [--web]\n"
             "    any_arg_matches: 'merge_requests/[^/?]+/notes'\n",
         )
         rules = load_rules(path)
@@ -335,6 +379,7 @@ class TestLoadRules:
         assert rule.command == ["glab", "mr", "note"]
         assert rule.except_ == [["glab", "mr", "note", "list"]]
         assert rule.any_option == ["--comments", "-c"]
+        assert rule.except_option == ["--web"]
         assert rule.any_arg_matches is not None
         assert rule.any_arg_matches.search("merge_requests/1/notes")
 
@@ -343,6 +388,7 @@ class TestLoadRules:
         rule = load_rules(path)[0]
         assert rule.except_ == []
         assert rule.any_option == []
+        assert rule.except_option == []
         assert rule.any_arg_matches is None
 
     def test_missing_file(self, tmp_path: Path) -> None:
@@ -420,11 +466,22 @@ class TestLoadRules:
         with pytest.raises(RulesError, match="'any_option' must be a non-empty list"):
             load_rules(path)
 
+    def test_except_option_without_a_dash(self, tmp_path: Path) -> None:
+        path = self._write(tmp_path, "rules:\n  - name: n\n    command: [glab]\n    except_option: [comments]\n")
+        with pytest.raises(RulesError, match=re.escape("'except_option' entries must be strings starting with '-'")):
+            load_rules(path)
+
+    def test_except_option_empty(self, tmp_path: Path) -> None:
+        path = self._write(tmp_path, "rules:\n  - name: n\n    command: [glab]\n    except_option: []\n")
+        with pytest.raises(RulesError, match="'except_option' must be a non-empty list"):
+            load_rules(path)
+
     def test_explicit_null_is_rejected_like_the_schema_rejects_it(self, tmp_path: Path) -> None:
         """`except:` with no value is YAML null, not an omitted key."""
         for key, message in [
             ("except", "'except' must be a list of command paths"),
             ("any_option", "'any_option' must be a non-empty list"),
+            ("except_option", "'except_option' must be a non-empty list"),
             ("any_arg_matches", "'any_arg_matches' must be a non-empty string"),
         ]:
             path = self._write(tmp_path, f"rules:\n  - name: n\n    command: [glab]\n    {key}:\n")
