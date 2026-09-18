@@ -229,8 +229,8 @@ each other (OR), and one invocation may match several rules; each match is repor
 | Field | Meaning |
 |---|---|
 | `name` | Reported back on every match; must be unique within the file |
-| `command` | Prefix match against `command` — the *resolved* path, so `/usr/bin/glab --repo x mr note` matches `[glab, mr, note]` |
-| `except` | Prefix paths excluded from the match, so `[glab, mr, note]` can spare `glab mr note list` |
+| `command` | Prefix match against `command` — the *resolved* path, so `/usr/bin/glab --repo x mr note` matches `[glab, mr, note]`. Holds the binary and its subcommands only; an option in a command path is rejected at load time |
+| `except` | Prefix paths excluded from the match, so `[glab, mr, note]` can spare `glab mr note list`. Same constraint on the path as `command` |
 | `any_option` | At least one of these must appear in `options`: as typed, values stripped, `--key=value` counting as `--key` and a declared cluster `-wc` counting as `-w` and `-c`. Tokens after `--` are positionals and never match. An option the command database does not declare still appears in `options` and still counts |
 | `except_option` | None of these may appear in `options`, matched exactly as `any_option` matches. Use it to exclude an invocation by the options it carries, which a command path cannot express |
 | `any_arg_matches` | Python `re.search` applied to every argument token: `argv[1:]` with the resolved subcommand words removed once each. Option flags, option values and positionals are all included; `argv[0]` and the subcommand words are not. A pattern written for `grep -E` needs `\S` instead of `[^[:space:]]` |

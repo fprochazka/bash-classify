@@ -45,3 +45,10 @@ def test_match_rules_validate_against_schema(rules_file, match_rules_schema):
     with open(rules_file) as f:
         data = yaml.safe_load(f)
     jsonschema.validate(instance=data, schema=match_rules_schema)
+
+
+def test_match_rules_schema_rejects_an_option_in_a_command_path(match_rules_schema):
+    """The loader rejects it too; the schema is what an IDE flags while the rule is typed."""
+    rules = {"rules": [{"name": "n", "command": ["python3"], "except": [["python3", "-c"]]}]}
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(instance=rules, schema=match_rules_schema)

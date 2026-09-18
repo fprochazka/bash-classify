@@ -451,6 +451,24 @@ class TestLoadRules:
         with pytest.raises(RulesError, match="'command' entries must be non-empty strings"):
             load_rules(path)
 
+    def test_command_with_an_option(self, tmp_path: Path) -> None:
+        path = self._write(tmp_path, "rules:\n  - name: n\n    command: [python3, -c]\n")
+        with pytest.raises(RulesError, match=re.escape("'command' has the option '-c' in a command path")):
+            load_rules(path)
+
+    def test_except_with_an_option(self, tmp_path: Path) -> None:
+        path = self._write(tmp_path, "rules:\n  - name: n\n    command: [python3]\n    except: [[python3, -c]]\n")
+        with pytest.raises(RulesError, match=re.escape("'except entry' has the option '-c' in a command path")):
+            load_rules(path)
+
+    def test_option_in_a_command_path_points_at_the_option_keys(self, tmp_path: Path) -> None:
+        path = self._write(tmp_path, "rules:\n  - name: n\n    command: [python3, -c]\n")
+        with pytest.raises(RulesError) as excinfo:
+            load_rules(path)
+        assert "rule 'n'" in str(excinfo.value)
+        assert "'any_option'" in str(excinfo.value)
+        assert "'except_option'" in str(excinfo.value)
+
     def test_except_not_a_list_of_paths(self, tmp_path: Path) -> None:
         path = self._write(tmp_path, "rules:\n  - name: n\n    command: [glab]\n    except: [glab]\n")
         with pytest.raises(RulesError, match="'except entry' must be a non-empty list"):

@@ -75,9 +75,7 @@ $ echo 'sudo glab mr note 42 -m hi' | bash-classify match --rules blocked-comman
 }
 ```
 
-Within one rule every condition given must hold; rules are independent of each other, and
-one invocation can match several. `command` is a prefix match against the *resolved*
-command path, so `/usr/bin/glab --repo x mr note` still resolves to `glab mr note`.
+Within one rule every condition given must hold; rules are independent of each other, and one invocation can match several. `command` is a prefix match against the *resolved* command path, so `/usr/bin/glab --repo x mr note` still resolves to `glab mr note`. A command path — in `command` and in every `except` entry alike — holds the binary and its subcommands only. An option never resolves into one, so a path that contains one is rejected when the rules file loads, rather than loading clean and matching nothing.
 
 `any_option` and `except_option` are mirrors of each other: `any_option` requires at least one of the listed options to be present, `except_option` requires that none of them is. Both look at the options actually present, with values stripped (`--comments=true` counts as `--comments`) and declared clusters expanded (`-wc` carries `-c`); tokens after `--` are positionals and count as absent. An option the command database does not declare still counts, so `except_option: [-c]` separates `python3 script.py` from `python3 -c '...'`. `any_arg_matches` is a Python `re.search` over every argument token — a pattern written for `grep -E` needs `\S` rather than `[^[:space:]]`. `via` lists the enclosing wrappers, outermost first.
 

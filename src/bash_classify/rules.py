@@ -163,12 +163,23 @@ def _parse_rule(path: str | Path, index: int, raw: object) -> Rule:
 
 
 def _parse_command_path(where: str, key: str, raw: object) -> list[str]:
-    """Validate a command path: a non-empty list of non-empty strings."""
+    """Validate a command path: a non-empty list of non-empty strings, none of them an option.
+
+    An option never resolves into a command path, so a path that holds one can never match.
+    Rejecting it at load time is the only signal the author gets; at match time such a rule
+    is simply dead.
+    """
     if not isinstance(raw, list) or not raw:
         raise RulesError(f"{where}: '{key}' must be a non-empty list of strings")
     for word in raw:
         if not isinstance(word, str) or not word:
             raise RulesError(f"{where}: '{key}' entries must be non-empty strings, got {word!r}")
+        if word.startswith("-"):
+            raise RulesError(
+                f"{where}: '{key}' has the option {word!r} in a command path. "
+                f"A command path holds the binary and its subcommands only. "
+                f"Use 'any_option' to require an option, or 'except_option' to exclude one."
+            )
     return list(raw)
 
 
