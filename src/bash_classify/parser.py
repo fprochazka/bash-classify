@@ -6,6 +6,7 @@ import tree_sitter
 import tree_sitter_bash
 
 from .models import CommandInvocation, Redirect
+from .redirects import writes_a_file
 
 _parser = tree_sitter.Parser()
 _parser.language = tree_sitter.Language(tree_sitter_bash.language())
@@ -525,6 +526,12 @@ def _extract_redirects_from_node(node: tree_sitter.Node) -> list[Redirect]:
     return redirects
 
 
+# The operator tokens tree-sitter emits inside a file_redirect, in the spelling the grammar
+# uses. A missing entry costs more than the token it drops: the descriptor and the operator
+# are separate children, so `1>|` without `>|` listed here parses as the operator `1`.
+_FILE_REDIRECT_OPERATORS = frozenset({">", ">>", ">|", "<", ">&", "&>", "&>>", "<&", "<<", "<<<"})
+
+
 def _parse_file_redirect(node: tree_sitter.Node) -> Redirect | None:
     """Parse a file_redirect node into a Redirect."""
     # file_redirect children: optional fd, operator, target
@@ -532,14 +539,14 @@ def _parse_file_redirect(node: tree_sitter.Node) -> Redirect | None:
     target = ""
 
     for child in node.children:
-        if child.type == "file_descriptor" or child.type in (">", ">>", "<", ">&", "&>", "&>>", "<&", "<<", "<<<"):
+        if child.type == "file_descriptor" or child.type in _FILE_REDIRECT_OPERATORS:
             operator_parts.append(child.text.decode())
         elif child.is_named:
             target = _node_text(child)
         else:
             # Unnamed nodes that are operators
             text = child.text.decode()
-            if text in (">", ">>", "<", ">&", "&>", "&>>", "<&", "<<", "<<<"):
+            if text in _FILE_REDIRECT_OPERATORS:
                 operator_parts.append(text)
             elif not target:
                 target = text
@@ -551,9 +558,7 @@ def _parse_file_redirect(node: tree_sitter.Node) -> Redirect | None:
         if ">" in full_text or "<" in full_text:
             operator = full_text.split()[0] if full_text.split() else full_text
 
-    affects = _redirect_affects_classification(operator, target)
-
-    return Redirect(operator=operator, target=target, affects_classification=affects)
+    return Redirect(operator=operator, target=target, affects_classification=writes_a_file(operator, target))
 
 
 def _parse_heredoc_redirect(node: tree_sitter.Node) -> list[Redirect]:
@@ -598,20 +603,6 @@ def _parse_herestring_redirect(node: tree_sitter.Node) -> Redirect | None:
                 target = text
 
     return Redirect(operator="<<<", target=target, affects_classification=False)
-
-
-def _redirect_affects_classification(operator: str, target: str) -> bool:
-    """Determine if a redirect affects classification (i.e., writes to a file)."""
-    if target == "/dev/null":
-        return False
-    # fd-to-fd redirects like 2>&1, 1>&2 do not affect classification
-    if ">&" in operator and target.isdigit():
-        return False
-    # Output redirects affect classification
-    if operator in (">", ">>", "&>", "&>>") or (operator.endswith(">") and "<" not in operator):
-        return True
-    # Numbered output redirects like 2>
-    return len(operator) >= 2 and operator[0].isdigit() and ">" in operator
 
 
 def _node_text(node: tree_sitter.Node) -> str:

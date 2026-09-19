@@ -206,7 +206,7 @@ Risk defaults are derived from classification (`READONLY`→LOW, `LOCAL_EFFECTS`
 - **Subcommand aliases** -- a subcommand can declare other names for itself, so `glab pipeline view` resolves to `glab ci view` and any rule written for the canonical name catches the aliased spelling
 - **Multi-goal build tools** -- `subcommand_mode: match_all` handles commands like `mvn clean install` and `gradle clean build test` where multiple goals can be combined in any order
 - **Delegation for wrappers** -- commands like `xargs`, `sudo`, and `env` delegate classification to the inner command
-- **File path detection** -- redirect operators (`>`, `>>`, `<`) are parsed into `write_paths`/`read_paths` in the output; writes to `/tmp` and `/var/tmp` stay at LOW risk
+- **File path detection** -- redirect targets are parsed into `write_paths`/`read_paths` in the output; a write is `>` or `>>` with the optional file descriptor and `|` no-clobber override bash allows (`1>`, `2>>`, `>|`), plus `&>`, `&>>` and `>&`; writes to `/tmp` and `/var/tmp` stay at LOW risk
 - **Sensitive path detection** -- argv tokens and redirect targets are matched against a denylist of credential paths; a hit floors risk at HIGH and is reported in `sensitive_paths`
 
 ## Python API

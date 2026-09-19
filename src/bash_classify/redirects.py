@@ -1,8 +1,10 @@
 """What a redirect operator means, for everything that has to ask.
 
-Direction is a property of the operator alone, so the answer belongs to no single caller.
-It is kept in one place because separate copies of it drift apart, and the drift is not
-visible from any one call site.
+The parser, the classifier and the sensitive-path scan all need to know whether an operator
+opens a file and in which direction. They share one definition here because separate ones
+drift apart, and the drift is not visible from any single call site: a form that elevates
+the classification but contributes no write path never gets the temp-path risk lowering, so
+`1> /tmp/f` comes out riskier than `> /tmp/f` for the same operation.
 """
 
 from __future__ import annotations
@@ -28,3 +30,21 @@ def is_write_operator(operator: str) -> bool:
 def is_read_operator(operator: str) -> bool:
     """Return True when the operator opens its target for reading."""
     return _READ_OPERATOR.fullmatch(operator) is not None
+
+
+def is_descriptor_duplication(operator: str, target: str) -> bool:
+    """Return True for `2>&1` and its kin, where the target is a descriptor, not a path."""
+    return ">&" in operator and target.isdigit()
+
+
+def writes_a_file(operator: str, target: str) -> bool:
+    """Return True when the redirect creates or changes the file named as its target.
+
+    Two write operators are left out. `> /dev/null` discards output rather than keeping it,
+    and a descriptor duplication points one stream at another that is already open.
+    """
+    if target == "/dev/null":
+        return False
+    if is_descriptor_duplication(operator, target):
+        return False
+    return is_write_operator(operator)

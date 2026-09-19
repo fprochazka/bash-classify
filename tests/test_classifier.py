@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from bash_classify.classifier import _is_system_path, classify_expression, iter_invocations
 from bash_classify.models import Classification, CommandDef, Risk
 
@@ -147,6 +149,14 @@ class TestCompositeClassification:
         assert result.classification == Classification.READONLY
 
 
+# Every spelling bash accepts for an output redirect: `>` or `>>`, each with an optional
+# leading file descriptor and an optional `|` no-clobber override, plus `&>` and `&>>` for
+# both streams and the `>&` that names a file rather than a descriptor. All of them write.
+_WRITE_REDIRECTS = [">", ">>", ">|", "1>", "1>>", "1>|", "2>", "2>>", "3>", "4>>", "10>", "&>", "&>>", ">&"]
+_READ_REDIRECTS = ["<", "1<", "3<"]
+_DESCRIPTOR_DUPLICATIONS = ["2>&1", "1>&2", "3>&1", ">&2"]
+
+
 class TestRedirectEffects:
     def test_output_redirect_elevates_to_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello > output.txt", database=database)
@@ -176,6 +186,21 @@ class TestRedirectEffects:
         for r in result.redirects:
             if r.target == "/dev/null":
                 assert r.affects_classification is False
+
+    @pytest.mark.parametrize("operator", _WRITE_REDIRECTS)
+    def test_every_write_form_elevates_to_local_effects(self, operator: str, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"echo hello {operator} output.txt", database=database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+
+    @pytest.mark.parametrize("operator", _WRITE_REDIRECTS)
+    def test_no_write_form_elevates_when_it_discards(self, operator: str, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"echo hello {operator} /dev/null", database=database)
+        assert result.classification == Classification.READONLY
+
+    @pytest.mark.parametrize("operator", _READ_REDIRECTS)
+    def test_no_read_form_elevates(self, operator: str, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"cat {operator} input.txt", database=database)
+        assert result.classification == Classification.READONLY
 
 
 class TestDirectoryDetection:
@@ -341,6 +366,15 @@ class TestFdToFdRedirectClassification:
     def test_stderr_to_file_elevates_to_write(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello 2>error.log", database=database)
         assert result.classification == Classification.LOCAL_EFFECTS
+
+    @pytest.mark.parametrize("redirect", _DESCRIPTOR_DUPLICATIONS)
+    def test_a_descriptor_duplication_opens_no_file(self, redirect: str, database: dict[str, CommandDef]) -> None:
+        """The target of `2>&1` is a descriptor number. Reporting it as a write path claims
+        the command writes to a file called `1`."""
+        result = classify_expression(f"echo hello {redirect}", database=database)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+        assert result.write_paths == []
 
 
 class TestParseWarningsIntegration:
@@ -577,6 +611,14 @@ class TestRiskSystemPathElevation:
         assert result.classification == Classification.DANGEROUS
         assert result.risk == Risk.HIGH
 
+    @pytest.mark.parametrize("operator", _WRITE_REDIRECTS)
+    def test_a_system_path_is_dangerous_in_every_write_form(
+        self, operator: str, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(f"echo config {operator} /etc/myapp.conf", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
 
 class TestRiskRedirectElevation:
     def test_output_redirect_medium_risk(self, database: dict[str, CommandDef]) -> None:
@@ -587,6 +629,16 @@ class TestRiskRedirectElevation:
     def test_devnull_redirect_stays_low_risk(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("echo hello > /dev/null", database=database)
         assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    @pytest.mark.parametrize("operator", _WRITE_REDIRECTS)
+    def test_every_write_form_is_at_least_medium_risk(self, operator: str, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"echo hello {operator} output.txt", database=database)
+        assert result.risk == Risk.MEDIUM
+
+    @pytest.mark.parametrize("operator", _WRITE_REDIRECTS)
+    def test_no_write_form_raises_risk_when_it_discards(self, operator: str, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"echo hello {operator} /dev/null", database=database)
         assert result.risk == Risk.LOW
 
 
@@ -695,6 +747,53 @@ class TestFilePathDetection:
         result = classify_expression("cat < /home/user/data.txt | tee /tmp/out.txt > /tmp/log.txt", database=database)
         assert "/home/user/data.txt" in result.read_paths
         assert "/tmp/log.txt" in result.write_paths
+
+    @pytest.mark.parametrize("operator", _WRITE_REDIRECTS)
+    def test_every_write_form_reports_its_target(self, operator: str, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"echo hello {operator} out.txt", database=database)
+        assert result.write_paths == ["out.txt"]
+        assert result.commands[0].write_paths == ["out.txt"]
+
+    @pytest.mark.parametrize("operator", _READ_REDIRECTS)
+    def test_every_read_form_reports_its_target(self, operator: str, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(f"cat {operator} in.txt", database=database)
+        assert result.read_paths == ["in.txt"]
+        assert result.write_paths == []
+
+    @pytest.mark.parametrize("operator", _WRITE_REDIRECTS)
+    def test_a_temp_target_stays_low_risk_in_every_write_form(
+        self, operator: str, database: dict[str, CommandDef]
+    ) -> None:
+        """`1> /tmp/f` is the same operation as `> /tmp/f`, so it gets the same verdict."""
+        result = classify_expression(f"echo hello {operator} /tmp/f", database=database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+        assert result.write_paths == ["/tmp/f"]
+
+    @pytest.mark.parametrize("operator", _WRITE_REDIRECTS)
+    def test_a_discarded_target_is_no_write_path_in_any_form(
+        self, operator: str, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(f"echo hello {operator} /dev/null", database=database)
+        assert result.write_paths == []
+
+    def test_a_single_non_temp_target_elevates_risk(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo hello > /tmp/a 2>> b", database=database)
+        assert result.write_paths == ["/tmp/a", "b"]
+        assert result.risk == Risk.MEDIUM
+
+    def test_several_redirects_on_one_command_are_all_reported(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo hello > a 2> b", database=database)
+        assert result.write_paths == ["a", "b"]
+
+    def test_redirects_written_after_a_heredoc_opener_are_reported(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat <<EOF > a 2> b\nbody\nEOF", database=database)
+        assert result.write_paths == ["a", "b"]
+        assert result.read_paths == []
+
+    def test_a_herestring_is_no_read_path(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cat <<< hello", database=database)
+        assert result.read_paths == []
 
 
 class TestAliasOfClassification:

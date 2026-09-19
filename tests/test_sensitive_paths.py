@@ -286,6 +286,7 @@ class TestRedirects:
             "echo k >> ~/.ssh/authorized_keys",
             "echo k >| ~/.ssh/authorized_keys",
             "echo k 1> ~/.ssh/authorized_keys",
+            "echo k 1>| ~/.ssh/authorized_keys",
             "echo k 1>> ~/.ssh/authorized_keys",
             "echo k 2> ~/.ssh/authorized_keys",
             "echo k 3> ~/.ssh/authorized_keys",
@@ -298,6 +299,25 @@ class TestRedirects:
     def test_every_write_operator_counts(self, expression, rules, database) -> None:
         """`1>` is byte-for-byte `>`, and bash allows the descriptor on every write form."""
         assert hits(expression, rules, database) == [("~/.ssh/authorized_keys", "ssh", "redirect_write", "literal")]
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "echo k > ~/.ssh/authorized_keys",
+            "echo k >| ~/.ssh/authorized_keys",
+            "echo k 1> ~/.ssh/authorized_keys",
+            "echo k 2>> ~/.ssh/authorized_keys",
+            "echo k &>> ~/.ssh/authorized_keys",
+            "echo k >& ~/.ssh/authorized_keys",
+        ],
+    )
+    def test_the_scan_and_the_classifier_read_the_same_operator(self, expression, rules, database) -> None:
+        """Both axes must move together. A form the scan calls a write but the classifier
+        calls no write reports a credential hit on a READONLY command."""
+        result = classify(expression, rules, database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.HIGH
+        assert result.write_paths == ["~/.ssh/authorized_keys"]
 
     def test_a_heredoc_delimiter_is_not_a_path(self, rules, database) -> None:
         """A `<<` target is the delimiter word. Scanning it reports a hit on a heredoc whose

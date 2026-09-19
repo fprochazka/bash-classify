@@ -2,7 +2,19 @@
 
 from __future__ import annotations
 
+import pytest
+
+from bash_classify.models import Redirect
 from bash_classify.parser import parse_expression
+
+
+def _only_redirect(expression: str) -> Redirect:
+    """Return the single redirect of a single top-level command."""
+    result, _ = parse_expression(expression)
+    toplevel = [r for r in result if r.context == "toplevel"]
+    assert len(toplevel) == 1
+    assert len(toplevel[0].redirects) == 1
+    return toplevel[0].redirects[0]
 
 
 class TestSimpleCommands:
@@ -178,6 +190,92 @@ class TestRedirects:
         result, _ = parse_expression("cmd > /dev/null")
         toplevel = [r for r in result if r.context == "toplevel"]
         assert toplevel[0].redirects[0].affects_classification is False
+
+    @pytest.mark.parametrize(
+        ("expression", "operator"),
+        [
+            ("echo x > f", ">"),
+            ("echo x >> f", ">>"),
+            ("echo x >| f", ">|"),
+            ("echo x 1> f", "1>"),
+            ("echo x 1>> f", "1>>"),
+            ("echo x 1>| f", "1>|"),
+            ("echo x 2> f", "2>"),
+            ("echo x 2>> f", "2>>"),
+            ("echo x 3> f", "3>"),
+            ("echo x 4>> f", "4>>"),
+            ("echo x 10> f", "10>"),
+            ("echo x &> f", "&>"),
+            ("echo x &>> f", "&>>"),
+            ("echo x >& f", ">&"),
+        ],
+    )
+    def test_every_write_form_names_the_file_it_writes(self, expression: str, operator: str) -> None:
+        """A write is `>` or `>>`, each with the file descriptor and the `>|` no-clobber
+        override bash allows. `&>` and `&>>` take both streams, and `>&` writes to a file
+        whenever its target is not a descriptor number."""
+        redirect = _only_redirect(expression)
+        assert (redirect.operator, redirect.target) == (operator, "f")
+        assert redirect.affects_classification is True
+
+    @pytest.mark.parametrize(
+        ("expression", "operator"),
+        [("cat < f", "<"), ("cat 1< f", "1<"), ("cat 3< f", "3<")],
+    )
+    def test_every_read_form_names_the_file_it_reads(self, expression: str, operator: str) -> None:
+        redirect = _only_redirect(expression)
+        assert (redirect.operator, redirect.target) == (operator, "f")
+        assert redirect.affects_classification is False
+
+    @pytest.mark.parametrize(
+        ("expression", "operator", "target"),
+        [
+            ("echo x 2>&1", "2>&", "1"),
+            ("echo x 1>&2", "1>&", "2"),
+            ("echo x 3>&1", "3>&", "1"),
+            ("echo x >&2", ">&", "2"),
+            ("cat <& 3", "<&", "3"),
+        ],
+    )
+    def test_a_descriptor_duplication_opens_no_file(self, expression: str, operator: str, target: str) -> None:
+        """`2>&1` points one descriptor at another. The target is a number, not a path."""
+        redirect = _only_redirect(expression)
+        assert (redirect.operator, redirect.target) == (operator, target)
+        assert redirect.affects_classification is False
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "echo x > /dev/null",
+            "echo x >> /dev/null",
+            "echo x >| /dev/null",
+            "echo x 1> /dev/null",
+            "echo x 2> /dev/null",
+            "echo x 2>> /dev/null",
+            "echo x 3> /dev/null",
+            "echo x &> /dev/null",
+            "echo x &>> /dev/null",
+            "echo x >& /dev/null",
+        ],
+    )
+    def test_discarding_output_is_not_a_write_in_any_form(self, expression: str) -> None:
+        redirect = _only_redirect(expression)
+        assert redirect.target == "/dev/null"
+        assert redirect.affects_classification is False
+
+    @pytest.mark.parametrize(("expression", "operator"), [("echo x >>| f", ">>"), ("echo x &>| f", "&>")])
+    def test_a_spelling_bash_rejects_still_reads_as_a_write(self, expression: str, operator: str) -> None:
+        """Bash allows `>|` but not `>>|` or `&>|`. tree-sitter recovers by dropping the `|`,
+        and the recovered redirect stays a write, which is the safe reading of a line that
+        will not run."""
+        redirect = _only_redirect(expression)
+        assert (redirect.operator, redirect.target) == (operator, "f")
+        assert redirect.affects_classification is True
+
+    def test_several_redirects_on_one_command(self) -> None:
+        result, _ = parse_expression("echo x > a 2> b")
+        toplevel = [r for r in result if r.context == "toplevel"]
+        assert [(r.operator, r.target) for r in toplevel[0].redirects] == [(">", "a"), ("2>", "b")]
 
 
 class TestVariableAssignment:

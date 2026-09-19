@@ -508,7 +508,7 @@ subcommands:
 
 ## 10. Temp Path Risk Behavior
 
-When a command writes to a file via output redirects (`>`, `>>`, `2>`, `&>`, `>&`), its risk is normally elevated to at least `MEDIUM`. However, if **all** write targets are under `/tmp` or `/var/tmp`, the risk elevation is skipped and the command stays at `LOW` risk (assuming no other risk elevations apply).
+When a command writes to a file via an output redirect, its risk is normally elevated to at least `MEDIUM`. If **all** write targets are under `/tmp` or `/var/tmp`, the elevation is skipped and the command stays at `LOW` risk, as long as nothing else elevates it. Which operators count as a write is given in [SPEC.md](../SPEC.md#redirect-classification).
 
 This means `cat > /tmp/foo.txt` is classified as `LOCAL_EFFECTS` with risk `LOW`, while `cat > ~/foo.txt` is classified as `LOCAL_EFFECTS` with risk `MEDIUM`.
 

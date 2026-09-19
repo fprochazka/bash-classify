@@ -332,15 +332,15 @@ Certain expression-level patterns elevate risk to at least `HIGH`:
 
 #### Temp path risk lowering
 
-When all write targets from output redirects (`>`, `>>`, `2>`, `&>`, `>&`) are under `/tmp` or `/var/tmp`, the risk elevation to `MEDIUM` from output redirects is skipped. This allows commands like `cat > /tmp/foo.txt` to remain at `LOW` risk while still being classified as `LOCAL_EFFECTS`.
+When every write target of an expression is under `/tmp` or `/var/tmp`, the risk elevation to `MEDIUM` from output redirects is skipped. `cat > /tmp/foo.txt` stays at `LOW` risk and is still classified as `LOCAL_EFFECTS`. The lowering applies to every write form equally, so `1> /tmp/foo.txt` gets the same verdict as `> /tmp/foo.txt`.
 
 ### File path detection
 
 The tool extracts file paths from shell redirects:
 
-- **`write_paths`**: Files targeted by output redirects (`>`, `>>`, `2>`, `&>`, `>&`), excluding `/dev/null`, `/dev/stdin`, `/dev/stdout`, `/dev/stderr`, and `/dev/fd/*`.
-- **`read_paths`**: Files targeted by input redirects (`<`), excluding the same `/dev/*` paths.
-- Heredoc operators (`<<`, `<<<`) are not included — their target is a delimiter, not a file path.
+- **`write_paths`**: Targets of output redirects, excluding `/dev/null`, `/dev/stdin`, `/dev/stdout`, `/dev/stderr`, and `/dev/fd/*`.
+- **`read_paths`**: Targets of input redirects, excluding the same `/dev/*` paths.
+- Which operators those are is one definition, given under [Redirect Classification](#redirect-classification). A redirect that elevates the classification also reports its target here, or the temp path lowering above would never fire for it.
 
 Paths are reported at both the per-command level (`commands[].write_paths`, `commands[].read_paths`) and the expression level (aggregated from all commands).
 
@@ -982,17 +982,23 @@ A subcommand entry takes the same fields as the command level, minus `command` a
 
 ## Redirect Classification
 
-Output redirects affect the overall classification:
+An output redirect elevates the classification to at least `LOCAL_EFFECTS`.
 
-| Redirect | Effect |
-|---|---|
-| `> file` | Elevates to at least `EXTERNAL_EFFECTS` |
-| `>> file` | Elevates to at least `EXTERNAL_EFFECTS` |
-| `> /dev/null` | No effect (discarding output is not a write) |
-| `2> file` / `2>> file` | Elevates to at least `EXTERNAL_EFFECTS` (unless `/dev/null`) |
-| `&> file` | Elevates to at least `EXTERNAL_EFFECTS` (unless `/dev/null`) |
-| `< file` | No effect (input redirect is reading) |
-| `\| tee file` | `tee` is classified as `EXTERNAL_EFFECTS` via its own database entry |
+What counts as one is a shape, not a list. A write is `>` or `>>`, each with the leading
+file descriptor and the `|` no-clobber override that bash allows, so `>`, `>|`, `1>`, `1>|`,
+`2>>`, `4>|` and `10>` are one redirect to the classifier. `&>` and `&>>` redirect both
+streams and count too, as does `>&` when its target is not a descriptor number.
+
+Four shapes write nothing:
+
+- `/dev/null` as the target, in any write form. Discarding output is not a write.
+- A descriptor duplication: `>&` or `<&` whose target is a number, such as `2>&1`. The
+  target names a stream that is already open, not a file.
+- An input redirect: `<`, again with an optional leading file descriptor.
+- A heredoc (`<<`, `<<-`) or a herestring (`<<<`). The heredoc target is the delimiter word
+  and the herestring target is the text itself, so neither names a file.
+
+`| tee file` is not a redirect. `tee` is classified through its own database entry.
 
 ## Sensitive Path Detection
 
@@ -1003,7 +1009,7 @@ The floor is deliberately **not** guarded by a minimum classification, unlike th
 ### What is scanned
 
 - Every argv token of every invocation, at every delegation depth. `sudo cat`, `xargs cat`, `sh -c "cat …"`, `find . -exec cat {} \;`, `env cat` and `timeout 5 cat` are all covered.
-- Every redirect target whose operator names a file. Writes are `>` and `>>`, each optionally with the `>|` no-clobber override and with the leading file descriptor bash allows, so `1>` is `>` and `4>>` is `>>`; `&>`, `&>>` and `>&` count too. Reads are `<`, again with an optional descriptor. A `<<` target is the heredoc delimiter, a `<<<` target is the herestring text, and a `<&` target is a descriptor number, so none of the three is scanned. A file redirect on the same command as a heredoc is an ordinary write and is scanned regardless of whether it appears before or after the `<<` operator — both `cat > .env <<EOF` and `cat <<EOF > .env` hit.
+- Every redirect target whose operator names a file, in the write and read shapes given under [Redirect Classification](#redirect-classification). A `<<` target is the heredoc delimiter, a `<<<` target is the herestring text, and a `<&` target is a descriptor number, so none of the three is scanned. A file redirect on the same command as a heredoc is an ordinary write and is scanned regardless of whether it appears before or after the `<<` operator — both `cat > .env <<EOF` and `cat <<EOF > .env` hit.
 
 Tokens are scanned one at a time and never joined, so `git config` is two words and not the path `.git/config`.
 

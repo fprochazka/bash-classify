@@ -18,6 +18,7 @@ from .models import (
     SensitiveHit,
 )
 from .parser import parse_expression
+from .redirects import is_read_operator, writes_a_file
 from .sensitive import SensitiveRule, dedupe_hits, load_sensitive_paths, scan_argv, scan_redirects
 
 _SYSTEM_DIRS = (
@@ -49,10 +50,6 @@ _SAFE_PREFIXES = (
     "/dev/tcp",
     "/dev/udp",
 )
-
-_WRITE_OPERATORS = {">", ">>", "2>", "&>", ">&"}
-_READ_OPERATORS = {"<"}
-_HEREDOC_OPERATORS = {"<<", "<<<"}
 
 _DEV_PATHS = ("/dev/null", "/dev/stdin", "/dev/stdout", "/dev/stderr", "/dev/fd/")
 
@@ -134,13 +131,13 @@ def classify_expression(
         all_write_targets_are_temp = True
 
         for redirect in invocation.redirects:
-            if redirect.operator in _WRITE_OPERATORS and _is_real_file_path(redirect.target):
+            if writes_a_file(redirect.operator, redirect.target) and _is_real_file_path(redirect.target):
                 write_paths.append(redirect.target)
                 if not _is_temp_path(redirect.target):
                     all_write_targets_are_temp = False
-            elif redirect.operator in _READ_OPERATORS and _is_real_file_path(redirect.target):
+            elif is_read_operator(redirect.operator) and _is_real_file_path(redirect.target):
                 read_paths.append(redirect.target)
-            # Skip << and <<< (heredoc/herestring - target is delimiter, not file)
+            # Heredocs, herestrings and descriptor duplications name no file of their own.
 
         # Step 4: Apply redirect classification
         for redirect in invocation.redirects:
