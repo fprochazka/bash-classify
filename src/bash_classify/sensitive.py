@@ -30,13 +30,7 @@ from pathlib import Path
 import yaml
 
 from .models import Redirect, SensitiveHit
-
-# Redirects are the only place where direction is known, because the operator says so.
-# Both shapes allow the optional leading file descriptor that bash allows, so `1>` is `>`
-# and `4>>` is `>>`. A heredoc (`<<`) target is the delimiter word, a herestring (`<<<`)
-# target is the text itself, and `<&` names a descriptor, so none of the three is a path.
-_WRITE_OPERATOR = re.compile(r"^(?:[0-9]*|&)(?:>>?\|?|>&)$")
-_READ_OPERATOR = re.compile(r"^[0-9]*<$")
+from .redirects import is_read_operator, is_write_operator
 
 _GLOB_METACHARACTERS = frozenset("*?[]")
 
@@ -270,9 +264,9 @@ def scan_redirects(redirects: Iterable[Redirect], rules: Sequence[SensitiveRule]
 
 def _redirect_source(operator: str) -> str | None:
     """Return the `source` for a redirect operator, or None when its target is not a path."""
-    if _WRITE_OPERATOR.fullmatch(operator):
+    if is_write_operator(operator):
         return "redirect_write"
-    if _READ_OPERATOR.fullmatch(operator):
+    if is_read_operator(operator):
         return "redirect_read"
     return None
 
