@@ -79,6 +79,33 @@ rules:
     paths:
       - .docker/config.json
 
+  # The token stores of command-line tools you log into once. Each file holds an OAuth token
+  # or a personal access token in plaintext. `.claude.json` is Claude Code's own, so a hook
+  # that auto-approves reading it hands out the agent's own credentials.
+  #
+  # Only the credential file of each tool is listed. `.config/gh/config.yml` and
+  # `.config/glab-cli/aliases.yml` sit next to these and hold settings, so they stay absent.
+  # glab keeps its token in the file it calls `config.yml`, which is why that one is listed.
+  - name: agent-cli-config
+    paths:
+      - .claude.json
+      - .config/gh/hosts.yml
+      - .config/glab-cli/config.yml
+
+  # What `git credential-store` writes: one URL per line, password included. `.gitconfig`
+  # names the helper and holds no password, so it is not here.
+  - name: git-credentials
+    paths:
+      - .git-credentials
+
+  # Database client passwords. `.pgpass` is `host:port:db:user:password` per line, and
+  # `.my.cnf` is where MySQL expects a `password=` so it stays off the command line.
+  # Segments match whole, so the `.my.cnf.d` settings directory is not the file.
+  - name: db-credentials
+    paths:
+      - .pgpass
+      - .my.cnf
+
   # The environment of any running process, which is where an agent's API keys live.
   - name: proc-environ
     paths:

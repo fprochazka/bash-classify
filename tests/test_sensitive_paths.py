@@ -93,6 +93,12 @@ class TestPathSpellings:
             ("cat ~/.npmrc", "npmrc-pypirc"),
             ("cat ~/.pypirc", "npmrc-pypirc"),
             ("cat ~/.docker/config.json", "docker-config"),
+            ("cat ~/.claude.json", "agent-cli-config"),
+            ("cat ~/.config/gh/hosts.yml", "agent-cli-config"),
+            ("cat ~/.config/glab-cli/config.yml", "agent-cli-config"),
+            ("cat ~/.git-credentials", "git-credentials"),
+            ("cat ~/.pgpass", "db-credentials"),
+            ("cat ~/.my.cnf", "db-credentials"),
             ("cat /proc/1234/environ", "proc-environ"),
         ],
     )
@@ -138,6 +144,8 @@ class TestTraversalSegments:
             ("cat ~/.kube/./config", "kube"),
             ("cat ~/.kube/x/../config", "kube"),
             ("cat ~/.docker/./config.json", "docker-config"),
+            ("cat ~/.config/./gh/hosts.yml", "agent-cli-config"),
+            ("cat ~/.config/x/../glab-cli/config.yml", "agent-cli-config"),
             ("cat ~/.docker/x/../config.json", "docker-config"),
             ("cat /proc/./1234/environ", "proc-environ"),
             ("cat /proc/1234/x/../environ", "proc-environ"),
@@ -273,6 +281,65 @@ class TestDroppedRules:
     )
     def test_a_config_that_holds_no_credential_is_clean(self, expression, rules, database) -> None:
         assert_clean(expression, rules, database)
+
+
+class TestCredentialStores:
+    """The credential file of a command-line tool, and the settings file that sits next to
+    it under a name one character away."""
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "cat .pgpass",
+            "cat ~/.pgpass",
+            "cat /home/me/.pgpass",
+            "cat ../.pgpass",
+            "cat ~/x/../.pgpass",
+            "cat $HOME/.pgpass",
+        ],
+    )
+    def test_every_spelling_reaches_the_same_rule(self, expression, rules, database) -> None:
+        """Nothing is anchored, so where the user keeps the file cannot change the verdict."""
+        assert rule_names(expression, rules, database) == {"db-credentials"}
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "cat ~/.config/gh/config.yml",
+            "cat ~/.config/glab-cli/aliases.yml",
+            "cat ~/.gitconfig",
+            "cat .git/config",
+            "cat ~/.aws/config",
+            "cat ~/.my.cnf.d/extra.cnf",
+            "cat ~/.claude/settings.json",
+            "cat .claude.json.bak",
+        ],
+    )
+    def test_the_settings_file_next_door_stays_clean(self, expression, rules, database) -> None:
+        """A rule wide enough to catch these is a rule that fires on routine debugging."""
+        assert_clean(expression, rules, database)
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "cat ~/.claude.json",
+            "cat ~/.config/gh/hosts.yml",
+            "cat ~/.config/glab-cli/config.yml",
+            "cat ~/.git-credentials",
+            "cat ~/.pgpass",
+            "cat ~/.my.cnf",
+        ],
+    )
+    def test_one_token_is_reported_once(self, expression, rules, database) -> None:
+        assert len(classify(expression, rules, database).sensitive_paths) == 1
+
+    def test_no_two_bundled_rules_cover_the_same_file(self, rules, database) -> None:
+        """Two rules over one path report one `cat` twice, and a caller counting hits reads
+        that as two secrets."""
+        for rule in rules:
+            for path in rule.paths:
+                token = "/".join(path)
+                assert rule_names(f"cat {token}", rules, database) == {rule.name}, token
 
 
 class TestRedirects:
@@ -507,6 +574,9 @@ class TestLoading:
             "netrc",
             "npmrc-pypirc",
             "docker-config",
+            "agent-cli-config",
+            "git-credentials",
+            "db-credentials",
             "proc-environ",
         }
 

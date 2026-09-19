@@ -310,6 +310,15 @@ class TestCliSensitivePaths:
             ("echo k 1> ~/.ssh/authorized_keys", ("ssh", "redirect_write", "literal")),
             ("echo k 3> ~/.ssh/authorized_keys", ("ssh", "redirect_write", "literal")),
             ("cat .env.local", ("dotenv", "argv", "literal")),
+            ("cat ~/.claude.json", ("agent-cli-config", "argv", "literal")),
+            ("cat ~/.config/gh/hosts.yml", ("agent-cli-config", "argv", "literal")),
+            ("cat ~/.config/glab-cli/config.yml", ("agent-cli-config", "argv", "literal")),
+            ("cat ~/.git-credentials", ("git-credentials", "argv", "literal")),
+            ("cat ~/.pgpass", ("db-credentials", "argv", "literal")),
+            ("cat ~/.my.cnf", ("db-credentials", "argv", "literal")),
+            ("cat ../.pgpass", ("db-credentials", "argv", "literal")),
+            ("cat /home/me/.pgpass", ("db-credentials", "argv", "literal")),
+            ("cat ~/x/../.pgpass", ("db-credentials", "argv", "literal")),
             ("printenv ANTHROPIC_API_KEY", ("secret-env-var", "argv", "literal")),
             ("env", ("env-dump", "env_dump", "literal")),
             ("printenv", ("env-dump", "env_dump", "literal")),
@@ -319,6 +328,24 @@ class TestCliSensitivePaths:
     )
     def test_every_evasion_spelling_is_caught(self, expression: str, expected: tuple[str, str, str]) -> None:
         assert expected in self._hits(expression)
+
+    @pytest.mark.parametrize(
+        ("expression", "rule"),
+        [
+            ("cat ~/.claude.json", "agent-cli-config"),
+            ("cat ~/.config/gh/hosts.yml", "agent-cli-config"),
+            ("cat ~/.config/glab-cli/config.yml", "agent-cli-config"),
+            ("cat ~/.git-credentials", "git-credentials"),
+            ("cat ~/.pgpass", "db-credentials"),
+            ("cat ~/.my.cnf", "db-credentials"),
+        ],
+    )
+    def test_a_credential_store_is_high_risk_and_hits_one_rule(self, expression: str, rule: str) -> None:
+        """The hook auto-approves on `risk: LOW`, so the floor is what keeps these behind a
+        prompt. One hit, because two rules over one file report one `cat` twice."""
+        output = json.loads(_run_cli(expression).stdout)
+        assert output["risk"] == "HIGH"
+        assert [h["rule"] for h in output["sensitive_paths"]] == [rule]
 
     @pytest.mark.parametrize(
         "expression",
@@ -356,6 +383,10 @@ class TestCliSensitivePaths:
             "cat .git/config",
             "cat ~/.gitconfig",
             "cat ~/.aws/config",
+            "cat ~/.config/gh/config.yml",
+            "cat ~/.config/glab-cli/aliases.yml",
+            "cat ~/.my.cnf.d/extra.cnf",
+            "cat ~/.claude/settings.json",
             "ls ~/projects",
             "cat .ssh/../notes",
         ],

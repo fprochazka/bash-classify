@@ -523,7 +523,7 @@ The denylist lives in `src/bash_classify/sensitive-paths.yaml`, validated agains
 Two consequences when you write a command definition:
 
 - Do not lower a command's risk to work around a sensitive-path hit. The hit is a floor and is applied after your definition; a `risk: LOW` on `cat` does not undo it, and the hook prompts either way.
-- Do not add a rule to the denylist for a path that is merely uninteresting to read. Every false positive is a reason for somebody to switch the whole gate off. A rule belongs there when the file holds a credential, which is why `~/.aws/config` and `.git/config` are deliberately absent while `~/.aws/credentials` is there.
+- Do not add a rule to the denylist for a path that is merely uninteresting to read. Every false positive is a reason for somebody to switch the whole gate off. A rule belongs there when the file holds a credential. That is why `~/.aws/credentials` and `~/.config/gh/hosts.yml` are on the list, while `~/.aws/config`, `.git/config` and `~/.config/gh/config.yml` are not.
 
 Add a rule when a tool you define keeps its credentials somewhere the bundled rules miss. Match whole segments, keep the segments literal, and give the rule a name that says what the secret is:
 

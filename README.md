@@ -98,6 +98,8 @@ Classification says what a command does to the system. It says nothing about wha
 
 So every argv token and every redirect target is checked against a denylist of paths that hold credentials. A hit leaves classification alone and floors `risk` at `HIGH`.
 
+The list covers SSH and GPG keys, cloud and cluster credentials, `.env` files, `.netrc` and `.npmrc`, `.git-credentials`, `.pgpass` and `.my.cnf`, and the token stores of command-line tools: `~/.claude.json`, `~/.config/gh/hosts.yml` and `~/.config/glab-cli/config.yml`. Settings files are not on it. `~/.aws/config`, `.git/config`, `~/.gitconfig` and `~/.config/gh/config.yml` are routine debugging and stay `LOW`.
+
 ```bash
 $ echo 'cat ~/.ssh/id_rsa' | bash-classify | jq '{classification, risk, sensitive_paths}'
 {
