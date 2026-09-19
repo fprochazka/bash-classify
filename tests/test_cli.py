@@ -439,6 +439,44 @@ class TestCliSensitivePaths:
         assert output["risk"] == "HIGH"
 
 
+class TestCliExtractionDestinations:
+    """An archive is unpacked into a directory, and that directory has to reach the caller.
+
+    A consumer with a path denylist applies its own floor to `directories`: the archive's
+    contents are unknowable here, so the library reports where the files land and stops.
+    """
+
+    def test_unzip_destination_reaches_directories(self) -> None:
+        proc = _run_cli("unzip e.zip -d /home/u/.config")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert output["directories"] == ["/home/u/.config"]
+        assert output["commands"][0]["positionals"] == ["e.zip"]
+
+    def test_unzip_destination_that_is_itself_a_rule_is_a_hit(self) -> None:
+        proc = _run_cli("unzip e.zip -d /home/u/.ssh")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert output["directories"] == ["/home/u/.ssh"]
+        assert [h["rule"] for h in output["sensitive_paths"]] == ["ssh"]
+        assert output["risk"] == "HIGH"
+
+    def test_tar_destination_reaches_directories(self) -> None:
+        proc = _run_cli("tar -xf e.tar -C /home/u/.config")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert output["directories"] == ["/home/u/.config"]
+
+    def test_a_rule_under_the_destination_is_not_a_hit(self) -> None:
+        """The documented limit, in the form a consumer will meet it."""
+        proc = _run_cli("tar -xf e.tar -C /home/u")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert output["directories"] == ["/home/u"]
+        assert output["sensitive_paths"] == []
+        assert output["risk"] == "LOW"
+
+
 class TestCliOutputPathOptions:
     def test_an_option_value_reaches_write_paths(self) -> None:
         proc = _run_cli("curl -o /home/u/.ssh/authorized_keys https://x")

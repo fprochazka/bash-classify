@@ -411,3 +411,19 @@ class TestOutputPathOptions:
     def test_tar_file_is_not_marked(self, database: dict[str, CommandDef]) -> None:
         """`tar -f` writes the archive when creating and reads it when extracting."""
         assert database["tar"].options["-f"].names_output_path is False
+
+
+class TestExtractionDestinations:
+    """Options whose value is the directory an archive or download lands in."""
+
+    def test_unzip_destination(self, database: dict[str, CommandDef]) -> None:
+        assert database["unzip"].options["-d"].takes_value is True
+        assert database["unzip"].options["-d"].captures_directory is True
+
+    def test_tar_destination(self, database: dict[str, CommandDef]) -> None:
+        assert database["tar"].options["-C"].captures_directory is True
+        assert database["tar"].options["--directory"].captures_directory is True
+
+    def test_wget_directory_prefix(self, database: dict[str, CommandDef]) -> None:
+        assert database["wget"].options["-P"].captures_directory is True
+        assert database["wget"].options["--directory-prefix"].captures_directory is True

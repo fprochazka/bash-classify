@@ -977,7 +977,7 @@ A subcommand entry takes the same fields as the command level, minus `command` a
 | `takes_value` | `bool` | Whether the option consumes the next token as its value |
 | `aliases` | `list[str]` | Alternative names for this option (e.g. `-n` for `--namespace`) |
 | `overrides` | `enum` | When this option is present, override the classification to this level |
-| `captures_directory` | `bool` | The value of this option is a working directory (e.g. `git -C`) |
+| `captures_directory` | `bool` | The value of this option is a directory the command is pointed at: a working directory (`git -C`, `make -C`) or a destination an archive is unpacked into (`tar -C`, `unzip -d`). It lands in `directories`. |
 | `names_output_path` | `bool` | The tool documents this option's value as a path it writes (`curl -o`, `sort -o`). It lands in `write_paths`, and a sensitive-path hit on it is reported with `source: "argv_write"`. |
 | `delegates_to` | `object` | This option's value(s) form a delegated inner command (e.g. `find -exec`) |
 
@@ -1117,10 +1117,18 @@ The tool extracts working directories from:
 | Source | Example |
 |---|---|
 | `cd dir` / `pushd dir` / `popd` | Explicit directory changes |
-| Global options with `captures_directory: true` | `git -C /path`, `make -C /path` |
+| Options with `captures_directory: true` | `git -C /path`, `make -C /path`, `tar -C /path`, `unzip -d /path` |
 | Well-known commands | `ls /path`, `find /path`, `cat /path/file` (dirname) |
 
 Directories are reported as-is (not resolved) since variable expansion may be involved.
+
+### Limit: a sensitive rule under a reported directory is not a hit
+
+`tar -xf e.tar -C ~/.ssh` hits the `ssh` rule, because the destination itself spells the rule. `tar -xf e.tar -C ~/.config` does not hit `gcloud`, even though the archive may well contain `.config/gcloud/credentials.db`, and `unzip e.zip -d ~` hits nothing at all.
+
+This is deliberate and it will not change. The contents of an archive are unknowable without opening it, so the only rule the library could apply is "any denylisted path that sits under the destination is a hit". The common destinations are `.`, `..`, `~` and `$PWD`: every rule sits under those, so the check would fire on every extraction anybody ever runs, and a gate that fires on everything gets switched off. `tar -xf e.tar -C .` is the case to keep in mind.
+
+Extraction into a parent directory is therefore a general way past a path denylist, and closing it is the caller's policy call, not the library's. The destination is in `directories` for exactly that reason. A caller that wants the floor can require the destination to carry some minimum specificity before applying it — at least a few segments, and not the working directory, the home directory or the root — the way the glob matcher requires two literal characters before reading a segment as a pattern.
 
 ## Special-cased Commands
 

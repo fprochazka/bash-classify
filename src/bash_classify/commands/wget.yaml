@@ -8,3 +8,5 @@ global_options:
 options:
   -O: {takes_value: true, names_output_path: true}
   --output-document: {takes_value: true, aliases: [-O], names_output_path: true}
+  -P: {takes_value: true, captures_directory: true}
+  --directory-prefix: {takes_value: true, aliases: [-P], captures_directory: true}

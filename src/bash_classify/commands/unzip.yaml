@@ -8,3 +8,4 @@ global_options:
   --help: {overrides: READONLY}
 options:
   -l: {overrides: READONLY}
+  -d: {takes_value: true, captures_directory: true}

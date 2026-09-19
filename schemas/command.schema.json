@@ -156,7 +156,7 @@
         },
         "captures_directory": {
           "type": "boolean",
-          "description": "The value of this option is a directory the command is pointed at: a working directory (`git -C`) or an extraction destination (`tar -C`). It lands in `directories`."
+          "description": "The value of this option is a directory the command is pointed at: a working directory (`git -C`) or an extraction destination (`tar -C`, `unzip -d`). It lands in `directories`."
         },
         "names_output_path": {
           "type": "boolean",

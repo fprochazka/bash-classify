@@ -110,7 +110,7 @@ subcommands:
 | `takes_value` | boolean | Whether the option consumes the next token as its value |
 | `aliases` | list | Alternative names (e.g. `-n` for `--namespace`) |
 | `overrides` | enum | When present, override classification to this level |
-| `captures_directory` | boolean | The option's value is a working directory (e.g. `git -C`) |
+| `captures_directory` | boolean | The option's value is a directory the command is pointed at: a working directory (`git -C`) or an extraction destination (`tar -C`, `unzip -d`). It lands in `directories`. |
 | `names_output_path` | boolean | The option's value is a path the command writes (`curl -o`, `sort -o`). It lands in `write_paths`. |
 | `delegates_to` | object | This option triggers delegation (e.g. `find -exec`) |
 
