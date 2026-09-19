@@ -22,7 +22,7 @@ To track a commit rather than a release — worth doing if you want to test a ch
 bash-classify @ git+https://github.com/fprochazka/bash-classify@<commit>
 ```
 
-The version is derived from the last tag, so a commit past it resolves to something like `0.12.1.dev3+g8699357`. PEP 440 excludes dev releases unless the specifier names one, so a constraint of `>=0.12,<0.13` will *not* admit it. Use a `.dev0` floor — `>=0.12.1.dev0,<0.13` — when pinning past a tag.
+The version is derived from the last tag, so a commit past it resolves to a pre-release such as `0.12.1.dev3+g8699357`. An ordinary constraint still admits that: `>=0.12,<0.13` contains it, because a specifier set only excludes pre-releases when its `prereleases` flag is explicitly false, and it is not by default. Writing the floor as `>=0.12.1.dev0,<0.13` is worth doing anyway — it says out loud that the pinned thing is a pre-release, and it sets that flag — but it is a marker for whoever reads the file next, not something the resolver needs.
 
 ## Quick start
 
