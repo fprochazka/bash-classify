@@ -336,13 +336,13 @@ When every write target of an expression is under `/tmp` or `/var/tmp`, the risk
 
 ### File path detection
 
-The tool extracts file paths from shell redirects:
-
-- **`write_paths`**: Targets of output redirects, excluding `/dev/null`, `/dev/stdin`, `/dev/stdout`, `/dev/stderr`, and `/dev/fd/*`.
+- **`write_paths`**: Paths the command names as output. Two sources feed it: the target of an output redirect, excluding `/dev/null`, `/dev/stdin`, `/dev/stdout`, `/dev/stderr` and `/dev/fd/*`; and the value of an option the database marks `names_output_path`, such as `curl -o` or `sort -o`. Redirect targets come after the option values.
 - **`read_paths`**: Targets of input redirects, excluding the same `/dev/*` paths.
 - Which operators those are is one definition, given under [Redirect Classification](#redirect-classification). A redirect that elevates the classification also reports its target here, or the temp path lowering above would never fire for it.
 
-Paths are reported at both the per-command level (`commands[].write_paths`, `commands[].read_paths`) and the expression level (aggregated from all commands).
+`write_paths` is not the complete set of files a command writes. A destination written as a plain positional is absent — `cp a b`, `tee out.txt` and `sed -i f` all report nothing — because telling a read positional from a write one needs per-command knowledge the database does not carry. Read the field as "paths this command is known to write", never as "the only paths it writes".
+
+Paths are reported at both the per-command level (`commands[].write_paths`, `commands[].read_paths`) and the expression level. The expression level aggregates every command, and reaches through wrappers: `sudo curl -o X` names no output path at the `sudo` level, so the expression level takes it from the inner command.
 
 ### Composite classification
 
@@ -978,7 +978,10 @@ A subcommand entry takes the same fields as the command level, minus `command` a
 | `aliases` | `list[str]` | Alternative names for this option (e.g. `-n` for `--namespace`) |
 | `overrides` | `enum` | When this option is present, override the classification to this level |
 | `captures_directory` | `bool` | The value of this option is a working directory (e.g. `git -C`) |
+| `names_output_path` | `bool` | The tool documents this option's value as a path it writes (`curl -o`, `sort -o`). It lands in `write_paths`, and a sensitive-path hit on it is reported with `source: "argv_write"`. |
 | `delegates_to` | `object` | This option's value(s) form a delegated inner command (e.g. `find -exec`) |
+
+Set `names_output_path` only from the tool's own documentation of that option, and only when it holds in every mode of the command. `curl -T` sends the named file to a server and writes nothing locally, so it stays unmarked. `tar -f` writes the archive under `-c` and reads it under `-x`; one option cannot be conditioned on another, so it stays unmarked too, and the honest answer for `tar` is the destination directory that `-C` already reports.
 
 ## Redirect Classification
 
@@ -1048,6 +1051,8 @@ The floor is deliberately **not** guarded by a minimum classification, unlike th
 
 Tokens are scanned one at a time and never joined, so `git config` is two words and not the path `.git/config`.
 
+The value of an option marked `names_output_path` is scanned on its own and reported with `source: "argv_write"`, and the argv token that carries it is then skipped. That keeps one file to one hit across the three spellings of an option value: `-o ~/.ssh/x`, `--output=~/.ssh/x` and `-o~/.ssh/x` all report the path alone, in the write direction. Every other argv token keeps `source: "argv"`, whose direction is unknown.
+
 A hit is reported on the invocation that carries it, and again on every level above it up to the expression, deduplicated by token, rule, source and spelling. A caller that reads only `ExpressionResult.sensitive_paths` still sees what a wrapper hid.
 
 ### The denylist
@@ -1099,7 +1104,7 @@ Name these when you describe the feature, so nobody reads it as stronger than it
 - A path held in a variable: `P=~/.ssh/id_rsa; cat "$P"`.
 - Encoding detours: `base64`, `xxd`, `rev`, or a `sed` that reassembles the path.
 - A glob below the two-character floor, such as `cat .*`.
-- The direction of an `argv` hit. `cat X` reads and `tee X` writes; telling them apart needs per-command read/write knowledge that the database does not carry and that this feature does not add.
+- The direction of an `argv` hit. `cat X` reads and `tee X` writes; telling them apart needs per-command read/write knowledge that the database carries only for options marked `names_output_path`, never for a positional.
 - A redirect inside a nested expression. `sh -c "cat < ~/.ssh/id_rsa"` is caught through the `-c` argument text, not through the redirect, because inner commands carry no redirects of their own.
 - A token that only *mentions* a path. `git commit -m "document ~/.ssh/config setup"`, `grep -rn "\.ssh/config" docs/` and `find . -path "*/.git/config"` are all reported, because the scan reads tokens and not the meaning a command gives them. Note the contrast with `match` mode, which is careful about exactly this: there a heredoc body, an `echo` string or a `grep` pattern that names a command is not an invocation and does not match. The two do not behave alike. Separating a path that a command opens from one it merely carries needs per-command argument knowledge, and that is out of scope here.
 
@@ -1171,13 +1176,13 @@ The `commands` list below is recursive — any command entry can contain `inner_
   "expression": "string — the original input",
   "classification": "READONLY | LOCAL_EFFECTS | EXTERNAL_EFFECTS | DANGEROUS | UNKNOWN",
   "directories": ["string — detected directories"],
-  "write_paths": ["string — files targeted by output redirects (optional, omitted when empty)"],
+  "write_paths": ["string — paths the commands name as output: redirect targets and the values of options marked names_output_path (optional, omitted when empty)"],
   "read_paths": ["string — files targeted by input redirects (optional, omitted when empty)"],
   "sensitive_paths": [
     {
-      "token": "string — the argv token or redirect target, exactly as written",
+      "token": "string — the path as written, or the whole argv token that holds it",
       "rule": "string — the denylist entry that matched, e.g. ssh",
-      "source": "argv | redirect_read | redirect_write | env_dump",
+      "source": "argv | argv_write | redirect_read | redirect_write | env_dump",
       "spelling": "literal | posix_escape | windows | glob"
     }
   ],
@@ -1193,7 +1198,7 @@ The `commands` list below is recursive — any command entry can contain `inner_
       "remaining_options": ["string — options that were not in database"],
       "classification_reason": "string — why this classification was chosen",
       "overriding_option": "string | null — the option that elevated classification",
-      "write_paths": ["string — files targeted by output redirects (optional, omitted when empty)"],
+      "write_paths": ["string — this command's own output paths: option values and redirect targets (optional, omitted when empty)"],
       "read_paths": ["string — files targeted by input redirects (optional, omitted when empty)"],
       "sensitive_paths": ["... — this command's own hits plus its inner commands'; always present, empty when none"],
       "inner_commands": [
@@ -1206,6 +1211,7 @@ The `commands` list below is recursive — any command entry can contain `inner_
           "matched_rule": "...",
           "options": ["... — same meaning as on the enclosing command"],
           "positionals": ["... — same meaning as on the enclosing command"],
+          "write_paths": ["... — option values only; an inner command carries no redirects of its own"],
           "sensitive_paths": ["... — same meaning as on the enclosing command"],
           "inner_commands": ["... — recursive, can nest further"]
         }

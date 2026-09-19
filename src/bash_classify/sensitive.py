@@ -225,6 +225,7 @@ def scan_argv(
     command: Sequence[str],
     positionals: Sequence[str] | None,
     rules: Sequence[SensitiveRule],
+    output_paths: Sequence[str] | None = None,
 ) -> list[SensitiveHit]:
     """Report every hit in one invocation's own argv.
 
@@ -232,16 +233,29 @@ def scan_argv(
     `command` and `positionals` come from the classifier. They tell an environment dump from
     an ordinary call: `env` and `printenv` leak everything when they carry no positional,
     and only a handful of commands read a bare `API_KEY` as a variable name.
+
+    `output_paths` holds the paths the command documents as files it writes. Each is scanned
+    on its own and reported as `argv_write` rather than `argv`, so a caller can deny a write
+    to a credential while still allowing a read. The argv token that carries one is then
+    skipped, because `--output=~/.ssh/x` and `~/.ssh/x` would otherwise be reported twice,
+    once in each direction.
     """
     hits: list[SensitiveHit] = []
     binary = os.path.basename(command[0]) if command else ""
+    # An empty value, as in `--output=`, names no file, and keeping it would make every
+    # option token look like it carries an output path.
+    written = [path for path in (output_paths or ()) if path]
 
     if binary in _ENVIRONMENT_DUMP_COMMANDS and not positionals:
         hits.append(SensitiveHit(token=argv[0] if argv else binary, rule="env-dump", source="env_dump"))
 
+    for path in written:
+        hits.extend(find_path_hits(path, "argv_write", rules))
+
     names_variables = binary in _VARIABLE_NAME_COMMANDS
     for index, token in enumerate(argv):
-        hits.extend(find_path_hits(token, "argv", rules))
+        if not _carries_output_path(token, written):
+            hits.extend(find_path_hits(token, "argv", rules))
         # A binary is a command name, never a variable a caller is about to print.
         if index > 0:
             secret_variable = _secret_variable_hit(token, names_variables)
@@ -249,6 +263,22 @@ def scan_argv(
                 hits.append(secret_variable)
 
     return hits
+
+
+def _carries_output_path(token: str, written: Sequence[str]) -> bool:
+    """Check whether the token is one of the output paths, or an option carrying one.
+
+    Three spellings reach the same file: `-o path`, where the token is the path itself, and
+    `--output=path` and `-opath`, where the option and the path share one token. The joined
+    forms are only read on a token that starts with `-`, so an ordinary argument that
+    happens to end with the same characters keeps its own reading.
+    """
+    for path in written:
+        if token == path:
+            return True
+        if token.startswith("-") and (token.endswith("=" + path) or token.endswith(path)):
+            return True
+    return False
 
 
 def scan_redirects(redirects: Iterable[Redirect], rules: Sequence[SensitiveRule]) -> list[SensitiveHit]:

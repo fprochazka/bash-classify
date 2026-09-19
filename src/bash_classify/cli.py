@@ -50,6 +50,9 @@ def _inner_command_to_dict(result: InnerCommandResult) -> dict:
     if result.overriding_option is not None:
         d["overriding_option"] = result.overriding_option
 
+    if result.write_paths:
+        d["write_paths"] = result.write_paths
+
     d["inner_commands"] = [_inner_command_to_dict(ic) for ic in result.inner_commands]
 
     return d

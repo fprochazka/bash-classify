@@ -125,14 +125,20 @@ def classify_expression(
             # nested expression (`bash -c "..."`, `eval "..."`), at any depth.
             result = match_command(invocation, database, parse_warnings)
 
+        # The matcher has already put the output paths named in option values on the
+        # result. They stay there alone until the sensitive scan below has run, because the
+        # scan reads them to tell an argv write from a mention; the redirect targets join
+        # them afterwards.
+        argv_write_paths = result.write_paths or []
+
         # Collect file paths from redirects
-        write_paths: list[str] = []
+        redirect_write_paths: list[str] = []
         read_paths: list[str] = []
         all_write_targets_are_temp = True
 
         for redirect in invocation.redirects:
             if writes_a_file(redirect.operator, redirect.target) and _is_real_file_path(redirect.target):
-                write_paths.append(redirect.target)
+                redirect_write_paths.append(redirect.target)
                 if not _is_temp_path(redirect.target):
                     all_write_targets_are_temp = False
             elif is_read_operator(redirect.operator) and _is_real_file_path(redirect.target):
@@ -151,7 +157,7 @@ def classify_expression(
                         else "elevated by output redirect"
                     )
                 # Only elevate risk if write targets are NOT all temp paths
-                if not (write_paths and all_write_targets_are_temp):
+                if not (redirect_write_paths and all_write_targets_are_temp):
                     result.risk = Risk.max_severity(result.risk, Risk.MEDIUM)
             # /dev/tcp and /dev/udp redirects are network access -> DANGEROUS
             if redirect.target.startswith("/dev/tcp/") or redirect.target.startswith("/dev/udp/"):
@@ -207,6 +213,7 @@ def classify_expression(
         # READONLY and is exactly the case this exists for.
         _apply_sensitive_paths(result, invocation.redirects, sensitive_rules)
 
+        write_paths = argv_write_paths + redirect_write_paths
         result.write_paths = write_paths if write_paths else None
         result.read_paths = read_paths if read_paths else None
 
@@ -224,6 +231,10 @@ def classify_expression(
             all_write_paths.extend(cmd_result.write_paths)
         if cmd_result.read_paths:
             all_read_paths.extend(cmd_result.read_paths)
+        # A wrapper names no output path of its own, so `sudo curl -o X` reports X only on
+        # the inner command. The expression-level list has to reach it, the way the
+        # directory list already reaches a `sudo git -C` below a wrapper.
+        all_write_paths.extend(_collect_inner_write_paths(cmd_result.inner_commands))
 
     # Step 8: Compute composite classification and risk
     if not command_results and parse_warnings:
@@ -264,8 +275,18 @@ def _apply_sensitive_paths(
     Every level reports its own argv and its own redirects, plus the hits of its inner
     commands, so a caller that reads only the top of the tree still sees what a wrapper
     hid. A level with any hit gets risk HIGH; classification is left alone.
+
+    Call this before the redirect targets are merged into `write_paths`: the scan reads that
+    field to source a hit as `argv_write`, and a redirect target is already sourced as
+    `redirect_write` by its own operator.
+
+    A wrapper's own argv holds the inner command's tokens too, so the output paths of
+    everything below it count as writes at its level as well. Without that, `sudo curl -o
+    ~/.ssh/x` reports the same path twice, as a write from `curl` and as an argument of
+    unknown direction from `sudo`.
     """
-    hits = scan_argv(result.argv, result.command, result.positionals, rules)
+    output_paths = [*(result.write_paths or []), *_collect_inner_write_paths(result.inner_commands)]
+    hits = scan_argv(result.argv, result.command, result.positionals, rules, output_paths=output_paths)
     hits.extend(scan_redirects(redirects, rules))
     for inner in result.inner_commands:
         hits.extend(_apply_sensitive_paths(inner, (), rules))
@@ -274,6 +295,16 @@ def _apply_sensitive_paths(
     if result.sensitive_paths:
         result.risk = Risk.HIGH
     return result.sensitive_paths
+
+
+def _collect_inner_write_paths(results: list[InnerCommandResult]) -> list[str]:
+    """Collect the output paths named below a wrapper, recursively."""
+    write_paths: list[str] = []
+    for result in results:
+        if result.write_paths:
+            write_paths.extend(result.write_paths)
+        write_paths.extend(_collect_inner_write_paths(result.inner_commands))
+    return write_paths
 
 
 def _extract_directories_from_argv(command: list[str], argv: list[str]) -> list[str]:

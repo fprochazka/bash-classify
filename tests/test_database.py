@@ -379,3 +379,35 @@ class TestUserCommandsDir:
                 os.environ.pop("BASH_CLASSIFY_CONFIG_DIR", None)
             else:
                 os.environ["BASH_CLASSIFY_CONFIG_DIR"] = old
+
+
+class TestOutputPathOptions:
+    """Options the tool documents as naming a file it writes."""
+
+    def test_curl_output(self, database: dict[str, CommandDef]) -> None:
+        assert database["curl"].options["-o"].names_output_path is True
+        assert database["curl"].options["--output"].names_output_path is True
+
+    def test_curl_upload_file_is_a_read(self, database: dict[str, CommandDef]) -> None:
+        """`curl -T` sends the named file to the server; nothing local is written."""
+        assert database["curl"].options["-T"].names_output_path is False
+
+    def test_wget_output_document(self, database: dict[str, CommandDef]) -> None:
+        assert database["wget"].options["-O"].names_output_path is True
+        assert database["wget"].options["--output-document"].names_output_path is True
+
+    def test_cp_and_mv_target_directory(self, database: dict[str, CommandDef]) -> None:
+        for command in ("cp", "mv"):
+            assert database[command].options["-t"].names_output_path is True
+            assert database[command].options["--target-directory"].names_output_path is True
+
+    def test_sort_output(self, database: dict[str, CommandDef]) -> None:
+        assert database["sort"].options["-o"].names_output_path is True
+
+    def test_git_clone_separate_git_dir(self, database: dict[str, CommandDef]) -> None:
+        clone = database["git"].subcommands["clone"]
+        assert clone.options["--separate-git-dir"].names_output_path is True
+
+    def test_tar_file_is_not_marked(self, database: dict[str, CommandDef]) -> None:
+        """`tar -f` writes the archive when creating and reads it when extracting."""
+        assert database["tar"].options["-f"].names_output_path is False

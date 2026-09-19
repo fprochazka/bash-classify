@@ -5,3 +5,6 @@ classification: EXTERNAL_EFFECTS
 strict: false
 global_options:
   --help: {overrides: READONLY}
+options:
+  -O: {takes_value: true, names_output_path: true}
+  --output-document: {takes_value: true, aliases: [-O], names_output_path: true}

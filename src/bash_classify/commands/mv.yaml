@@ -5,3 +5,6 @@ classification: LOCAL_EFFECTS
 strict: false
 global_options:
   --help: {overrides: READONLY}
+options:
+  -t: {takes_value: true, names_output_path: true}
+  --target-directory: {takes_value: true, aliases: [-t], names_output_path: true}

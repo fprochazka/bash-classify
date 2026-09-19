@@ -6,5 +6,5 @@ strict: false
 global_options:
   --help: {overrides: READONLY}
 options:
-  -o: {takes_value: true, overrides: LOCAL_EFFECTS}
-  --output: {takes_value: true, overrides: LOCAL_EFFECTS, aliases: [-o]}
+  -o: {takes_value: true, overrides: LOCAL_EFFECTS, names_output_path: true}
+  --output: {takes_value: true, overrides: LOCAL_EFFECTS, aliases: [-o], names_output_path: true}

@@ -111,7 +111,18 @@ subcommands:
 | `aliases` | list | Alternative names (e.g. `-n` for `--namespace`) |
 | `overrides` | enum | When present, override classification to this level |
 | `captures_directory` | boolean | The option's value is a working directory (e.g. `git -C`) |
+| `names_output_path` | boolean | The option's value is a path the command writes (`curl -o`, `sort -o`). It lands in `write_paths`. |
 | `delegates_to` | object | This option triggers delegation (e.g. `find -exec`) |
+
+##### Marking an option as an output path
+
+`names_output_path` answers one question: does the tool's own documentation say this option's value names a file it writes? Check the man page before you set it, and apply three rules.
+
+1. A read is not a write. `curl -T file` uploads the named file to a server and writes nothing locally, so it stays unmarked.
+2. The answer has to hold in every mode of the command. `tar -f` writes the archive under `-c` and reads it under `-x`, and one option cannot be conditioned on another, so it stays unmarked.
+3. A destination named by a positional is out of reach. `cp a b`, `tee out.txt`, `dd of=X` and the prefix of `split` are not options, and nothing in the database describes them.
+
+A consumer uses the field to tell a write to a credential from a mention of one, so a wrong mark is worse than a missing one. When in doubt, leave it off.
 
 #### The `# $schema:` comment
 
@@ -512,7 +523,7 @@ When a command writes to a file via an output redirect, its risk is normally ele
 
 This means `cat > /tmp/foo.txt` is classified as `LOCAL_EFFECTS` with risk `LOW`, while `cat > ~/foo.txt` is classified as `LOCAL_EFFECTS` with risk `MEDIUM`.
 
-The tool also reports `write_paths` and `read_paths` in the output, extracted from redirect operators. These fields are omitted from the JSON output when empty.
+The tool also reports `write_paths` and `read_paths` in the output. `read_paths` comes from input redirects. `write_paths` holds the targets of output redirects and the values of options marked `names_output_path`. Both fields are omitted from the JSON output when empty, and neither is a complete account of what the command touches: a destination named by a plain positional is in neither.
 
 ## 11. Sensitive Paths
 

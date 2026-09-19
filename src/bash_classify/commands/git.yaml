@@ -297,6 +297,8 @@ subcommands:
     classification: LOCAL_EFFECTS
     risk: LOW
     strict: false
+    options:
+      --separate-git-dir: {takes_value: true, names_output_path: true}
   init:
     classification: LOCAL_EFFECTS
     risk: LOW

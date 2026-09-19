@@ -126,9 +126,14 @@ def match_command(
     remaining = argv[1:]
 
     # Step 2: Strip global options
-    remaining, ignored_options, global_directories, global_overrides, global_risk_overrides = _strip_global_options(
-        remaining, command_def
-    )
+    (
+        remaining,
+        ignored_options,
+        global_directories,
+        global_output_paths,
+        global_overrides,
+        global_risk_overrides,
+    ) = _strip_global_options(remaining, command_def)
 
     # Step 3: Subcommand matching
     if command_def.subcommand_mode == SubcommandMode.MATCH_ALL:
@@ -146,6 +151,7 @@ def match_command(
         overrides,
         risk_overrides,
         option_directories,
+        option_output_paths,
         option_delegations,
         remaining_positional,
         present_options,
@@ -155,6 +161,7 @@ def match_command(
     all_overrides = global_overrides + overrides
     all_risk_overrides = global_risk_overrides + risk_overrides
     all_directories = global_directories + option_directories
+    all_output_paths = global_output_paths + option_output_paths
 
     # Build command path
     full_command = [binary, *command_chain]
@@ -328,6 +335,7 @@ def match_command(
         classification_reason=classification_reason,
         overriding_option=overriding_option,
         directories=all_directories if all_directories else None,
+        write_paths=all_output_paths if all_output_paths else None,
         options=present_options,
         positionals=list(remaining_positional),
     )
@@ -380,21 +388,30 @@ def _handle_dangerous_builtin(invocation: CommandInvocation) -> CommandResult:
 def _strip_global_options(
     argv: list[str],
     command_def: CommandDef,
-) -> tuple[list[str], list[str], list[str], list[tuple[str, Classification]], list[tuple[str, Risk]]]:
+) -> tuple[
+    list[str],
+    list[str],
+    list[str],
+    list[str],
+    list[tuple[str, Classification]],
+    list[tuple[str, Risk]],
+]:
     """Strip global options from argv, only before the first subcommand.
 
     Global options are consumed from the front of argv. Once a non-option token
     is encountered (potential subcommand or positional arg), stripping stops and
     all remaining tokens are passed through.
 
-    Returns (remaining_argv, ignored_options, directories, overrides, risk_overrides).
+    Returns (remaining_argv, ignored_options, directories, output_paths, overrides,
+    risk_overrides).
     """
     if not command_def.global_options:
-        return list(argv), [], [], [], []
+        return list(argv), [], [], [], [], []
 
     remaining: list[str] = []
     ignored: list[str] = []
     directories: list[str] = []
+    output_paths: list[str] = []
     overrides: list[tuple[str, Classification]] = []
     risk_overrides: list[tuple[str, Risk]] = []
     i = 0
@@ -414,8 +431,11 @@ def _strip_global_options(
             opt_def = command_def.global_options.get(key)
             if opt_def is not None:
                 ignored.append(token)
+                value = token.split("=", 1)[1]
                 if opt_def.captures_directory:
-                    directories.append(token.split("=", 1)[1])
+                    directories.append(value)
+                if opt_def.names_output_path:
+                    output_paths.append(value)
                 if opt_def.overrides is not None:
                     overrides.append((key, opt_def.overrides))
                 if opt_def.risk is not None:
@@ -436,6 +456,8 @@ def _strip_global_options(
                 ignored.append(argv[i])
                 if opt_def.captures_directory:
                     directories.append(argv[i])
+                if opt_def.names_output_path:
+                    output_paths.append(argv[i])
             i += 1
             continue
 
@@ -443,7 +465,7 @@ def _strip_global_options(
         remaining.append(token)
         i += 1
 
-    return remaining, ignored, directories, overrides, risk_overrides
+    return remaining, ignored, directories, output_paths, overrides, risk_overrides
 
 
 def _match_subcommand(
@@ -519,6 +541,7 @@ def _classify_options(
     list[tuple[str, Classification]],  # overrides: (option_name, classification)
     list[tuple[str, Risk]],  # risk_overrides: (option_name, risk)
     list[str],  # directories
+    list[str],  # output_paths
     list[tuple[str, DelegationConfig, list[str]]],  # option_delegations
     list[str],  # remaining_positional (non-option tokens)
     list[str],  # present_flags (every option present, canonical flag only, no values)
@@ -536,6 +559,7 @@ def _classify_options(
     overrides: list[tuple[str, Classification]] = []
     risk_overrides: list[tuple[str, Risk]] = []
     directories: list[str] = []
+    output_paths: list[str] = []
     delegations: list[tuple[str, DelegationConfig, list[str]]] = []
     positional: list[str] = []
     present_flags: list[str] = []
@@ -590,6 +614,8 @@ def _classify_options(
                     risk_overrides.append((key, opt_def.risk))
                 if opt_def.captures_directory:
                     directories.append(value)
+                if opt_def.names_output_path:
+                    output_paths.append(value)
             else:
                 unknown.append(token)
                 present_flags.append(key)
@@ -618,6 +644,8 @@ def _classify_options(
                     known.append(value)
                     if opt_def.captures_directory:
                         directories.append(value)
+                    if opt_def.names_output_path:
+                        output_paths.append(value)
             else:
                 unknown.append(token)
                 present_flags.append(token)
@@ -645,6 +673,8 @@ def _classify_options(
                 known.append(value)
                 if opt_def.captures_directory:
                     directories.append(value)
+                if opt_def.names_output_path:
+                    output_paths.append(value)
             i += 1
             continue
 
@@ -665,6 +695,8 @@ def _classify_options(
                     risk_overrides.append((short_flag, opt_def.risk))
                 if opt_def.captures_directory:
                     directories.append(value)
+                if opt_def.names_output_path:
+                    output_paths.append(value)
                 i += 1
                 continue
 
@@ -693,6 +725,8 @@ def _classify_options(
                             # Joined value from remaining characters
                             if char_def.captures_directory:
                                 directories.append(remaining_chars)
+                            if char_def.names_output_path:
+                                output_paths.append(remaining_chars)
                         else:
                             # Consume next argv token as the value
                             if i + 1 < len(argv):
@@ -700,6 +734,8 @@ def _classify_options(
                                 known.append(argv[i])
                                 if char_def.captures_directory:
                                     directories.append(argv[i])
+                                if char_def.names_output_path:
+                                    output_paths.append(argv[i])
                         break
                     if char_def.overrides is not None:
                         pending_overrides.append((char_flag, char_def.overrides))
@@ -728,6 +764,8 @@ def _classify_options(
                     known.append(value)
                     if opt_def.captures_directory:
                         directories.append(value)
+                    if opt_def.names_output_path:
+                        output_paths.append(value)
                 i += 1
                 continue
 
@@ -736,7 +774,17 @@ def _classify_options(
         present_flags.append(token)
         i += 1
 
-    return known, unknown, overrides, risk_overrides, directories, delegations, positional, present_flags
+    return (
+        known,
+        unknown,
+        overrides,
+        risk_overrides,
+        directories,
+        output_paths,
+        delegations,
+        positional,
+        present_flags,
+    )
 
 
 def _is_terminator(token: str, terminator: str | None) -> bool:
@@ -962,6 +1010,7 @@ def _match_inner_command(
         overriding_option=inner_result.overriding_option,
         options=inner_result.options,
         positionals=inner_result.positionals,
+        write_paths=inner_result.write_paths,
     )
 
 

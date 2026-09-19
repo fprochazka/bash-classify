@@ -437,3 +437,25 @@ class TestCliSensitivePaths:
         output = json.loads(proc.stdout)
         assert [h["rule"] for h in output["sensitive_paths"]] == ["acme"]
         assert output["risk"] == "HIGH"
+
+
+class TestCliOutputPathOptions:
+    def test_an_option_value_reaches_write_paths(self) -> None:
+        proc = _run_cli("curl -o /home/u/.ssh/authorized_keys https://x")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert output["write_paths"] == ["/home/u/.ssh/authorized_keys"]
+        assert [h["source"] for h in output["sensitive_paths"]] == ["argv_write"]
+
+    def test_both_spellings_of_one_operation_answer_the_same(self) -> None:
+        separate = json.loads(_run_cli("cp -t /home/u/.ssh /tmp/e").stdout)
+        joined = json.loads(_run_cli("cp --target-directory=/home/u/.ssh /tmp/e").stdout)
+        assert separate["write_paths"] == joined["write_paths"] == ["/home/u/.ssh"]
+        assert separate["commands"][0]["positionals"] == joined["commands"][0]["positionals"] == ["/tmp/e"]
+
+    def test_a_wrappers_inner_command_reports_its_own(self) -> None:
+        proc = _run_cli("sudo curl -o /tmp/a https://x")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert output["write_paths"] == ["/tmp/a"]
+        assert output["commands"][0]["inner_commands"][0]["write_paths"] == ["/tmp/a"]

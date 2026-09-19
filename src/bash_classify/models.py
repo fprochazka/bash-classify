@@ -91,18 +91,29 @@ class SensitiveHit:
 
     `source` says where the token came from, and `argv` is deliberately vague: `cat X` reads
     and `tee X` writes, and telling them apart needs per-command knowledge the database does
-    not carry. Only a redirect knows its direction, because the operator says so. The caller
-    owns the policy and gets the detail to write it.
+    not carry. Three sources do know the direction. A redirect knows it because the operator
+    says so, and an option the database marks `names_output_path` knows it because the tool
+    documents that option as naming a file it writes. The caller owns the policy and gets the
+    detail to write it.
     """
 
     token: str
-    """The argv token or redirect target, exactly as it was written."""
+    """The path as it was written, or the argv token that holds it.
+
+    An option value is reported on its own, so `--output=/home/u/.ssh/x` reports
+    `/home/u/.ssh/x`. Every other token is reported whole.
+    """
 
     rule: str
     """The denylist entry that matched, such as `ssh` or `aws-credentials`."""
 
     source: str
-    """Where the token was found: `argv`, `redirect_read`, `redirect_write` or `env_dump`."""
+    """Where the token was found.
+
+    `argv_write` is a token the command documents as an output path, such as the value of
+    `curl -o`. `argv` is every other argument, of unknown direction. The rest name a
+    redirect (`redirect_read`, `redirect_write`) or an environment dump (`env_dump`).
+    """
 
     spelling: str = "literal"
     """Which reading of the token matched: `literal`, `posix_escape`, `windows` or `glob`.
@@ -155,6 +166,7 @@ class OptionDef:
     overrides: Classification | None = None
     risk: Risk | None = None
     captures_directory: bool = False
+    names_output_path: bool = False
     delegates_to: DelegationConfig | None = None
 
 
@@ -183,7 +195,11 @@ class CommandDef:
 
 @dataclass
 class InnerCommandResult:
-    """Result of classifying a delegated inner command."""
+    """Result of classifying a delegated inner command.
+
+    `write_paths` carries only what the inner command's own argv names as output; an inner
+    command has no redirects of its own, because the redirect belongs to the wrapper.
+    """
 
     delegation_mode: str
     delegation_source: str
@@ -198,12 +214,20 @@ class InnerCommandResult:
     overriding_option: str | None = None
     options: list[str] | None = None
     positionals: list[str] | None = None
+    write_paths: list[str] | None = None
     sensitive_paths: list[SensitiveHit] = field(default_factory=list)
 
 
 @dataclass
 class CommandResult:
-    """Result of classifying a single top-level command."""
+    """Result of classifying a single top-level command.
+
+    `write_paths` holds the paths this command names as output: the target of every output
+    redirect, and the value of every option the database marks `names_output_path`. It is
+    not the complete set of files the command touches. A destination written as a plain
+    positional (`cp a b`, `tee out.txt`) is absent, because telling a read positional from a
+    write one needs per-command knowledge the database does not carry.
+    """
 
     command: list[str]
     argv: list[str]

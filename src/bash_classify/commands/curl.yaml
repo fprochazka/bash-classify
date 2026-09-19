@@ -6,8 +6,8 @@ strict: false
 global_options:
   --help: {overrides: READONLY}
 options:
-  -o: {takes_value: true, overrides: EXTERNAL_EFFECTS}
-  --output: {takes_value: true, overrides: EXTERNAL_EFFECTS, aliases: [-o]}
+  -o: {takes_value: true, overrides: EXTERNAL_EFFECTS, names_output_path: true}
+  --output: {takes_value: true, overrides: EXTERNAL_EFFECTS, aliases: [-o], names_output_path: true}
   -O: {overrides: EXTERNAL_EFFECTS}
   --remote-name: {overrides: EXTERNAL_EFFECTS, aliases: [-O]}
   -T: {takes_value: true, overrides: EXTERNAL_EFFECTS}

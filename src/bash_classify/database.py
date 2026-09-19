@@ -266,6 +266,7 @@ def _parse_options(raw: dict | None) -> dict[str, OptionDef]:
             overrides=_parse_classification(props.get("overrides")),
             risk=_parse_risk(props.get("risk")),
             captures_directory=props.get("captures_directory", False),
+            names_output_path=props.get("names_output_path", False),
             delegates_to=_parse_delegation_config(props.get("delegates_to")),
         )
 
