@@ -1010,6 +1010,7 @@ def _match_inner_command(
         overriding_option=inner_result.overriding_option,
         options=inner_result.options,
         positionals=inner_result.positionals,
+        directories=inner_result.directories,
         write_paths=inner_result.write_paths,
     )
 

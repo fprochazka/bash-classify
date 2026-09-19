@@ -977,7 +977,7 @@ A subcommand entry takes the same fields as the command level, minus `command` a
 | `takes_value` | `bool` | Whether the option consumes the next token as its value |
 | `aliases` | `list[str]` | Alternative names for this option (e.g. `-n` for `--namespace`) |
 | `overrides` | `enum` | When this option is present, override the classification to this level |
-| `captures_directory` | `bool` | The value of this option is a directory the command is pointed at: a working directory (`git -C`, `make -C`) or a destination an archive is unpacked into (`tar -C`, `unzip -d`). It lands in `directories`. |
+| `captures_directory` | `bool` | The value of this option is a directory the command is pointed at: a working directory (`git -C`, `make -C`) or a destination an archive is unpacked into (`tar -C`, `unzip -d`). It lands in the invocation's own `directories`, at whatever depth the invocation sits. |
 | `names_output_path` | `bool` | The tool documents this option's value as a path it writes (`curl -o`, `sort -o`). It lands in `write_paths`, and a sensitive-path hit on it is reported with `source: "argv_write"`. |
 | `delegates_to` | `object` | This option's value(s) form a delegated inner command (e.g. `find -exec`) |
 
@@ -1116,15 +1116,45 @@ Name these when you describe the feature, so nobody reads it as stronger than it
 
 ## Directory Detection
 
-The tool extracts working directories from:
+`directories` means something different at the expression level and on a single invocation,
+and a caller has to pick the one that answers its question.
 
-| Source | Example |
-|---|---|
-| `cd dir` / `pushd dir` / `popd` | Explicit directory changes |
-| Options with `captures_directory: true` | `git -C /path`, `make -C /path`, `tar -C /path`, `unzip -d /path` |
-| Well-known commands | `ls /path`, `find /path`, `cat /path/file` (dirname) |
+**On an invocation** the list holds the values of that invocation's `captures_directory`
+options, and nothing else: the destination of `tar -C` or `unzip -d`, the working directory
+of `git -C`. Every invocation carries it at every depth — a `commands` entry and an
+`inner_commands` entry in the JSON, `CommandResult.directories` and
+`InnerCommandResult.directories` in Python — so walking invocations needs no special case
+for the top level. The JSON omits the key when the list is empty, so a wrapper that names no
+directory of its own cannot be read as one that does.
 
-Directories are reported as-is (not resolved) since variable expansion may be involved.
+**At the expression level** the list is wider. It collects four kinds of value:
+
+- the target of a `cd` or `pushd`
+- the value of a `captures_directory` option on a top-level invocation
+- the first positional of an `ls` or a `find`
+- the dirname of the first path holding a `/` that a `cat`, `head`, `tail`, `less` or `more` was handed
+
+Directories are reported as written, never resolved, because a value may hold a variable
+or a `~`.
+
+### A destination below a wrapper stays below it
+
+`sudo tar -xf e.tar -C ~/.config` reports the destination on the `tar` invocation inside
+`inner_commands`. The expression-level list stays empty. `write_paths` behaves the opposite
+way — a wrapper's expression-level `write_paths` does carry what the wrapped command names
+as output — and the difference is deliberate.
+
+`write_paths` holds one kind of path: files a command names as output. Merging several of
+those produces a list that still means one thing, so a caller can act on it directly.
+`directories` mixes four, and a dirname such as the `/etc` of `cat /etc/config` reads
+exactly like the `/etc` of `tar -C /etc`. Aggregating that through wrappers would move more
+ambiguous values into the list a caller reaches for first, which is why the per-invocation
+list exists at all. A caller after destinations walks the invocations instead —
+`iter_invocations` in Python, the recursive `inner_commands` in the JSON — and reads each
+`directories` there.
+
+Do not "fix" the asymmetry by making the expression-level list reach through wrappers. The
+tests that pin the current values are there to catch exactly that change.
 
 ### Limit: a sensitive rule under a reported directory is not a hit
 
@@ -1132,7 +1162,7 @@ Directories are reported as-is (not resolved) since variable expansion may be in
 
 This is deliberate and it will not change. The contents of an archive are unknowable without opening it, so the only rule the library could apply is "any denylisted path that sits under the destination is a hit". The common destinations are `.`, `..`, `~` and `$PWD`: every rule sits under those, so the check would fire on every extraction anybody ever runs, and a gate that fires on everything gets switched off. `tar -xf e.tar -C .` is the case to keep in mind.
 
-Extraction into a parent directory is therefore a general way past a path denylist, and closing it is the caller's policy call, not the library's. The destination is in `directories` for exactly that reason. A caller that wants the floor can require the destination to carry some minimum specificity before applying it — at least a few segments, and not the working directory, the home directory or the root — the way the glob matcher requires two literal characters before reading a segment as a pattern.
+Extraction into a parent directory is therefore a general way past a path denylist, and closing it is the caller's policy call, not the library's. The destination is in the invocation's `directories` for exactly that reason, whether the invocation is top-level or sits under `sudo`, `sh -c`, `xargs` or `find -exec`. A caller that wants the floor can require the destination to carry some minimum specificity before applying it — at least a few segments, and not the working directory, the home directory or the root — the way the glob matcher requires two literal characters before reading a segment as a pattern.
 
 ## Special-cased Commands
 
@@ -1187,7 +1217,7 @@ The `commands` list below is recursive — any command entry can contain `inner_
 {
   "expression": "string — the original input",
   "classification": "READONLY | LOCAL_EFFECTS | EXTERNAL_EFFECTS | DANGEROUS | UNKNOWN",
-  "directories": ["string — detected directories"],
+  "directories": ["string — cd and pushd targets, captures_directory values of top-level invocations, the first positional of ls and find, and dirnames of paths handed to cat, head, tail, less and more, mixed in one list; for a destination below a wrapper read the inner command's own directories instead"],
   "write_paths": ["string — paths the commands name as output: redirect targets and the values of options marked names_output_path (optional, omitted when empty)"],
   "read_paths": ["string — files targeted by input redirects (optional, omitted when empty)"],
   "sensitive_paths": [
@@ -1210,6 +1240,7 @@ The `commands` list below is recursive — any command entry can contain `inner_
       "remaining_options": ["string — options that were not in database"],
       "classification_reason": "string — why this classification was chosen",
       "overriding_option": "string | null — the option that elevated classification",
+      "directories": ["string — the values of this invocation's captures_directory options (optional, omitted when empty); narrower than the expression-level directories"],
       "write_paths": ["string — this command's own output paths: option values and redirect targets (optional, omitted when empty)"],
       "read_paths": ["string — files targeted by input redirects (optional, omitted when empty)"],
       "sensitive_paths": ["... — this command's own hits plus its inner commands'; always present, empty when none"],
@@ -1223,6 +1254,7 @@ The `commands` list below is recursive — any command entry can contain `inner_
           "matched_rule": "...",
           "options": ["... — same meaning as on the enclosing command"],
           "positionals": ["... — same meaning as on the enclosing command"],
+          "directories": ["... — same meaning as on the enclosing command; not aggregated into the expression-level directories"],
           "write_paths": ["... — option values only; an inner command carries no redirects of its own"],
           "sensitive_paths": ["... — same meaning as on the enclosing command"],
           "inner_commands": ["... — recursive, can nest further"]

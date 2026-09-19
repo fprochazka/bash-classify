@@ -50,6 +50,8 @@ def _inner_command_to_dict(result: InnerCommandResult) -> dict:
     if result.overriding_option is not None:
         d["overriding_option"] = result.overriding_option
 
+    if result.directories:
+        d["directories"] = result.directories
     if result.write_paths:
         d["write_paths"] = result.write_paths
 
@@ -80,6 +82,8 @@ def _command_to_dict(result: CommandResult) -> dict:
     if result.overriding_option is not None:
         d["overriding_option"] = result.overriding_option
 
+    if result.directories:
+        d["directories"] = result.directories
     if result.write_paths:
         d["write_paths"] = result.write_paths
     if result.read_paths:

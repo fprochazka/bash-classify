@@ -439,6 +439,17 @@ class TestCliSensitivePaths:
         assert output["risk"] == "HIGH"
 
 
+def _directories_below(commands: list[dict]) -> list[list[str]]:
+    """Every non-empty `directories` of an inner command, at any depth."""
+    found: list[list[str]] = []
+    for command in commands:
+        for inner in command.get("inner_commands", []):
+            if inner.get("directories"):
+                found.append(inner["directories"])
+            found.extend(_directories_below([inner]))
+    return found
+
+
 class TestCliExtractionDestinations:
     """An archive is unpacked into a directory, and that directory has to reach the caller.
 
@@ -467,6 +478,26 @@ class TestCliExtractionDestinations:
         output = json.loads(proc.stdout)
         assert output["directories"] == ["/home/u/.config"]
 
+    @pytest.mark.parametrize(
+        "expression",
+        ["tar -xf e.tar -C /home/u/.config", "unzip e.zip -d /home/u/.config"],
+    )
+    def test_an_unwrapped_destination_is_serialized_on_the_command_too(self, expression: str) -> None:
+        """The same key at every depth: a consumer walking invocations needs no top-level case."""
+        proc = _run_cli(expression)
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert output["commands"][0]["directories"] == ["/home/u/.config"]
+        assert output["directories"] == ["/home/u/.config"]
+
+    def test_a_command_naming_no_directory_carries_no_key(self) -> None:
+        """`ls /tmp` names its directory as a positional, which no option captures."""
+        proc = _run_cli("ls /tmp")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert "directories" not in output["commands"][0]
+        assert output["directories"] == ["/tmp"]
+
     def test_a_rule_under_the_destination_is_not_a_hit(self) -> None:
         """The documented limit, in the form a consumer will meet it."""
         proc = _run_cli("tar -xf e.tar -C /home/u")
@@ -475,6 +506,34 @@ class TestCliExtractionDestinations:
         assert output["directories"] == ["/home/u"]
         assert output["sensitive_paths"] == []
         assert output["risk"] == "LOW"
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "sh -c 'tar -xf e.tar -C /home/u/.config'",
+            "sudo tar -xf e.tar -C /home/u/.config",
+            "env FOO=1 tar -xf e.tar -C /home/u/.config",
+            "timeout 5 tar -xf e.tar -C /home/u/.config",
+            "xargs unzip e.zip -d /home/u/.config",
+            "sudo sh -c 'unzip e.zip -d /home/u/.config'",
+        ],
+    )
+    def test_a_wrapped_destination_is_serialized_on_the_inner_command(self, expression: str) -> None:
+        """The wrapped destination is in the JSON, and only on the invocation that names it."""
+        proc = _run_cli(expression)
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        assert _directories_below(output["commands"]) == [["/home/u/.config"]]
+        assert output["directories"] == []
+
+    def test_a_wrapper_serializes_no_directories_key_of_its_own(self) -> None:
+        """The key is omitted when empty, so a wrapper cannot be read as the destination."""
+        proc = _run_cli("sudo sh -c 'tar -xf e.tar -C /home/u/.config'")
+        assert proc.returncode == 0, f"stderr: {proc.stderr}"
+        output = json.loads(proc.stdout)
+        sh = output["commands"][0]["inner_commands"][0]
+        assert sh["command"] == ["sh"]
+        assert "directories" not in sh
 
 
 class TestCliOutputPathOptions:

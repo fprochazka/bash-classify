@@ -199,6 +199,12 @@ class InnerCommandResult:
 
     `write_paths` carries only what the inner command's own argv names as output; an inner
     command has no redirects of its own, because the redirect belongs to the wrapper.
+
+    `directories` holds the values of this invocation's `captures_directory` options, and
+    nothing else: the destination of `tar -C` or `unzip -d`, the working directory of
+    `git -C`. It is the only place a wrapped destination can be read, because
+    `ExpressionResult.directories` does not aggregate it from here. See `ExpressionResult`
+    for why.
     """
 
     delegation_mode: str
@@ -214,6 +220,7 @@ class InnerCommandResult:
     overriding_option: str | None = None
     options: list[str] | None = None
     positionals: list[str] | None = None
+    directories: list[str] | None = None
     write_paths: list[str] | None = None
     sensitive_paths: list[SensitiveHit] = field(default_factory=list)
 
@@ -227,6 +234,10 @@ class CommandResult:
     not the complete set of files the command touches. A destination written as a plain
     positional (`cp a b`, `tee out.txt`) is absent, because telling a read positional from a
     write one needs per-command knowledge the database does not carry.
+
+    `directories` holds the values of this invocation's `captures_directory` options, the
+    same as on `InnerCommandResult`. It does not carry the `cd` targets and read dirnames
+    that `ExpressionResult.directories` also collects.
     """
 
     command: list[str]
@@ -249,7 +260,22 @@ class CommandResult:
 
 @dataclass
 class ExpressionResult:
-    """Result of classifying a full bash expression."""
+    """Result of classifying a full bash expression.
+
+    `directories` is wider than the per-invocation `directories` of the commands below it.
+    It mixes three things: the target of a `cd` or `pushd`, the dirname of a path handed to
+    a reading command such as `cat` or `head`, and the value of a `captures_directory`
+    option. A caller that wants extraction destinations specifically has to read the
+    per-invocation list, because here a destination is indistinguishable from a dirname.
+
+    Values captured by a `captures_directory` option below a wrapper stay below it. That is
+    the opposite of `write_paths`, which does aggregate through wrappers, and it is
+    deliberate: `write_paths` carries one kind of path, so merging is free, while merging a
+    conflated list only spreads the ambiguity to the level where it is hardest to resolve.
+
+    Directories are reported as written, never resolved, because a value may hold a variable
+    or a `~`.
+    """
 
     expression: str
     classification: Classification

@@ -89,6 +89,29 @@ class TestCommandToDict:
         # inner_commands is always present (even if empty)
         assert d["inner_commands"] == []
 
+    def test_directories_are_serialized(self) -> None:
+        cmd = CommandResult(
+            command=["tar"],
+            argv=["tar", "-xf", "e.tar", "-C", "/home/u/.config"],
+            classification=Classification.LOCAL_EFFECTS,
+            risk=Risk.LOW,
+            matched_rule="tar",
+            inner_commands=[],
+            directories=["/home/u/.config"],
+        )
+        assert _command_to_dict(cmd)["directories"] == ["/home/u/.config"]
+
+    def test_the_directories_key_is_omitted_when_empty(self) -> None:
+        cmd = CommandResult(
+            command=["ls"],
+            argv=["ls", "/tmp"],
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            matched_rule="ls",
+            inner_commands=[],
+        )
+        assert "directories" not in _command_to_dict(cmd)
+
 
 class TestInnerCommandToDict:
     def test_with_delegation_mode_and_source(self) -> None:
@@ -110,6 +133,34 @@ class TestInnerCommandToDict:
         assert d["classification"] == "DANGEROUS"
         assert d["matched_rule"] == "rm"
         assert d["inner_commands"] == []
+
+    def test_directories_are_serialized(self) -> None:
+        inner = InnerCommandResult(
+            delegation_mode="rest_are_argv",
+            delegation_source="sudo",
+            command=["tar"],
+            argv=["tar", "-xf", "e.tar", "-C", "/home/u/.config"],
+            classification=Classification.LOCAL_EFFECTS,
+            risk=Risk.LOW,
+            matched_rule="tar",
+            inner_commands=[],
+            directories=["/home/u/.config"],
+        )
+        d = _inner_command_to_dict(inner)
+        assert d["directories"] == ["/home/u/.config"]
+
+    def test_the_directories_key_is_omitted_when_empty(self) -> None:
+        inner = InnerCommandResult(
+            delegation_mode="rest_are_argv",
+            delegation_source="sudo",
+            command=["ls"],
+            argv=["ls", "/tmp"],
+            classification=Classification.READONLY,
+            risk=Risk.LOW,
+            matched_rule="ls",
+            inner_commands=[],
+        )
+        assert "directories" not in _inner_command_to_dict(inner)
 
 
 class TestResultToDict:

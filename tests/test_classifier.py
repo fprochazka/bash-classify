@@ -217,6 +217,84 @@ class TestDirectoryDetection:
         assert "/some/repo" in result.directories
 
 
+class TestDirectoryThroughAWrapper:
+    """A `captures_directory` value has to be readable when a wrapper runs the command.
+
+    The expression-level list does not collect it, so the per-invocation `directories` of
+    the wrapped command is the only place it appears. Each case therefore pins both: the
+    destination on the invocation, and the expression-level list left as it was.
+    """
+
+    WRAPPED = [
+        ("sh -c 'tar -xf e.tar -C /home/u/.config'", "tar"),
+        ("sudo tar -xf e.tar -C /home/u/.config", "tar"),
+        ("env FOO=1 tar -xf e.tar -C /home/u/.config", "tar"),
+        ("timeout 5 tar -xf e.tar -C /home/u/.config", "tar"),
+        ("xargs tar -xf e.tar -C /home/u/.config", "tar"),
+        ("find . -exec tar -xf e.tar -C /home/u/.config ;", "tar"),
+        ("sh -c 'unzip e.zip -d /home/u/.config'", "unzip"),
+        ("sudo unzip e.zip -d /home/u/.config", "unzip"),
+        ("env FOO=1 unzip e.zip -d /home/u/.config", "unzip"),
+        ("timeout 5 unzip e.zip -d /home/u/.config", "unzip"),
+        ("xargs unzip e.zip -d /home/u/.config", "unzip"),
+        ("find . -exec unzip e.zip -d /home/u/.config ;", "unzip"),
+    ]
+
+    @pytest.mark.parametrize(("expression", "binary"), WRAPPED)
+    def test_the_destination_reaches_the_wrapped_invocation(
+        self,
+        expression: str,
+        binary: str,
+        database: dict[str, CommandDef],
+    ) -> None:
+        result = classify_expression(expression, database=database)
+        destinations = [
+            invocation.directories
+            for invocation, via in iter_invocations(result)
+            if via and invocation.command == [binary]
+        ]
+        assert destinations == [["/home/u/.config"]]
+
+    @pytest.mark.parametrize(("expression", "binary"), WRAPPED)
+    def test_the_expression_level_list_does_not_collect_it(
+        self,
+        expression: str,
+        binary: str,
+        database: dict[str, CommandDef],
+    ) -> None:
+        """Pinned because not aggregating is the decision, not an oversight."""
+        result = classify_expression(expression, database=database)
+        expected = ["."] if expression.startswith("find ") else []
+        assert result.directories == expected
+
+    def test_a_destination_two_wrappers_deep_still_reaches(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("sudo sh -c 'tar -xf e.tar -C /home/u/.config'", database=database)
+        reached = [
+            (via, invocation.directories) for invocation, via in iter_invocations(result) if invocation.directories
+        ]
+        assert reached == [(["sudo", "sh"], ["/home/u/.config"])]
+        assert result.directories == []
+
+    def test_a_wrapper_does_not_borrow_the_destination_below_it(self, database: dict[str, CommandDef]) -> None:
+        """`sh` names no directory of its own, so its own list stays empty."""
+        result = classify_expression("sudo sh -c 'tar -xf e.tar -C /home/u/.config'", database=database)
+        sh = next(invocation for invocation, _ in iter_invocations(result) if invocation.command == ["sh"])
+        assert sh.directories is None
+
+    def test_a_positional_directory_below_a_wrapper_is_not_captured(self, database: dict[str, CommandDef]) -> None:
+        """`ls /tmp` names its directory as a positional, which no option captures."""
+        result = classify_expression("sudo ls /tmp", database=database)
+        ls = next(invocation for invocation, _ in iter_invocations(result) if invocation.command == ["ls"])
+        assert ls.directories is None
+        assert result.directories == ["/tmp"]
+
+    def test_an_unwrapped_invocation_is_untouched(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("tar -xf e.tar -C /home/u/.config", database=database)
+        assert result.directories == ["/home/u/.config"]
+        assert result.commands[0].directories == ["/home/u/.config"]
+        assert result.commands[0].inner_commands == []
+
+
 class TestCatDirectoryDetection:
     def test_cat_extracts_dirname(self, database: dict[str, CommandDef]) -> None:
         result = classify_expression("cat /etc/config", database=database)
