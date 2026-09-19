@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from bash_classify.classifier import _is_system_path, classify_expression, iter_invocations
@@ -694,6 +696,376 @@ class TestRiskSystemPathElevation:
         self, operator: str, database: dict[str, CommandDef]
     ) -> None:
         result = classify_expression(f"echo config {operator} /etc/myapp.conf", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+
+class TestProgramWordIsNotASystemPathWrite:
+    """Running a binary by absolute path is not a write into the directory it lives in."""
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "/usr/bin/git add a.txt",
+            "/usr/local/bin/git add a.txt",
+            "/opt/tools/git add a.txt",
+        ],
+    )
+    def test_an_absolute_program_path_classifies_as_the_bare_spelling(
+        self, expression: str, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(expression, database=database)
+        bare = classify_expression("git add a.txt", database=database)
+        assert (result.classification, result.risk) == (bare.classification, bare.risk)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+
+    @pytest.mark.parametrize(
+        ("absolute", "bare"),
+        [
+            ("env /usr/bin/git add a.txt", "env git add a.txt"),
+            ("timeout 5 /usr/bin/git add a.txt", "timeout 5 git add a.txt"),
+            ("xargs /bin/cp", "xargs cp"),
+            ("sh -c '/usr/bin/git add a.txt'", "sh -c 'git add a.txt'"),
+            ("find . -exec /bin/cp {} dst/ ;", "find . -exec cp {} dst/ ;"),
+        ],
+    )
+    def test_a_wrapped_program_path_classifies_as_the_bare_spelling(
+        self, absolute: str, bare: str, database: dict[str, CommandDef]
+    ) -> None:
+        """Every wrapper here leaves the verdict to the command it runs, so the rows are real controls."""
+        wrapped = classify_expression(absolute, database=database)
+        plain = classify_expression(bare, database=database)
+        assert (wrapped.classification, wrapped.risk) == (plain.classification, plain.risk)
+
+    @pytest.mark.parametrize(
+        ("absolute", "bare"),
+        [
+            ("sudo /usr/bin/git add a.txt", "sudo git add a.txt"),
+            ("sudo sh -c '/usr/bin/git add a.txt'", "sudo sh -c 'git add a.txt'"),
+            ("eval '/usr/bin/git add a.txt'", "eval 'git add a.txt'"),
+        ],
+    )
+    def test_a_floored_wrapper_gives_both_spellings_the_same_verdict(
+        self, absolute: str, bare: str, database: dict[str, CommandDef]
+    ) -> None:
+        """A documentation row, not a control.
+
+        `sudo` and `eval` are DANGEROUS/HIGH whatever they run, so both spellings agree here
+        no matter what the system-path elevation does. The row records the shape; the rows
+        above are what actually pin the behaviour.
+        """
+        wrapped = classify_expression(absolute, database=database)
+        plain = classify_expression(bare, database=database)
+        assert (wrapped.classification, wrapped.risk) == (plain.classification, plain.risk)
+
+    @pytest.mark.parametrize(
+        ("expression", "classification", "risk"),
+        [
+            ("env /usr/bin/git add a.txt", Classification.LOCAL_EFFECTS, Risk.LOW),
+            ("timeout 5 /usr/bin/git add a.txt", Classification.LOCAL_EFFECTS, Risk.LOW),
+            ("xargs /bin/cp", Classification.LOCAL_EFFECTS, Risk.MEDIUM),
+            ("sh -c '/usr/bin/git add a.txt'", Classification.LOCAL_EFFECTS, Risk.LOW),
+        ],
+    )
+    def test_the_wrapped_verdicts_are_what_they_should_be(
+        self, expression: str, classification: Classification, risk: Risk, database: dict[str, CommandDef]
+    ) -> None:
+        """Pin the wrapped verdicts too, so a bare spelling that regresses the same way still fails."""
+        result = classify_expression(expression, database=database)
+        assert result.classification == classification
+        assert result.risk == risk
+
+    def test_an_absolute_readonly_program_path_stays_readonly(self, database: dict[str, CommandDef]) -> None:
+        """A documentation row, not a control.
+
+        `READONLY` sits below the guard the elevation runs behind, so this row could not fail
+        in any version of the rule -- it records why the bug was easy to miss, not coverage.
+        """
+        result = classify_expression("/usr/bin/git status", database=database)
+        bare = classify_expression("git status", database=database)
+        assert (result.classification, result.risk) == (bare.classification, bare.risk)
+        assert result.classification == Classification.READONLY
+        assert result.risk == Risk.LOW
+
+    def test_an_absolute_path_to_a_dangerous_program_is_still_dangerous(self, database: dict[str, CommandDef]) -> None:
+        """`rm` earns DANGEROUS from its own definition, not from the system-path elevation."""
+        result = classify_expression("/usr/bin/rm f", database=database)
+        bare = classify_expression("rm f", database=database)
+        assert (result.classification, result.risk) == (bare.classification, bare.risk)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+
+class TestSystemPathsInsideAScript:
+    """A script handed to a shell gets the verdict its commands would get on their own."""
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "sh -c '/usr/bin/touch /etc/passwd'",
+            "bash -c '/usr/bin/touch /etc/newfile'",
+            "sh -c '/bin/mkdir -p /usr/lib/x'",
+            "timeout 5 sh -c '/usr/bin/mkdir /usr/lib/x'",
+            "sh -c '/usr/bin/cp a /usr/bin/b'",
+            "timeout 5 sh -c '/bin/touch /etc/passwd'",
+            "sh -c 'mkdir -p /usr/lib/x'",
+            "sh -c 'touch /etc/newfile'",
+        ],
+    )
+    def test_a_write_into_a_system_directory_inside_a_script_is_dangerous(
+        self, expression: str, database: dict[str, CommandDef]
+    ) -> None:
+        """These pin the script scan, but not all of them against the same thing.
+
+        The rows whose script begins with an absolute system path also pass on master, which
+        caught them by accident -- the whole script token read as a path under `/usr` or
+        `/bin`. What they are a control against is the first shape of this commit, which
+        skipped the script token and scanned nothing in its place and turned them
+        `LOCAL_EFFECTS`/`LOW`, the hook's auto-approve condition. The last two rows begin with
+        a bare command and fail on master as well, so the class is not written entirely
+        against one revision.
+        """
+        result = classify_expression(expression, database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "sudo sh -c '/bin/touch /etc/passwd'",
+            "sh -c 'sudo /usr/bin/touch /etc/passwd'",
+        ],
+    )
+    def test_a_floored_command_around_a_script_is_dangerous_either_way(
+        self, expression: str, database: dict[str, CommandDef]
+    ) -> None:
+        """A documentation row, not a control.
+
+        `sudo` is DANGEROUS/HIGH whatever it runs, inside or outside a script, so these pass in
+        every version of this rule. They record that nesting a shell and a privilege wrapper in
+        either order is handled; the rows above are what pin the behaviour.
+        """
+        result = classify_expression(expression, database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    @pytest.mark.parametrize(
+        "script",
+        [
+            "mkdir -p /usr/lib/x",
+            "touch /etc/newfile",
+            "cp ./hosts /etc/hosts",
+            "/usr/bin/git add a.txt",
+            "git add a.txt",
+            "cat /etc/hosts && touch x",
+            "cd /usr/local/src && make",
+            "git status",
+        ],
+    )
+    def test_a_script_gets_the_verdict_its_commands_get_unwrapped(
+        self, script: str, database: dict[str, CommandDef]
+    ) -> None:
+        """`sh -c 'X'` should agree with `X` in both directions, not only when it is safe to."""
+        wrapped = classify_expression(f"sh -c '{script}'", database=database)
+        bare = classify_expression(script, database=database)
+        assert (wrapped.classification, wrapped.risk) == (bare.classification, bare.risk)
+
+    def test_a_readonly_command_in_a_script_does_not_elevate_on_its_operand(
+        self, database: dict[str, CommandDef]
+    ) -> None:
+        """Each command in a script is guarded by its own classification, not the shell's."""
+        result = classify_expression("sh -c 'cat /etc/hosts && touch x'", database=database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+
+    def test_a_write_in_a_script_still_elevates_next_to_a_readonly_command(
+        self, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression("sh -c 'cat /etc/hosts && touch /etc/x'", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_a_clustered_shell_flag_parses_no_script_at_all(self, database: dict[str, CommandDef]) -> None:
+        """`-lc` is not the `-c` the database declares, so nothing is delegated and nothing scanned.
+
+        The verdict below comes from `bash`'s own DANGEROUS classification, not from the script
+        scan, so asserting only the verdict would pin a mechanism this test does not exercise.
+        The absence of an inner command is the thing worth pinning; what it costs when the
+        wrapper is not itself DANGEROUS is pinned by `TestUserDeclaredShellDelegation`.
+        """
+        result = classify_expression("bash -lc '/usr/bin/touch /etc/passwd'", database=database)
+        assert result.commands[0].inner_commands == []
+        assert result.commands[0].classification_reason == "base classification from rule bash"
+
+
+class TestSystemPathOperandsStillCount:
+    """The exemption covers the program word only; an operand naming a system path is still a hit."""
+
+    def test_a_write_into_a_system_directory_is_dangerous(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("cp a /usr/bin/b", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_the_destination_counts_even_when_the_program_is_absolute(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("/usr/bin/install -m755 x /usr/local/bin/y", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_the_program_word_is_exempt_once_not_everywhere(self, database: dict[str, CommandDef]) -> None:
+        """`/usr/bin/git` is the program in position 0 and an operand in position 2."""
+        result = classify_expression("/usr/bin/git add /usr/bin/git", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_a_nested_program_word_is_exempt_once_not_everywhere(self, database: dict[str, CommandDef]) -> None:
+        """`env` rather than `sudo`, because `sudo` forces DANGEROUS on its own and would pass either way."""
+        result = classify_expression("env /usr/bin/git add /usr/bin/git", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_a_program_word_from_inside_a_script_is_not_spent_on_an_outer_token(
+        self, database: dict[str, CommandDef]
+    ) -> None:
+        """The script's `/bin/cp` must not exempt the `/bin/cp` operand of the enclosing `cp`."""
+        result = classify_expression("cp /bin/cp dst/ && sh -c '/bin/cp a b'", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_operands_next_to_an_absolute_program_still_count(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("/bin/cp /bin/sh /usr/bin/x", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_operands_next_to_a_wrapped_absolute_program_still_count(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("env /bin/cp /bin/sh /usr/bin/x", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_a_redirect_into_a_system_directory_is_untouched(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("echo x > /etc/hosts", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_an_absolute_program_does_not_exempt_a_redirect(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("/bin/echo x > /etc/hosts", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    @pytest.mark.parametrize(
+        "expression",
+        ["find . -exec {} /usr/bin/git add ;", "find . -exec {} /bin/mkdir -p ;"],
+    )
+    def test_an_exec_argument_after_a_placeholder_is_not_the_program_word(
+        self, expression: str, database: dict[str, CommandDef]
+    ) -> None:
+        """`{}` is stripped before the inner argv is built, so `argv[0]` here is an argument.
+
+        The program is whatever file `find` matched; `/usr/bin/git` is handed to it. Exempting
+        it would be this commit's own mistake aimed at the wrong token, and it would auto-approve
+        an expression that executes every match.
+        """
+        result = classify_expression(expression, database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_an_exec_program_word_before_a_placeholder_is_still_exempt(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("find . -exec /bin/cp {} . ;", database=database)
+        bare = classify_expression("find . -exec cp {} . ;", database=database)
+        assert (result.classification, result.risk) == (bare.classification, bare.risk)
+        assert result.classification == Classification.LOCAL_EFFECTS
+
+    def test_an_exec_destination_counts_next_to_an_exempt_program_word(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("find . -exec /bin/cp {} /usr/bin/x ;", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_a_script_token_is_skipped_once_not_everywhere(self, database: dict[str, CommandDef]) -> None:
+        """`/bin/ls` is the script here and also the argument handed to it; only the script is skipped."""
+        result = classify_expression("nohup sh -c /bin/ls /bin/ls", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_a_script_token_found_deeper_does_not_skip_an_outer_token(self, database: dict[str, CommandDef]) -> None:
+        """A nested script's token belongs to the inner command line, not to this one."""
+        result = classify_expression("sh -c 'bash -c '/usr/bin/touch /etc/x''", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+
+class TestUserDeclaredShellDelegation:
+    """What clustering the delegating flag costs, where the wrapper is not DANGEROUS by itself."""
+
+    @pytest.fixture
+    def runner(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A user-defined command delegating on `-c`, with no DANGEROUS floor to hide behind."""
+        commands = tmp_path / "config" / "commands"
+        commands.mkdir(parents=True)
+        (commands / "runner.yaml").write_text(
+            "command: runner\n"
+            "classification: LOCAL_EFFECTS\n"
+            "risk: LOW\n"
+            "strict: false\n"
+            "delegates_to:\n"
+            "  mode: flag_value_is_expression\n"
+            "  flag: -c\n"
+            "options:\n"
+            "  -c: {takes_value: true}\n"
+        )
+        monkeypatch.setenv("BASH_CLASSIFY_CONFIG_DIR", str(tmp_path / "config"))
+
+    @pytest.mark.usefixtures("runner")
+    def test_the_declared_flag_delegates_and_the_script_is_scanned(self) -> None:
+        result = classify_expression("runner -c 'mkdir -p /usr/lib/x'")
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    @pytest.mark.usefixtures("runner")
+    def test_a_clustered_flag_delegates_nothing_and_the_script_is_missed(self) -> None:
+        """Pins the limitation rather than the wish: clustering hides the script entirely.
+
+        `sh`, `bash` and `zsh` are DANGEROUS from their own definitions, so this is invisible
+        for them. Here it is not, and the miss is real. SPEC.md says so.
+        """
+        result = classify_expression("runner -lc 'mkdir -p /usr/lib/x'")
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+
+
+class TestArgsAreExpressionScriptToken:
+    """Only the token that holds the whole script is exempt, not every argument that has a space in it."""
+
+    @pytest.fixture
+    def runsh(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A user-defined command with `args_are_expression` and no DANGEROUS floor.
+
+        `eval` is the only bundled command with that mode and it is floored to DANGEROUS, so
+        it can never show what the exemption does. A user database can declare the mode
+        without a floor, which README documents, and then the exemption is load-bearing.
+        """
+        commands = tmp_path / "config" / "commands"
+        commands.mkdir(parents=True)
+        (commands / "runsh.yaml").write_text(
+            "command: runsh\nclassification: READONLY\nstrict: false\ndelegates_to:\n  mode: args_are_expression\n"
+        )
+        monkeypatch.setenv("BASH_CLASSIFY_CONFIG_DIR", str(tmp_path / "config"))
+
+    @pytest.mark.usefixtures("runsh")
+    def test_a_spaced_operand_is_not_mistaken_for_the_script(self) -> None:
+        """The script is spread over three tokens here, so none of them is exempt."""
+        result = classify_expression("runsh cp a '/usr/bin/my file'")
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    @pytest.mark.usefixtures("runsh")
+    def test_the_single_script_token_is_exempt_and_its_commands_are_scanned(self) -> None:
+        result = classify_expression("runsh '/usr/bin/git add a.txt'")
+        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.risk == Risk.LOW
+
+    @pytest.mark.usefixtures("runsh")
+    def test_an_operand_inside_the_single_script_token_still_counts(self) -> None:
+        result = classify_expression("runsh '/usr/bin/cp a /usr/bin/b'")
         assert result.classification == Classification.DANGEROUS
         assert result.risk == Risk.HIGH
 

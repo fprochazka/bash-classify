@@ -6,7 +6,11 @@ import os
 from collections.abc import Iterator, Mapping, Sequence
 
 from .database import load_database
-from .matcher import match_command
+
+# `_find_flag_value` stays private to `matcher`: it is an implementation detail of how a
+# delegating flag is spelled, not part of the package surface, and this is the only other
+# reader of it.
+from .matcher import _find_flag_value, match_command
 from .models import (
     Classification,
     CommandDef,
@@ -74,6 +78,121 @@ def _is_system_path(path: str) -> bool:
             return False
     # Check system dirs
     return any(path == sysdir or path.startswith(sysdir + "/") for sysdir in _SYSTEM_DIRS)
+
+
+_EXPRESSION_DELEGATION_MODES = frozenset({"args_are_expression", "flag_value_is_expression"})
+
+
+def _program_words(argv: Sequence[str], inner_commands: Sequence[InnerCommandResult]) -> list[str]:
+    """Collect the program words that appear among this invocation's own argv tokens.
+
+    `argv[0]` is the program being executed, not a path the program operates on, so
+    `/usr/bin/git add a.txt` writes nothing into `/usr/bin`. A wrapper carries the words of
+    the command it runs in its own argv -- `sudo /usr/bin/git add a.txt` is scanned as
+    `['sudo', '/usr/bin/git', 'add', 'a.txt']` -- so those nested words are collected too,
+    or only the unwrapped spelling would get the exemption.
+
+    A command reached through a script is deliberately left out: its words are inside the
+    script token, not among these tokens, and `_system_paths_in_scripts` scans it against
+    its own exemptions. Adding them here would let a word from inside a script be spent on
+    an unrelated token of the enclosing command line.
+    """
+    words = list(argv[:1])
+    for inner in inner_commands:
+        if inner.delegation_mode in _EXPRESSION_DELEGATION_MODES:
+            continue
+        if inner.delegation_mode == "terminated_argv" and not _starts_at_its_option(argv, inner):
+            continue
+        words.extend(_program_words(inner.argv, inner.inner_commands))
+    return words
+
+
+def _starts_at_its_option(argv: Sequence[str], inner: InnerCommandResult) -> bool:
+    r"""Tell whether a `find -exec` inner really begins where its option's tokens begin.
+
+    The matcher strips `{}` placeholders before building the inner argv, so in
+    `find . -exec {} /usr/bin/git add \;` the inner `argv[0]` is `/usr/bin/git` -- an argument
+    handed to whatever file `find` matched, not the program being run. Exempting it would be
+    the mistake this whole rule exists to stop, pointed at the wrong token. The inner counts
+    as starting at its option only when the option is directly followed by that word.
+    """
+    if not inner.argv:
+        return False
+    return any(
+        token == inner.delegation_source and argv[index + 1] == inner.argv[0] for index, token in enumerate(argv[:-1])
+    )
+
+
+def _script_tokens(argv: Sequence[str], inner_commands: Sequence[InnerCommandResult]) -> list[str]:
+    """Collect the argv tokens that hold a whole script rather than a path.
+
+    `sh -c '/usr/bin/touch /etc/passwd'` hands a command line over as a single token, and a
+    scan that compares whole tokens against directory prefixes reads that token as a path
+    under `/usr/bin`. The token is source, so it is not scanned as a path; the commands
+    parsed out of it are scanned instead, by `_system_paths_in_scripts`.
+
+    Only the token that is the entire script counts. `eval cp a /usr/bin/b` spreads its
+    script over several tokens and none of them is it, so every token stays scannable.
+
+    A shell flag written in a cluster (`bash -lc '...'`) is not the flag the database declares,
+    so no script is parsed out of it and the token is scanned as a path. For `sh`, `bash` and
+    `zsh` that is unobservable -- they are DANGEROUS from their own definitions and the
+    elevation never runs -- but a user-declared command with this mode and no DANGEROUS floor
+    misses what is inside the script. See SPEC.md.
+
+    Like `_program_words` this stops at the script boundary: a token found by looking inside a
+    script does not exist in the enclosing command line, and matching it there by value would
+    mask an unrelated token. Each level computes its own.
+    """
+    tokens: list[str] = []
+    for inner in inner_commands:
+        if inner.delegation_mode == "flag_value_is_expression":
+            value = _find_flag_value(list(argv), inner.delegation_source)
+            if value is not None:
+                tokens.append(value)
+        elif inner.delegation_mode == "args_are_expression" and len(argv) == 2:
+            tokens.append(argv[1])
+        else:
+            tokens.extend(_script_tokens(inner.argv, inner.inner_commands))
+    return tokens
+
+
+def _system_paths_in_argv(argv: Sequence[str], inner_commands: Sequence[InnerCommandResult]) -> list[str]:
+    """Find the system paths this invocation names among its own argv tokens.
+
+    Each exempt program word and each script token is consumed once rather than matched by
+    value, so a repeat of either still counts: `/usr/bin/git add /usr/bin/git` is a hit, and
+    so is the operand in `nohup sh -c /bin/ls /bin/ls`.
+    """
+    exempt_words = _program_words(argv, inner_commands)
+    script_tokens = _script_tokens(argv, inner_commands)
+    found: list[str] = []
+    for token in argv:
+        if token in exempt_words:
+            exempt_words.remove(token)
+        elif token in script_tokens:
+            script_tokens.remove(token)
+        elif _is_system_path(token):
+            found.append(token)
+    return found
+
+
+def _system_paths_in_scripts(argv: Sequence[str], inner_commands: Sequence[InnerCommandResult]) -> list[str]:
+    """Find the system paths named by the commands inside the scripts this invocation runs.
+
+    The elevation is applied to the top-level invocation only, so without this the operands
+    inside `sh -c '...'` would be scanned nowhere once the script token itself is skipped.
+    Each command parsed out of a script is scanned under *its own* classification, the way a
+    top-level command is: in `sh -c 'cat /etc/hosts && touch x'` the `cat` sits below
+    `LOCAL_EFFECTS` and its `/etc/hosts` is not a hit, exactly as in the bare spelling.
+    """
+    found: list[str] = []
+    for inner in inner_commands:
+        is_script = inner.delegation_mode in _EXPRESSION_DELEGATION_MODES
+        if is_script and inner.classification.severity() >= Classification.LOCAL_EFFECTS.severity():
+            found.extend(_system_paths_in_argv(inner.argv, inner.inner_commands))
+        found.extend(_system_paths_in_scripts(inner.argv, inner.inner_commands))
+    return found
 
 
 def classify_expression(
@@ -191,11 +310,9 @@ def classify_expression(
 
         # Step 6: Elevate to DANGEROUS when writing to system directories
         if result.classification.severity() >= Classification.LOCAL_EFFECTS.severity():
-            system_paths_found = []
-            # Check argv tokens
-            for token in invocation.argv:
-                if _is_system_path(token):
-                    system_paths_found.append(token)
+            # Check argv tokens, then the commands inside any script this one runs
+            system_paths_found = _system_paths_in_argv(invocation.argv, result.inner_commands)
+            system_paths_found.extend(_system_paths_in_scripts(invocation.argv, result.inner_commands))
             # Check redirect targets
             for redirect in invocation.redirects:
                 if _is_system_path(redirect.target):
