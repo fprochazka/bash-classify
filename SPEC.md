@@ -1053,6 +1053,10 @@ Tokens are scanned one at a time and never joined, so `git config` is two words 
 
 The value of an option marked `names_output_path` is scanned on its own and reported with `source: "argv_write"`, and the argv token that carries it is then skipped. That keeps one file to one hit across the three spellings of an option value: `-o ~/.ssh/x`, `--output=~/.ssh/x` and `-o~/.ssh/x` all report the path alone, in the write direction. Every other argv token keeps `source: "argv"`, whose direction is unknown.
 
+**Two things a caller reading `source` has to know.** The skip means a marked option's value no longer appears as an `argv` hit at all: `curl -o ~/.ssh/authorized_keys` reports one hit with `source: "argv_write"` and nothing with `source: "argv"`. Code that selects `source == "argv"` and works out the direction itself stops seeing these paths, with nothing to signal that it happened. This changed in the release that introduced `names_output_path`.
+
+And `argv_write` is not the complete set of writes, permanently rather than for now. It covers an option the tool documents as naming a file it writes, and nothing else. A destination written as a plain positional never carries it — `cp a b`, `tee out.txt`, `split`. Neither does an operand that is not an option, such as `dd of=X`. Neither does an option whose direction depends on another option: `tar -f` writes the archive under `-c` and reads it under `-x`, and `tar -C` is an extraction destination under `-x` and a source directory under `-c`, so marking either would be wrong in half its uses. So `source != "argv_write"` does not mean the command writes nothing, and must not be used as though it did. A caller that needs to cover the cases above has to keep its own reasoning for them; `argv_write` is an additional signal, not a replacement for one.
+
 A hit is reported on the invocation that carries it, and again on every level above it up to the expression, deduplicated by token, rule, source and spelling. A caller that reads only `ExpressionResult.sensitive_paths` still sees what a wrapper hid.
 
 ### The denylist
