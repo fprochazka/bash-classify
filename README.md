@@ -16,6 +16,14 @@ uv tool install bash-classify
 pip install bash-classify
 ```
 
+To track a commit rather than a release — worth doing if you want to test a change before it ships — pin it directly:
+
+```
+bash-classify @ git+https://github.com/fprochazka/bash-classify@<commit>
+```
+
+The version is derived from the last tag, so a commit past it resolves to something like `0.12.1.dev3+g8699357`. PEP 440 excludes dev releases unless the specifier names one, so a constraint of `>=0.12,<0.13` will *not* admit it. Use a `.dev0` floor — `>=0.12.1.dev0,<0.13` — when pinning past a tag.
+
 ## Quick start
 
 ```bash
