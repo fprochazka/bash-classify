@@ -1000,6 +1000,41 @@ Four shapes write nothing:
 
 `| tee file` is not a redirect. `tee` is classified through its own database entry.
 
+### Which command a redirect belongs to
+
+A redirect belongs to the command it is written on. tree-sitter does not always nest it
+there: for `a && b > f` it makes the redirect a sibling of the whole `a && b` list, and for
+`{ a; b; } > f` a sibling of the whole group. In both the redirect goes to the last
+statement of what it was written on — `b` in each case. The same rule covers subshells
+(`( a; b ) > f`), loops (`for … done > f`) and groups that contain a pipeline
+(`{ a | b; } > f`, where the group's stdout is `b`'s stdout). A command that runs inside an
+argument is never a candidate, so `cat $(ls) > f` redirects `cat`, not `ls`.
+
+Exactly one command gets the redirect.
+
+**Known limitation.** For a group or a subshell, that one command is the last one, and the
+earlier commands in the group are then reported as if their stdout reaches the terminal. In
+`{ cat a; cat b; } > merged` a consumer asking about `cat a` is told its output reaches the
+terminal, and it does not — the group's stdout goes to `merged`.
+
+Copying the redirect onto every command in the group would answer that question correctly,
+and it is rejected for two reasons. It makes `{ cat a > x; cat b; } > merged` report `cat a`
+with two stdout targets, and one command having two stdout targets is the shape a consumer
+uses to detect that the parser got attribution wrong — a correct parse would become
+indistinguishable from a broken one. It also writes the group's target into `write_paths`
+once per command in the group, so a three-command group writing one file reports three
+writes.
+
+**Known limitation.** tree-sitter-bash 0.25.1 inverts operator precedence when a redirect
+sits on the last member of an and-or list that is then piped (tree-sitter/tree-sitter-bash#345). For
+`foo && cat f 2>/dev/null | head -80` it builds `(foo && cat f 2>/dev/null) | head -80`,
+where bash reads `foo && (cat f 2>/dev/null | head -80)`. The redirect is still attributed
+to `cat f` correctly, but `position_in_pipeline` and `pipeline_length` are not: `cat f`
+reports a pipeline of one standing immediately before `head -80`, which reports itself as
+stage 1 of 2. A `pipeline_length == 1` invocation immediately followed by one with
+`position_in_pipeline > 0` is the tell. The same shape appears without any `&&` when a
+redirected subshell is a pipeline stage, as in `( cat x ) > f | head`.
+
 ## Sensitive Path Detection
 
 Classification describes the scope of a command's side effects. It has no notion of what the command touches, so `cat ~/.ssh/id_rsa` is `READONLY` and, on the classification axis, correctly so. Risk is the axis for "how much should a human care". A token that names a credential therefore floors `risk` at `HIGH` and leaves `classification` alone.

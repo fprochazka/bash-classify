@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from bash_classify.models import Redirect
@@ -463,6 +465,196 @@ class TestRedirectedCompoundStatement:
         assert cmds_with_redirects[0].redirects[0].target == "out.txt"
 
 
+# A redirect binds to one command. These are the operators that claim a command's stdout,
+# in every spelling bash accepts for them.
+_STDOUT_WRITE = re.compile(r"^(?:1?|&)>>?\|?$")
+
+# Expressions whose redirect sits on something other than the first command of the
+# enclosing structure, each with the number of redirects written in it. The invariants
+# below are swept over all of them at once, because one wrong attribution shows up in
+# every one of them the same way.
+_ATTRIBUTION_CORPUS = (
+    ("cat a > f && cat b >> f", 2),
+    ("cat a > f 2> e && cat b >> f", 3),
+    ("a && b && cat c > f", 1),
+    ("a || b > f", 1),
+    ("foo && cat f 2>/dev/null", 1),
+    ("{ cat a; cat b; } > merged", 1),
+    ("( cat x; cat y ) > f", 1),
+    ("a && { b; c; } > f", 1),
+    ("a && ( b; c ) > f", 1),
+    ("{ a | b; } > f", 1),
+    ("cat $(ls) > f", 1),
+    ("for i in 1 2; do echo $i; done > out.txt", 1),
+)
+
+
+def _redirects_by_command(expression: str) -> list[tuple[str, list[tuple[str, str]]]]:
+    """Return every invocation's command line and its redirects, in parse order."""
+    result, warnings = parse_expression(expression)
+    assert warnings == [], f"unexpected parse warning for {expression!r}: {warnings}"
+    return [(" ".join(r.argv), [(d.operator, d.target) for d in r.redirects]) for r in result]
+
+
+class TestRedirectAttributionInChains:
+    """A redirect belongs to the command it is written on, not to the first of the chain.
+
+    tree-sitter builds `a && b > f` as `redirected_statement(list(a, &&, b), > f)`: the
+    redirect is a sibling of the whole list rather than a child of `b`. The command it was
+    written on is the list's last statement.
+    """
+
+    def test_redirect_on_the_second_command_of_an_and_chain(self) -> None:
+        assert _redirects_by_command("cat a > f && cat b >> f") == [
+            ("cat a", [(">", "f")]),
+            ("cat b", [(">>", "f")]),
+        ]
+
+    def test_redirect_on_the_last_command_of_a_three_command_chain(self) -> None:
+        """Nested lists: `a && b && cat c` is `list(list(a, &&, b), &&, cat c)`."""
+        assert _redirects_by_command("a && b && cat c > f") == [
+            ("a", []),
+            ("b", []),
+            ("cat c", [(">", "f")]),
+        ]
+
+    def test_redirect_on_the_second_command_of_an_or_chain(self) -> None:
+        assert _redirects_by_command("a || b > f") == [("a", []), ("b", [(">", "f")])]
+
+    def test_stderr_redirect_on_the_last_command_of_a_chain(self) -> None:
+        assert _redirects_by_command("foo && cat f 2>/dev/null") == [
+            ("foo", []),
+            ("cat f", [("2>", "/dev/null")]),
+        ]
+
+    def test_multiple_redirects_on_two_commands_of_one_chain(self) -> None:
+        """Each command keeps its own redirects; the chain's last one gets the outer redirect."""
+        assert _redirects_by_command("cat a > f 2> e && cat b >> f") == [
+            ("cat a", [(">", "f"), ("2>", "e")]),
+            ("cat b", [(">>", "f")]),
+        ]
+
+    def test_redirect_on_the_first_command_of_a_chain_stays_there(self) -> None:
+        """Guard against over-correcting: here tree-sitter already nests the redirect right."""
+        assert _redirects_by_command("foo > o && cat f") == [("foo", [(">", "o")]), ("cat f", [])]
+
+    def test_redirect_after_a_semicolon(self) -> None:
+        assert _redirects_by_command("a; b > f") == [("a", []), ("b", [(">", "f")])]
+
+    def test_substitution_in_an_argument_is_not_an_attribution_candidate(self) -> None:
+        """`cat $(ls) > f` writes cat's stdout. `ls` runs inside an argument and has no redirect."""
+        assert _redirects_by_command("cat $(ls) > f") == [("cat $(ls)", [(">", "f")]), ("ls", [])]
+
+
+class TestRedirectAttributionOnGroupsAndSubshells:
+    """A group's redirect goes to the last command in the group.
+
+    The redirect belongs to the group as a whole, and the group's stdout is its last
+    command's stdout. See SPEC.md for the cost this choice carries for earlier commands
+    in the group.
+    """
+
+    def test_brace_group_redirect_goes_to_the_last_command(self) -> None:
+        assert _redirects_by_command("{ cat a; cat b; } > merged") == [
+            ("cat a", []),
+            ("cat b", [(">", "merged")]),
+        ]
+
+    def test_subshell_redirect_goes_to_the_last_command(self) -> None:
+        assert _redirects_by_command("( cat x; cat y ) > f") == [("cat x", []), ("cat y", [(">", "f")])]
+
+    def test_single_command_subshell_redirect(self) -> None:
+        assert _redirects_by_command("( cat x ) > f") == [("cat x", [(">", "f")])]
+
+    def test_group_redirect_inside_a_chain(self) -> None:
+        """The redirect must cross back into the group, not stop at the head of the chain."""
+        assert _redirects_by_command("a && { b; c; } > f") == [("a", []), ("b", []), ("c", [(">", "f")])]
+
+    def test_subshell_redirect_inside_a_chain(self) -> None:
+        assert _redirects_by_command("a && ( b; c ) > f") == [("a", []), ("b", []), ("c", [(">", "f")])]
+
+    def test_group_containing_a_pipeline(self) -> None:
+        """The group's stdout is the pipeline's last stage, so that stage carries the redirect."""
+        assert _redirects_by_command("{ a | b; } > f") == [("a", []), ("b", [(">", "f")])]
+
+    def test_redirect_inside_a_group_that_is_a_pipeline_stage(self) -> None:
+        """`b > f` is nested by tree-sitter already; the group is a member of the pipeline."""
+        assert _redirects_by_command("a && { b > f; c; } | d") == [
+            ("a", []),
+            ("b", [(">", "f")]),
+            ("c", []),
+            ("d", []),
+        ]
+
+    def test_subshell_redirect_when_the_subshell_is_a_pipeline_stage(self) -> None:
+        assert _redirects_by_command("( cat x ) > f | head") == [("cat x", [(">", "f")]), ("head", [])]
+
+
+class TestRedirectAttributionInvariants:
+    """Two properties that must hold for every expression, not just the reported ones.
+
+    They are the only tells a consumer has that attribution went wrong, so they are swept
+    rather than asserted one expression at a time.
+    """
+
+    @pytest.mark.parametrize(("expression", "redirect_count"), _ATTRIBUTION_CORPUS)
+    def test_no_invocation_claims_two_stdout_targets(self, expression: str, redirect_count: int) -> None:
+        result, _ = parse_expression(expression)
+        for invocation in result:
+            stdout_writes = [r for r in invocation.redirects if _STDOUT_WRITE.fullmatch(r.operator)]
+            assert len(stdout_writes) <= 1, (
+                f"{' '.join(invocation.argv)!r} in {expression!r} claims two stdout targets: {stdout_writes}"
+            )
+
+    @pytest.mark.parametrize(("expression", "redirect_count"), _ATTRIBUTION_CORPUS)
+    def test_every_redirect_is_attached_exactly_once(self, expression: str, redirect_count: int) -> None:
+        """A redirect copied onto a second command double-counts its write path."""
+        result, _ = parse_expression(expression)
+        attached = [(r.operator, r.target) for invocation in result for r in invocation.redirects]
+        assert len(attached) == redirect_count, f"{expression!r} attached {attached}"
+
+
+class TestKnownPipelineErasureOnARedirectedChain:
+    """CANARY — asserts behaviour that is wrong on purpose. Do not "fix" this test.
+
+    tree-sitter-bash 0.25.1 inverts operator precedence when a redirect sits on the last
+    member of an and-or list that is then piped: it builds
+    `pipeline(redirected_statement(list(foo, &&, cat f), 2>/dev/null), |, head)` for
+    `foo && cat f 2>/dev/null | head -80`. Bash parses that as `foo && (cat f 2>/dev/null
+    | head -80)`, confirmed against a real shell. The inversion makes `cat f` report a
+    pipeline of one standing immediately before `head`, which reports itself as stage 1 of
+    2 — two descriptions of one pipeline that contradict each other.
+
+    That erasure is an upstream grammar bug, tree-sitter/tree-sitter-bash#345. It is left
+    in place
+    here. If this test starts failing, the grammar has changed: check whether the
+    inversion is gone and remove this test and the consumer guards that work around it,
+    rather than adjusting the numbers below.
+    """
+
+    def test_pipeline_coordinates_are_still_erased(self) -> None:
+        result, warnings = parse_expression("foo && cat f 2>/dev/null | head -80")
+        assert warnings == []
+        assert [(" ".join(r.argv), r.position_in_pipeline, r.pipeline_length) for r in result] == [
+            ("foo", 0, 1),
+            ("cat f", 0, 1),
+            ("head -80", 1, 2),
+        ]
+
+    def test_the_redirect_itself_is_attributed_correctly(self) -> None:
+        """Only the pipeline shape is wrong. The redirect belongs to `cat f` and goes there."""
+        assert _redirects_by_command("foo && cat f 2>/dev/null | head -80") == [
+            ("foo", []),
+            ("cat f", [("2>", "/dev/null")]),
+            ("head -80", []),
+        ]
+
+    def test_a_subshell_pipeline_stage_erases_its_pipeline_the_same_way(self) -> None:
+        """The same erasure without any `&&`, so the canary is not tied to list nodes."""
+        result, _ = parse_expression("( cat x ) > f | head")
+        assert [(r.position_in_pipeline, r.pipeline_length) for r in result] == [(0, 1), (1, 2)]
+
+
 class TestFdToFdRedirects:
     def test_stderr_to_stdout_no_affect(self) -> None:
         """2>&1 is fd-to-fd and should NOT affect classification."""
@@ -687,3 +879,27 @@ class TestFileRedirectsAfterAHeredocOpener:
         result, warnings = parse_expression("cat <<EOF > /tmp/x\n~/.ssh/id_rsa\nEOF")
         assert warnings == []
         assert [(r.operator, r.target) for r in result[0].redirects] == [("<<", "EOF"), (">", "/tmp/x")]
+
+    def test_heredoc_with_a_redirect_followed_by_a_chain(self) -> None:
+        """Both redirects stay on `cat`, and the `&&` follower gets none of them.
+
+        `cat` is the body's only statement here, so attribution has one candidate. The test
+        exists because the heredoc path builds its redirect list separately from the file
+        redirect one, and a chain behind the opener is the shape where the two meet.
+        """
+        result, warnings = parse_expression("cat <<EOF > a && cat b\nbody\nEOF")
+        assert warnings == []
+        assert [(" ".join(r.argv), [(d.operator, d.target) for d in r.redirects]) for r in result] == [
+            ("cat", [("<<", "EOF"), (">", "a")]),
+            ("cat b", []),
+        ]
+
+    def test_heredoc_with_a_redirect_and_a_chain_but_no_body_is_flagged(self) -> None:
+        """Without a body the same line is a tree-sitter parse error, not a parse.
+
+        Only the warning is pinned. tree-sitter produces an ERROR node, so there is no
+        correct shape to assert, and a consumer that reads parse_warnings falls back.
+        """
+        result, warnings = parse_expression("cat <<EOF > a && cat b")
+        assert warnings
+        assert result[0].argv == ["cat"]

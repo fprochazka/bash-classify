@@ -239,17 +239,7 @@ def _walk_redirected_statement(
         pipeline_length=pipeline_length,
     )
 
-    # Attach redirects only to the first command from the body to avoid duplication
-    # (e.g., redirected compound statements like `for ... done > file` should only
-    # attach the redirect once, not to every command inside the loop body)
-    redirects_attached = False
-    for inv in inner:
-        if not redirects_attached and inv.position_in_pipeline == pipeline_position:
-            if not inv.redirects:
-                inv.redirects = redirects
-            else:
-                inv.redirects.extend(redirects)
-            redirects_attached = True
+    _attach_redirects(inner, redirects)
 
     results.extend(inner)
 
@@ -264,6 +254,35 @@ def _walk_redirected_statement(
     )
 
     return results
+
+
+# Contexts a command runs in when it sits inside an argument rather than in the statement
+# the redirect was written on. `cat $(ls) > f` claims cat's stdout, never ls's.
+_SUBSTITUTION_CONTEXTS = frozenset({"command_substitution", "process_substitution"})
+
+
+def _attach_redirects(inner: list[CommandInvocation], redirects: list[Redirect]) -> None:
+    """Give a redirected_statement's redirects to the one command they were written on.
+
+    tree-sitter makes the redirect a sibling of the whole body rather than a child of the
+    command it follows (tree-sitter/tree-sitter-bash#345), so the body arrives here as a
+    list, a brace group, a subshell or a loop with the redirect still undistributed. In all
+    of them the redirect belongs to the body's last statement: `a && b > f` redirects `b`,
+    and a group's redirect claims the group's stdout, which is its last command's stdout.
+
+    Exactly one command gets them. Copying them onto every command of a group would report
+    the same write path once per command and would produce commands with two stdout
+    targets, which is the shape a consumer uses to detect that attribution went wrong.
+    SPEC.md records what that choice costs the earlier commands in a group.
+    """
+    if not redirects:
+        return
+
+    target = next((inv for inv in reversed(inner) if inv.context not in _SUBSTITUTION_CONTEXTS), None)
+    if target is None:
+        return
+
+    target.redirects = [*target.redirects, *redirects]
 
 
 # Children of a heredoc_redirect that are not command continuations and must be skipped

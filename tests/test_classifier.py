@@ -980,3 +980,54 @@ class TestNestedExpressionParseWarnings:
         """The outer parse and the nested one both feed the same list."""
         result = classify_expression(f"bash -c '{self.BROKEN}'; if then fi (", database)
         assert len(result.parse_warnings) == 2
+
+
+class TestRedirectAttributionWritePaths:
+    """Attribution decides which command reports a write path, and how many entries appear.
+
+    `write_paths` is not a set: `cat a > f && cat b >> f` really does write `f` twice, and
+    both entries belong there. What must never happen is one redirect producing two entries
+    because it was attached to two commands, or producing none because it was attached to a
+    command the walker dropped. So each expression pins the whole picture.
+    """
+
+    # (expression, expression-level write_paths, write_paths of each command in order)
+    ATTRIBUTION_EXPRESSIONS = (
+        ("cat a > f && cat b >> f", ["f", "f"], [["f"], ["f"]]),
+        ("cat a > f 2> e && cat b >> f", ["f", "e", "f"], [["f", "e"], ["f"]]),
+        ("a && b && cat c > f", ["f"], [None, None, ["f"]]),
+        ("{ cat a; cat b; } > merged", ["merged"], [None, ["merged"]]),
+        ("( cat x; cat y ) > f", ["f"], [None, ["f"]]),
+        ("a && { b; c; } > f", ["f"], [None, None, ["f"]]),
+        ("{ a | b; } > f", ["f"], [None, ["f"]]),
+    )
+
+    @pytest.mark.parametrize(("expression", "expected", "per_command"), ATTRIBUTION_EXPRESSIONS)
+    def test_expression_write_paths(
+        self,
+        expression: str,
+        expected: list[str],
+        per_command: list[list[str] | None],
+        database: dict[str, CommandDef],
+    ) -> None:
+        assert classify_expression(expression, database).write_paths == expected
+
+    @pytest.mark.parametrize(("expression", "expected", "per_command"), ATTRIBUTION_EXPRESSIONS)
+    def test_which_command_reports_each_write_path(
+        self,
+        expression: str,
+        expected: list[str],
+        per_command: list[list[str] | None],
+        database: dict[str, CommandDef],
+    ) -> None:
+        result = classify_expression(expression, database)
+        assert [c.write_paths for c in result.commands] == per_command
+
+    def test_a_chain_writing_to_a_credential_path_stays_high(self, database: dict[str, CommandDef]) -> None:
+        """The redirect moves to the second command; the credential must still be caught."""
+        result = classify_expression("cat x && echo k >> ~/.ssh/authorized_keys", database)
+        assert result.risk == Risk.HIGH
+        assert result.write_paths == ["~/.ssh/authorized_keys"]
+        echo = result.commands[1]
+        assert echo.write_paths == ["~/.ssh/authorized_keys"]
+        assert [hit.token for hit in echo.sensitive_paths] == ["~/.ssh/authorized_keys"]
