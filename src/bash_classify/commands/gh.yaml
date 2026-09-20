@@ -6,11 +6,13 @@ strict: false
 global_options:
   -R: {takes_value: true}
   --repo: {takes_value: true, aliases: [-R]}
-  --help: {}
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY, aliases: [--help]}
 
 subcommands:
   # ── Core: Pull Requests ──────────────────────────────────────────
   pr:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -69,6 +71,7 @@ subcommands:
 
   # ── Core: Issues ─────────────────────────────────────────────────
   issue:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -118,6 +121,7 @@ subcommands:
 
   # ── Core: Repositories ───────────────────────────────────────────
   repo:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -170,6 +174,7 @@ subcommands:
 
   # ── Core: Releases ───────────────────────────────────────────────
   release:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -204,6 +209,7 @@ subcommands:
 
   # ── Core: Gists ──────────────────────────────────────────────────
   gist:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -229,6 +235,7 @@ subcommands:
 
   # ── Core: Projects ───────────────────────────────────────────────
   project:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -290,6 +297,7 @@ subcommands:
 
   # ── Actions: Runs ────────────────────────────────────────────────
   run:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -315,6 +323,7 @@ subcommands:
 
   # ── Actions: Workflows ───────────────────────────────────────────
   workflow:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -334,6 +343,7 @@ subcommands:
 
   # ── Actions: Cache ───────────────────────────────────────────────
   cache:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -344,6 +354,7 @@ subcommands:
 
   # ── Auth ─────────────────────────────────────────────────────────
   auth:
+    classification: UNKNOWN
     subcommands:
       status:
         classification: READONLY
@@ -369,6 +380,7 @@ subcommands:
 
   # ── Config ───────────────────────────────────────────────────────
   config:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -385,6 +397,7 @@ subcommands:
 
   # ── SSH Keys ─────────────────────────────────────────────────────
   ssh-key:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -398,6 +411,7 @@ subcommands:
 
   # ── GPG Keys ─────────────────────────────────────────────────────
   gpg-key:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -411,6 +425,7 @@ subcommands:
 
   # ── Secrets ──────────────────────────────────────────────────────
   secret:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -424,6 +439,7 @@ subcommands:
 
   # ── Variables ────────────────────────────────────────────────────
   variable:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -440,6 +456,7 @@ subcommands:
 
   # ── Labels ───────────────────────────────────────────────────────
   label:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -478,6 +495,7 @@ subcommands:
 
   # ── Extensions ───────────────────────────────────────────────────
   extension:
+    classification: DANGEROUS
     subcommands:
       list:
         classification: READONLY
@@ -506,6 +524,7 @@ subcommands:
 
   # ── Aliases ──────────────────────────────────────────────────────
   alias:
+    classification: DANGEROUS
     subcommands:
       list:
         classification: READONLY
@@ -522,6 +541,7 @@ subcommands:
 
   # ── Rulesets ─────────────────────────────────────────────────────
   ruleset:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -535,6 +555,7 @@ subcommands:
 
   # ── Attestation ──────────────────────────────────────────────────
   attestation:
+    classification: UNKNOWN
     subcommands:
       verify:
         classification: READONLY
@@ -548,6 +569,7 @@ subcommands:
 
   # ── Codespaces ───────────────────────────────────────────────────
   codespace:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -591,6 +613,7 @@ subcommands:
 
   # ── Organizations ────────────────────────────────────────────────
   org:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY

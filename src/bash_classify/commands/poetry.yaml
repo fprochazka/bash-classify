@@ -30,6 +30,7 @@ subcommands:
     classification: READONLY
     strict: false
   env:
+    classification: UNKNOWN
     strict: false
     subcommands:
       info:
@@ -102,6 +103,7 @@ subcommands:
         classification: READONLY
         strict: false
   self:
+    classification: DANGEROUS
     strict: false
     subcommands:
       update:

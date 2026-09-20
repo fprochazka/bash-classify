@@ -60,12 +60,24 @@ subcommands:
   why:
     classification: READONLY
     strict: false
+  # `yarn config set` writes .yarnrc.yml, which holds npmAuthToken and the registry
   config:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
         strict: false
+      get:
+        classification: READONLY
+        strict: false
+      set:
+        classification: LOCAL_EFFECTS
+        strict: false
+      unset:
+        classification: LOCAL_EFFECTS
+        strict: false
   workspaces:
+    classification: DANGEROUS
     subcommands:
       list:
         classification: READONLY

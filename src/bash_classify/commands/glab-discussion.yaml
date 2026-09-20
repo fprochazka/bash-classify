@@ -1,6 +1,9 @@
 # $schema: ../../../schemas/command.schema.json
 command: glab-discussion
 description: "CLI wrapper around GitLab Discussions REST API for managing MR discussions"
+# An unrecognised subcommand is one this file does not model; the tool writes to merge
+# request discussions, so an unknown one cannot be read as read-only.
+classification: UNKNOWN
 strict: false
 global_options:
   --help: {overrides: READONLY}

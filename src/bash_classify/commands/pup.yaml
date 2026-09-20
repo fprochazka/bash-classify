@@ -498,6 +498,7 @@ subcommands:
         options:
           --file: {takes_value: true}
       settings:
+        classification: UNKNOWN
         strict: false
         subcommands:
           get:

@@ -71,6 +71,7 @@ subcommands:
     classification: LOCAL_EFFECTS
     strict: false
   tool:
+    classification: UNKNOWN
     strict: false
     subcommands:
       install:
@@ -89,6 +90,7 @@ subcommands:
       dir:
         classification: READONLY
   python:
+    classification: UNKNOWN
     strict: false
     subcommands:
       install:
@@ -110,6 +112,7 @@ subcommands:
         classification: LOCAL_EFFECTS
         strict: false
   pip:
+    classification: UNKNOWN
     strict: false
     subcommands:
       install:
@@ -145,6 +148,7 @@ subcommands:
     classification: DANGEROUS
     strict: false
   cache:
+    classification: UNKNOWN
     strict: false
     subcommands:
       clean:
@@ -156,6 +160,7 @@ subcommands:
       dir:
         classification: READONLY
   self:
+    classification: UNKNOWN
     strict: false
     subcommands:
       update:

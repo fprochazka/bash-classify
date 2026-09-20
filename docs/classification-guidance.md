@@ -304,7 +304,7 @@ There are more of those spellings than there look to be. `after_separator` resol
 
 So an exec-shaped wrapper gets `classification: DANGEROUS`. It costs nothing on the spelling that works, and it is the difference between a prompt and a silent auto-approve on the ones that do not. `kubectl exec` and `npx` were already written this way.
 
-### The base also classifies every subcommand the file does not model
+### The base also classifies every subcommand the group does not model
 
 `classification` is documented as "base classification when no subcommand matches", and that covers two different invocations: the bare command, and one naming a subcommand this file has never heard of. A file that omits the base gives both of them `READONLY`, and for a tool that installs, publishes, authenticates or executes, the second of those is a hole -- the unmodelled subcommand is exactly the one nobody thought about.
 
@@ -315,6 +315,8 @@ Pick the base from what the tool does with a word it does not recognise:
 - It refuses it and the file is the whole surface. Leave the base off.
 
 Bare `npm` then prompts, where it used to be auto-allowed. That is the cost, and it is the cheaper of the two ways to be wrong: bare `npm` prints usage, while `npm token create` does not. Pay it back where it is worth paying: declare the informational spellings (`--version`, `-v`, `--help`, `-h`, and the `help`/`version` subcommands where the tool has them) so the everyday read-only calls stay `LOW`. Declare only the ones the tool really has -- `-v` is `--version` for `npm`, `pnpm`, `yarn`, `docker` and `apt`, and `--verbose` for `pip`, `uv`, `poetry`, `cargo` and `mise`, and marking a verbosity flag READONLY hands every command that carries it a free pass.
+
+**This applies at every level of the tree, not only at the top.** A subcommand that has subcommands of its own is a group with the same defect: `yarn workspaces` modelled only `list`, so `yarn workspaces run build` -- which runs a package script in every workspace -- fell through to the group's own missing base and came back READONLY/LOW. So did `npm config set script-shell /tmp/evil`, which changes the shell every later `npm run` executes. Ask the same question of a group that you ask of a file, and answer it against what the tool does with a child the group does not declare. `uv run python scripts/audit-missing-base.py` prints every group that still has children and no classification; a group is allowed to stay without one only when an unmodelled child would genuinely be read-only, the way `gh search` and `slack users` are.
 
 ### `rest_are_argv`
 

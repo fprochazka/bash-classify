@@ -1,9 +1,13 @@
 # $schema: ../../../schemas/command.schema.json
 command: ruff
 description: "Fast Python linter and formatter"
+# An unrecognised subcommand is one this file does not model. `ruff clean` deletes caches
+# and `ruff format` rewrites files, so an unknown subcommand is not read-only by default.
+classification: UNKNOWN
 strict: false
 global_options:
   --help: {overrides: READONLY}
+  -h: {overrides: READONLY, aliases: [--help]}
 subcommands:
   check:
     classification: READONLY

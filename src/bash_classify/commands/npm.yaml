@@ -107,10 +107,30 @@ subcommands:
   unpublish:
     classification: DANGEROUS
     strict: false
+  # `npm config set` writes .npmrc, which holds the registry, the auth tokens and
+  # `script-shell` -- the shell every later `npm run` executes. Not read-only, and not a
+  # subcommand group that may fall through to one.
   config:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
+        strict: false
+      get:
+        classification: READONLY
+        strict: false
+      set:
+        classification: LOCAL_EFFECTS
+        strict: false
+      delete:
+        classification: LOCAL_EFFECTS
+        strict: false
+      edit:
+        classification: LOCAL_EFFECTS
+        strict: false
+      fix:
+        classification: LOCAL_EFFECTS
+        strict: false
   whoami:
     classification: READONLY
   why:

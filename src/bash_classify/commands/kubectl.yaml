@@ -5,6 +5,7 @@ classification: EXTERNAL_EFFECTS
 strict: false
 global_options:
   --help: {overrides: READONLY}
+  -h: {overrides: READONLY, aliases: [--help]}
   --context: {takes_value: true}
   --kubeconfig: {takes_value: true}
   --namespace: {takes_value: true, aliases: [-n]}
@@ -59,6 +60,7 @@ subcommands:
     classification: READONLY
 
   auth:
+    classification: UNKNOWN
     subcommands:
       can-i:
         classification: READONLY
@@ -100,6 +102,7 @@ subcommands:
     strict: false
 
   rollout:
+    classification: UNKNOWN
     subcommands:
       status:
         classification: READONLY
@@ -169,6 +172,7 @@ subcommands:
     strict: false
 
   config:
+    classification: UNKNOWN
     subcommands:
       view:
         classification: READONLY

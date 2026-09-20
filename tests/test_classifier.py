@@ -2027,3 +2027,149 @@ class TestPackageSpecIsNotTheProgram:
     def test_the_other_runners_were_already_high(self, expression: str, database: dict[str, CommandDef]) -> None:
         """Guard, not coverage: npm and npx were the odd ones out and these pin the rest."""
         assert classify_expression(expression, database=database).risk == Risk.HIGH
+
+
+class TestSubcommandGroupBase:
+    """A group with children and no classification of its own hands READONLY to every unmodelled child.
+
+    The rule is the same one the file's top level follows, and it applies at every depth. A group
+    is allowed to stay without a base only when an unmodelled child would genuinely be read-only,
+    the way `gh search` is.
+    """
+
+    UNMODELLED_CHILD = (
+        ("yarn workspaces run build", Classification.DANGEROUS),
+        ("yarn workspaces foreach run build", Classification.DANGEROUS),
+        ("poetry self add some-plugin", Classification.DANGEROUS),
+        ("uv tool zzz", Classification.UNKNOWN),
+        ("uv pip zzz", Classification.UNKNOWN),
+        ("docker compose zzz", Classification.UNKNOWN),
+        ("kubectl config zzz", Classification.UNKNOWN),
+        ("gh extension zzz", Classification.DANGEROUS),
+        ("glab alias zzz", Classification.DANGEROUS),
+        ("ruff zzz", Classification.UNKNOWN),
+        ("npm config zzz", Classification.UNKNOWN),
+        ("yarn config zzz", Classification.UNKNOWN),
+        ("poetry env zzz", Classification.UNKNOWN),
+        ("slack zzz", Classification.UNKNOWN),
+        ("glab-discussion zzz", Classification.UNKNOWN),
+        ("pup incidents settings zzz", Classification.UNKNOWN),
+    )
+
+    @pytest.mark.parametrize(("expression", "classification"), UNMODELLED_CHILD)
+    def test_unmodelled_child_takes_the_groups_base(
+        self, expression: str, classification: Classification, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(expression, database=database)
+        assert result.classification == classification
+        assert result.risk == Risk.HIGH
+
+    STILL_MODELLED = (
+        ("yarn workspaces list", Classification.READONLY, Risk.LOW),
+        ("npm config list", Classification.READONLY, Risk.LOW),
+        ("npm config get registry", Classification.READONLY, Risk.LOW),
+        ("kubectl config view", Classification.READONLY, Risk.LOW),
+        ("uv pip install requests", Classification.LOCAL_EFFECTS, Risk.LOW),
+        ("docker compose up", Classification.EXTERNAL_EFFECTS, Risk.MEDIUM),
+        ("docker compose version", Classification.READONLY, Risk.LOW),
+        # `--short` is real and read-only, and only `strict: false` keeps it from UNKNOWN
+        ("docker compose version --short", Classification.READONLY, Risk.LOW),
+        # every child of `slack users` is a read, so by the same rule it gets no base
+        ("slack users zzz", Classification.READONLY, Risk.LOW),
+        ("ruff check .", Classification.READONLY, Risk.LOW),
+        # every child of `gh search` is a query and an unmodelled one would be too
+        ("gh search code foo", Classification.READONLY, Risk.LOW),
+    )
+
+    @pytest.mark.parametrize(("expression", "classification", "risk"), STILL_MODELLED)
+    def test_modelled_children_are_unmoved(
+        self, expression: str, classification: Classification, risk: Risk, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(expression, database=database)
+        assert (result.classification, result.risk) == (classification, risk)
+
+    def test_npm_config_set_is_not_auto_approved(self, database: dict[str, CommandDef]) -> None:
+        """`npm config set script-shell` changes what every later `npm run` executes.
+
+        It is not merely an unmodelled subcommand. `.npmrc` also holds the registry and the auth
+        tokens, so `npm config set //registry.npmjs.org/:_authToken=...` writes a credential
+        there. Neither may be auto-approved on a `risk: LOW`.
+        """
+        for expression in (
+            "npm config set script-shell /tmp/evil",
+            "npm config set //registry.npmjs.org/:_authToken=deadbeef",
+            "yarn config set npmAuthToken deadbeef",
+        ):
+            assert classify_expression(expression, database=database).risk != Risk.LOW, expression
+
+    def test_mise_token_prints_a_credential(self, database: dict[str, CommandDef]) -> None:
+        """`mise token <provider>` prints a forge token on stdout.
+
+        Reading a credential is genuinely read-only -- `cat ~/.ssh/id_rsa` is READONLY too -- so
+        the classification stays and the risk is floored, which is what a sensitive path does.
+        """
+        for expression in ("mise token github", "mise token zzz"):
+            result = classify_expression(expression, database=database)
+            assert result.classification == Classification.READONLY, expression
+            assert result.risk == Risk.HIGH, expression
+
+        # and it is the one place the database reaches the risk half of the lowering test:
+        # `--help` overrides to the same READONLY, so only its `risk: LOW` makes it a lowering
+        # option, and an operand is enough to stop it
+        assert classify_expression("mise token foo --help", database=database).risk == Risk.HIGH
+        assert classify_expression("mise token --help", database=database).risk == Risk.LOW
+
+
+class TestExploringACliWithHelpStaysLow:
+    """Reading a CLI's own help is how an agent is supposed to find out what a command does.
+
+    A base on a subcommand group answers for `gh pr --help` as well as for `gh pr zzz`, and
+    `gh`/`glab` declared `--help` without an override -- recognised, but changing nothing -- so
+    the group base reached it. A tool whose help is not read-only does not exist.
+    """
+
+    HELP_SPELLINGS = (
+        "gh pr --help",
+        "gh pr -h",
+        "gh issue --help",
+        "gh run --help",
+        "gh auth --help",
+        "gh extension --help",
+        "gh alias --help",
+        "gh --help",
+        "gh -h",
+        "glab mr --help",
+        "glab ci --help",
+        "glab issue --help",
+        "glab alias --help",
+        "glab mr -h",
+        "glab --help",
+        "glab -h",
+        "mise token --help",
+        "mise token -h",
+        "go mod -h",
+        "ruff -h",
+        "kubectl auth -h",
+        "slack conversations --help",
+        "npm config --help",
+        "yarn workspaces --help",
+        "uv tool --help",
+        "docker compose --help",
+        "poetry self --help",
+        "git sparse-checkout --help",
+    )
+
+    @pytest.mark.parametrize("expression", HELP_SPELLINGS)
+    def test_help_is_readonly_and_low(self, expression: str, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(expression, database=database)
+        assert result.classification == Classification.READONLY, expression
+        assert result.risk == Risk.LOW, expression
+
+    def test_the_command_itself_is_unaffected(self, database: dict[str, CommandDef]) -> None:
+        for expression, classification in (
+            ("gh pr create --title x", Classification.EXTERNAL_EFFECTS),
+            ("glab mr create", Classification.EXTERNAL_EFFECTS),
+            ("gh extension install evil/x", Classification.LOCAL_EFFECTS),
+            ("gh pr zzz", Classification.UNKNOWN),
+        ):
+            assert classify_expression(expression, database=database).classification == classification, expression

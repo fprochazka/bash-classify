@@ -6,11 +6,13 @@ strict: false
 global_options:
   -R: {takes_value: true}
   --repo: {takes_value: true, aliases: [-R]}
-  --help: {}
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY, aliases: [--help]}
 
 subcommands:
   # ── Core: Merge Requests ──────────────────────────────────────
   mr:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -102,6 +104,7 @@ subcommands:
 
   # ── Core: Issues ──────────────────────────────────────────────
   issue:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -131,6 +134,7 @@ subcommands:
         classification: EXTERNAL_EFFECTS
         strict: false
       board:
+        classification: UNKNOWN
         subcommands:
           view:
             classification: READONLY
@@ -144,6 +148,7 @@ subcommands:
 
   # ── Core: Incidents ───────────────────────────────────────────
   incident:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -169,6 +174,7 @@ subcommands:
 
   # ── Core: Snippets ────────────────────────────────────────────
   snippet:
+    classification: UNKNOWN
     subcommands:
       create:
         classification: EXTERNAL_EFFECTS
@@ -176,6 +182,7 @@ subcommands:
 
   # ── Core: Repositories ────────────────────────────────────────
   repo:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -211,11 +218,13 @@ subcommands:
         classification: EXTERNAL_EFFECTS
         strict: false
       publish:
+        classification: UNKNOWN
         subcommands:
           catalog:
             classification: EXTERNAL_EFFECTS
             strict: false
       members:
+        classification: UNKNOWN
         subcommands:
           add:
             classification: EXTERNAL_EFFECTS
@@ -229,6 +238,7 @@ subcommands:
 
   # ── Core: Releases ────────────────────────────────────────────
   release:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -251,6 +261,7 @@ subcommands:
 
   # ── CI/CD: Pipelines ──────────────────────────────────────────
   ci:
+    classification: UNKNOWN
     # `pipe` and `pipeline` are glab's own deprecated aliases for `ci`
     aliases: [pipe, pipeline]
     subcommands:
@@ -305,6 +316,7 @@ subcommands:
         classification: READONLY
         strict: false
       config:
+        classification: UNKNOWN
         subcommands:
           compile:
             classification: READONLY
@@ -333,6 +345,7 @@ subcommands:
 
   # ── CI/CD: Jobs ────────────────────────────────────────────────
   job:
+    classification: UNKNOWN
     subcommands:
       artifact:
         classification: LOCAL_EFFECTS
@@ -340,6 +353,7 @@ subcommands:
 
   # ── CI/CD: Schedules ──────────────────────────────────────────
   schedule:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -359,6 +373,7 @@ subcommands:
 
   # ── CI/CD: Runners ────────────────────────────────────────────
   runner:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -384,6 +399,7 @@ subcommands:
 
   # ── CI/CD: Runner Controllers ──────────────────────────────────
   runner-controller:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -398,6 +414,7 @@ subcommands:
         classification: EXTERNAL_EFFECTS
         strict: false
       scope:
+        classification: UNKNOWN
         subcommands:
           list:
             classification: READONLY
@@ -409,6 +426,7 @@ subcommands:
             classification: DANGEROUS
             strict: false
       token:
+        classification: UNKNOWN
         subcommands:
           list:
             classification: READONLY
@@ -428,6 +446,7 @@ subcommands:
 
   # ── Auth ───────────────────────────────────────────────────────
   auth:
+    classification: UNKNOWN
     subcommands:
       status:
         classification: READONLY
@@ -450,6 +469,7 @@ subcommands:
 
   # ── Config ─────────────────────────────────────────────────────
   config:
+    classification: UNKNOWN
     subcommands:
       get:
         classification: READONLY
@@ -463,6 +483,7 @@ subcommands:
 
   # ── Labels ─────────────────────────────────────────────────────
   label:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -482,6 +503,7 @@ subcommands:
 
   # ── Variables ──────────────────────────────────────────────────
   variable:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -504,6 +526,7 @@ subcommands:
 
   # ── Milestones ─────────────────────────────────────────────────
   milestone:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -523,6 +546,7 @@ subcommands:
 
   # ── SSH Keys ───────────────────────────────────────────────────
   ssh-key:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -539,6 +563,7 @@ subcommands:
 
   # ── GPG Keys ───────────────────────────────────────────────────
   gpg-key:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -555,6 +580,7 @@ subcommands:
 
   # ── Deploy Keys ────────────────────────────────────────────────
   deploy-key:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -571,6 +597,7 @@ subcommands:
 
   # ── Secure Files ───────────────────────────────────────────────
   securefile:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -590,6 +617,7 @@ subcommands:
 
   # ── Tokens ─────────────────────────────────────────────────────
   token:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -606,6 +634,7 @@ subcommands:
 
   # ── Aliases ────────────────────────────────────────────────────
   alias:
+    classification: DANGEROUS
     subcommands:
       list:
         classification: READONLY
@@ -619,6 +648,7 @@ subcommands:
 
   # ── Changelog ──────────────────────────────────────────────────
   changelog:
+    classification: UNKNOWN
     subcommands:
       generate:
         classification: EXTERNAL_EFFECTS
@@ -626,11 +656,13 @@ subcommands:
 
   # ── Cluster ────────────────────────────────────────────────────
   cluster:
+    classification: UNKNOWN
     subcommands:
       graph:
         classification: READONLY
         strict: false
       agent:
+        classification: UNKNOWN
         subcommands:
           list:
             classification: READONLY
@@ -648,6 +680,7 @@ subcommands:
             classification: LOCAL_EFFECTS
             strict: false
           token:
+            classification: UNKNOWN
             subcommands:
               list:
                 classification: READONLY
@@ -656,6 +689,7 @@ subcommands:
                 classification: EXTERNAL_EFFECTS
                 strict: false
           token-cache:
+            classification: UNKNOWN
             subcommands:
               list:
                 classification: READONLY
@@ -666,11 +700,13 @@ subcommands:
 
   # ── OpenTofu / Terraform ───────────────────────────────────────
   opentofu:
+    classification: UNKNOWN
     subcommands:
       init:
         classification: LOCAL_EFFECTS
         strict: false
       state:
+        classification: UNKNOWN
         subcommands:
           list:
             classification: READONLY
@@ -690,6 +726,7 @@ subcommands:
 
   # ── Duo (AI) ───────────────────────────────────────────────────
   duo:
+    classification: UNKNOWN
     subcommands:
       ask:
         classification: READONLY
@@ -700,6 +737,7 @@ subcommands:
 
   # ── Stack (Stacked Diffs) ──────────────────────────────────────
   stack:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -740,6 +778,7 @@ subcommands:
 
   # ── Attestation ────────────────────────────────────────────────
   attestation:
+    classification: UNKNOWN
     subcommands:
       verify:
         classification: READONLY
@@ -747,6 +786,7 @@ subcommands:
 
   # ── MCP ────────────────────────────────────────────────────────
   mcp:
+    classification: UNKNOWN
     subcommands:
       serve:
         classification: LOCAL_EFFECTS
@@ -754,6 +794,7 @@ subcommands:
 
   # ── User ───────────────────────────────────────────────────────
   user:
+    classification: UNKNOWN
     subcommands:
       events:
         classification: READONLY
@@ -761,6 +802,7 @@ subcommands:
 
   # ── Iteration ──────────────────────────────────────────────────
   iteration:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY
@@ -768,6 +810,7 @@ subcommands:
 
   # ── Work Items ─────────────────────────────────────────────────
   work-items:
+    classification: UNKNOWN
     subcommands:
       list:
         classification: READONLY

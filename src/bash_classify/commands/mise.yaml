@@ -10,8 +10,8 @@ strict: false
 global_options:
   --version: {overrides: READONLY, before_subcommand_only: true}
   -V: {overrides: READONLY, before_subcommand_only: true}
-  --help: {overrides: READONLY}
-  -h: {overrides: READONLY}
+  --help: {overrides: READONLY, risk: LOW}
+  -h: {overrides: READONLY, risk: LOW}
   -C: {takes_value: true, captures_directory: true}
   --cd: {takes_value: true, captures_directory: true, aliases: [-C]}
   -E: {takes_value: true}
@@ -101,16 +101,24 @@ subcommands:
   tool:
     classification: READONLY
     strict: false
+  # `mise token <provider>` prints a forge access token on stdout. Reading a credential is
+  # genuinely read-only, so the classification stays -- and risk is floored the way a
+  # sensitive path floors it, because an auto-approved read of a token is the thing the
+  # denylist exists to stop. An unmodelled provider prints one too, hence the base.
   token:
     classification: READONLY
+    risk: HIGH
     strict: false
     subcommands:
       forgejo:
         classification: READONLY
+        risk: HIGH
       github:
         classification: READONLY
+        risk: HIGH
       gitlab:
         classification: READONLY
+        risk: HIGH
   backends:
     classification: READONLY
     strict: false
