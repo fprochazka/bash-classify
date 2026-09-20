@@ -184,7 +184,33 @@ Once installed, any Bash tool call with `risk: LOW` is auto-approved — no perm
 bash-classify loads command definitions from two locations:
 
 - **Built-in database** — 150+ command definitions bundled with the package, covering common Unix utilities, package managers, container tools, cloud CLIs, and more. Lives in `src/bash_classify/commands/*.yaml`.
-- **User database** — your own command definitions at `~/.config/bash-classify/commands/*.yaml` (override the location with the `BASH_CLASSIFY_CONFIG_DIR` env var, which resolves to `$BASH_CLASSIFY_CONFIG_DIR/commands/`). User files with the same name as a built-in override it completely, so you can customize classifications for internal tools, company-specific wrappers, or personal CLIs without forking the repo.
+- **User database** — your own command definitions at `~/.config/bash-classify/commands/*.yaml` (override the location with the `BASH_CLASSIFY_CONFIG_DIR` env var, which resolves to `$BASH_CLASSIFY_CONFIG_DIR/commands/`). A file here lets you classify internal tools, company-specific wrappers or personal CLIs without forking the repo.
+
+A user file that shares its name with a built-in one picks one of two things to do with it.
+
+**Replace it** — the default, and what a file with no `extends` key has always done. The bundled definition is discarded whole: its subcommands, its options, its base classification, all of it. Use this when your binary has nothing to do with the bundled one of the same name, or when you need the bundled file's answer *gone* rather than adjusted.
+
+**Extend it** — `extends: builtin` merges your file over the bundled one, so you declare only what you are adding or changing. Use this to teach a command the subcommands your own setup gives it, which is otherwise a fork of a file that keeps growing underneath you:
+
+```yaml
+# ~/.config/bash-classify/commands/git.yaml
+command: git
+extends: builtin
+subcommands:
+  tally:  {classification: LOCAL_EFFECTS, risk: LOW}
+  ledger: {classification: READONLY}
+```
+
+Everything the bundled `git` knows is still there; `git tally` and `git ledger` are now two more subcommands it knows. Mappings merge key by key at every depth, so naming one field of a subcommand changes that field and leaves the rest of the bundled entry alone — `push: {risk: LOW}` keeps `git push` at `EXTERNAL_EFFECTS` and keeps `--force` dangerous. A scalar, a list, and a `delegates_to` block replace their bundled counterpart outright.
+
+The guarantee is that **merging never drops a bundled subcommand or option.** It is not a blanket "cannot remove": a list is replaced rather than merged, so `aliases: []` does drop the bundled aliases, and that is the one deliberate way to take something away. A file that has to drop a bundled subcommand or option leaves `extends` off and replaces the definition instead.
+
+Four things are load errors rather than quiet surprises, because a user database is never schema-validated at load and every one of these fails towards auto-approval:
+
+- **`extends: builtin` on a command the bundled database does not define.** There is nothing to merge. The message names the file and the command, and no fallback to replacement happens.
+- **Any key the loader does not recognise,** at every level of the file. `extends: bultin` is caught this way, and so is `clasification: READONLY`.
+- **A key written with no value.** YAML reads `classification:` with nothing after it as `null`, not as an absent key, and it would replace the bundled value with the default — which is always the weaker answer. Typing half a line, or commenting a value out while you think about it, would otherwise turn `git <anything unrecognised>` from `DANGEROUS` into `READONLY` without a word. For a *subcommand or option entry* you mean to leave at its bundled settings, write `{}`; that merges as the no-op it looks like. `delegates_to: {}` is not in that class and is refused too, because an empty block parses as "does not delegate" — omit the key instead.
+- **An option written under a name the bundled file spells as an alias of another option.** `kubectl.yaml` files `-n` only as an alias of `--namespace`, and aliases are expanded after the merge, so an entry added under `-n` shadows the bundled option rather than changing it — it loses `takes_value`, and `kubectl -n prod delete pod x` stops resolving `delete`. Write the entry under `--namespace`.
 
 Both directories use the same YAML format. See [docs/classification-guidance.md](docs/classification-guidance.md) for how to add new commands. YAML definitions are validated against a [JSON Schema](schemas/command.schema.json) for IDE autocomplete and CI checks.
 

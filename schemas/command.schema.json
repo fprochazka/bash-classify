@@ -12,6 +12,7 @@
       "required": ["alias_of"],
       "not": {
         "anyOf": [
+          {"required": ["extends"]},
           {"required": ["classification"]},
           {"required": ["risk"]},
           {"required": ["subcommands"]},
@@ -37,9 +38,13 @@
       "type": "string",
       "description": "Short description of the tool"
     },
+    "extends": {
+      "const": "builtin",
+      "description": "Only meaningful in a user database (~/.config/bash-classify/commands/ or $BASH_CLASSIFY_CONFIG_DIR/commands/). With it, this file is merged over the bundled definition of the same name instead of replacing it: mappings merge key by key at every depth, while a scalar, a list or a `delegates_to` block replaces its bundled counterpart. Without it, the file replaces the bundled definition outright. A file that names a command the bundled database does not define is a load error. Mutually exclusive with alias_of."
+    },
     "alias_of": {
       "type": "string",
-      "description": "Name of another command in the database whose definition should be used verbatim. Mutually exclusive with classification/risk/subcommands/options/global_options/subcommand_mode/delegates_to/strict."
+      "description": "Name of another command in the database whose definition should be used verbatim. Mutually exclusive with extends/classification/risk/subcommands/options/global_options/subcommand_mode/delegates_to/strict."
     },
     "classification": {
       "$ref": "#/$defs/Classification"

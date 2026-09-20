@@ -50,7 +50,7 @@ The overall classification of a full expression (e.g. a pipeline) is the **maxim
 
 ## 3. Database File Format
 
-Each YAML file defines one command (binary). Files live in `src/bash_classify/commands/` and are validated against the JSON Schema at `schemas/command.schema.json`.
+Each YAML file defines one command (binary). Files live in `src/bash_classify/commands/` and are validated against the JSON Schema at `schemas/command.schema.json`. The same format is read from a user database at `~/.config/bash-classify/commands/` (or `$BASH_CLASSIFY_CONFIG_DIR/commands/`) -- see [Extending a bundled command](#extending-a-bundled-command) for what a user file of the same name does to the bundled one.
 
 ### Annotated Example
 
@@ -79,6 +79,7 @@ Every key below is the only spelling the loader accepts at that level. A key it 
 |-------|------|---------|-------------|
 | `command` | string | *(required)* | Binary name (e.g. `kubectl`, `git`, `sed`) |
 | `description` | string | -- | Short one-liner describing the tool |
+| `extends` | `builtin` | -- | User database only: merge this file over the bundled definition of the same name rather than replacing it -- see [Extending a bundled command](#extending-a-bundled-command) |
 | `classification` | enum | `READONLY` | Base classification when no subcommand matches |
 | `strict` | boolean | `true` | If true, unrecognized options yield UNKNOWN |
 | `global_options` | map | -- | Options that belong to the binary rather than to one subcommand. Stripped before subcommand matching, and re-checked afterwards, so an entry here **applies at every subcommand depth** -- see [Global options apply at every depth](#global-options-apply-at-every-depth) |
@@ -126,6 +127,69 @@ subcommands:
 3. A destination named by a positional is out of reach. `cp a b`, `tee out.txt`, `dd of=X` and the prefix of `split` are not options, and nothing in the database describes them.
 
 A consumer uses the field to tell a write to a credential from a mention of one, so a wrong mark is worse than a missing one. When in doubt, leave it off.
+
+### Extending a bundled command
+
+A user file with the same name as a bundled one **replaces** it by default: the bundled subcommands, options and base classification are all discarded. Adding `extends: builtin` at the top level **merges** the file over the bundled one instead.
+
+```yaml
+# ~/.config/bash-classify/commands/git.yaml
+command: git
+extends: builtin
+subcommands:
+  tally:  {classification: LOCAL_EFFECTS, risk: LOW}   # a subcommand only this machine has
+  ledger: {classification: READONLY}
+  push:   {risk: LOW}                                  # one field of a bundled subcommand
+```
+
+The merge rule is one sentence: **mappings merge key by key at every depth; a scalar, a list and a `delegates_to` block replace their bundled counterpart outright.**
+
+| In the user file | What the merge does |
+|---|---|
+| `classification`, `risk`, `strict`, `subcommand_mode`, `description` | Replaces the bundled value. Absent, the bundled value stands. |
+| `subcommands`, `options`, `global_options` | Merged by name. Entries only the bundled file has survive; entries only the user file has are added. |
+| A subcommand or option present in both | Merged field by field, recursively. `push: {risk: LOW}` keeps `push`'s bundled classification **and** its `--force` override. |
+| `aliases`, or any other list | Replaced. Lists have no keys to merge on, and appending would make an unwanted bundled alias impossible to drop. |
+| A key written with no value | Rejected -- see below. YAML reads it as a value, and it would replace the bundled one with the default. |
+| `delegates_to` | Replaced whole. `mode` decides which of its other fields mean anything, so half of one block merged into half of another is not a configuration anyone wrote. |
+| `alias_of` | Rejected. An alias file points at another command instead of defining one, so it has nothing to extend. |
+
+Field-by-field merging of an entry present in both files is the choice worth stating, because the alternative fails in the unsafe direction. Under wholesale replacement of the named entry, `push: {risk: LOW}` would silently delete `--force: {overrides: DANGEROUS}` along with everything else `git push` carries, and the file would read as though it had only lowered a risk.
+
+The guarantee is that **merging never drops a bundled subcommand or option.** It is not a blanket "cannot remove": a list is replaced rather than merged, so `aliases: []` does drop the bundled aliases, and that is the one deliberate way to take something away. A file that has to drop a bundled subcommand or option leaves `extends` off and replaces the definition instead -- and then owns the whole thing, including whatever the bundled file grows later.
+
+#### What errors rather than passing quietly
+
+A user database is never schema-validated at load, and every mistake below resolves towards auto-approval, so each one is a load error naming the file and what is wrong with it.
+
+**A key written with no value.** This is the one worth reading twice, because it looks like nothing:
+
+```yaml
+command: git
+extends: builtin
+classification:        # <- not "leave the bundled value alone"
+```
+
+YAML reads that as the value `None`, not as an absent key, and every parser below reads `None` as "not set, use the default". So it replaces the bundled value, and the default it falls back to is always the weaker answer -- here it took `git <anything unrecognised>` from `DANGEROUS` to `READONLY`, which is the exact case `git.yaml`'s own comment explains the DANGEROUS base exists for. A bare `subcommands:` erased every subcommand in the file; `delegates_to:` took `xargs rm -rf` from `DANGEROUS` to `READONLY`. Typing half a line and leaving the value for later, or commenting a value out while thinking about it, must not read as consent.
+
+For a *subcommand or option entry* you mean to keep at its bundled settings, write `{}` -- `-delete: {}` merges as the no-op it looks like. `delegates_to` is the exception: an empty block there parses as "does not delegate", which is the same loss the blank spelling caused, so `delegates_to: {}` is refused as well and the remedy is to omit the key. The blank rule is scoped to extending files: in a file that stands alone a blank key overwrites nothing, and `-i:` meaning "an option with all defaults" is a spelling the format has always accepted -- no bundled file uses it, but files outside this repository may.
+
+**An option written under a name the bundled file spells as an alias.** Aliases are expanded after the merge, in file order, so an entry added under an alias spelling is a separate definition built from defaults, not a change to the bundled option:
+
+```yaml
+command: kubectl
+extends: builtin
+global_options:
+  -n: {}               # <- rejected: write it under --namespace
+```
+
+`kubectl.yaml` files `-n` only as `--namespace: {takes_value: true, aliases: [-n]}`. The entry above cost `-n` its `takes_value`, so `prod` filled the subcommand slot, `delete` never matched, and `kubectl -n prod delete pod x` fell from `DANGEROUS` to `EXTERNAL_EFFECTS`. Whether an option merged or shadowed used to depend on whether the bundled file happened to also list the alias as a key of its own, which is no rule at all.
+
+**A subcommand the bundled file already lists as an alias of another subcommand.** `glab pipeline` is a bundled alias of `glab ci`, so declaring `pipeline` is caught by the existing alias-collision check. Override that subcommand's `aliases` in the same file to claim the name.
+
+**`extends: builtin` naming a command the bundled database does not define.** There is nothing to merge. The lookup is keyed on the *filename*, so `zzmytool.yaml` is filed under `zzmytool` whatever its `command:` says, and the message names the file it looked for.
+
+**Any key the loader does not recognise,** at any level. `extends: bultin` is caught this way, and so is `clasification: READONLY`.
 
 ### Global options apply at every depth
 

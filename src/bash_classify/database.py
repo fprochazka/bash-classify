@@ -49,17 +49,23 @@ class CommandDatabase(dict[str, CommandDef]):
         # only the cache of what has been parsed so far (cheap: just a filename listing).
         self._files: dict[str, Path | None] = {}
 
+        # The bundled file a user file of the same name shadows, kept so that `extends: builtin`
+        # can reach it. Indexing stays a filename listing: which of the two a name needs is
+        # decided when the command is first asked for, not here.
+        self._builtin_files: dict[str, Path] = {}
+
         # Index built-in files
         if builtin_dir.is_dir():
             for yaml_file in builtin_dir.glob("*.yaml"):
                 name = _command_name_from_file(yaml_file)
                 self._files[name] = yaml_file
+                self._builtin_files[name] = yaml_file
 
-        # Index user files (override built-in)
+        # Index user files (they replace the built-in one, or extend it -- their own choice)
         if user_dir and user_dir.is_dir():
             for yaml_file in user_dir.glob("*.yaml"):
                 name = _command_name_from_file(yaml_file)
-                self._files[name] = yaml_file  # user overrides built-in
+                self._files[name] = yaml_file
 
     def __getitem__(self, key: str) -> CommandDef:
         try:
@@ -69,8 +75,11 @@ class CommandDatabase(dict[str, CommandDef]):
         path = self._files.get(key)
         if path is None:
             raise KeyError(key)
-        # Lazy load and cache in the underlying dict
-        command_def = _load_command_file(path)
+        # Lazy load and cache in the underlying dict. The bundled file is handed over only when
+        # a *different* file is being loaded under this name, so nothing can extend itself.
+        builtin = self._builtin_files.get(key)
+        is_bundled = builtin == path
+        command_def = _load_command_file(path, None if is_bundled else builtin, key, is_bundled)
         super().__setitem__(key, command_def)
         return command_def
 
@@ -177,19 +186,215 @@ def _command_name_from_file(yaml_file: Path) -> str:
     return yaml_file.stem
 
 
-def _load_command_file(yaml_file: Path) -> CommandDef:
-    """Parse a single YAML command file into a CommandDef."""
+_EXTENDS_BUILTIN = "builtin"
+"""The only accepted value of the top-level `extends` key."""
+
+# A `delegates_to` block is one setting, not a namespace: `mode` decides which of its other
+# fields mean anything, so half of a user's block merged into half of the bundled one would
+# not be a configuration anyone wrote. Every other mapping -- `subcommands`, `options`,
+# `global_options`, and a single subcommand's or option's own fields -- is a namespace of
+# independent entries and merges key by key.
+_OPAQUE_MERGE_KEYS = frozenset({"delegates_to"})
+
+# The two maps whose entries the bundled files may reach under a second spelling. A user key
+# that a bundled entry claims as an alias cannot merge into it, so it is rejected rather than
+# silently shadowing it -- see `_reject_option_alias_shadowing`.
+_OPTION_MAP_KEYS = frozenset({"options", "global_options"})
+
+
+def _read_command_document(yaml_file: Path) -> dict:
+    """Read one YAML command file and check its outermost shape."""
+    with open(yaml_file) as f:
+        data = yaml.safe_load(f)
+
+    if data is None:
+        raise ValueError("Empty YAML file")
+
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected a YAML mapping, got {type(data).__name__}")
+
+    return data
+
+
+def _take_extends(data: dict, command_name: str) -> str | None:
+    """Pop and validate the top-level `extends` key, returning None when there is none."""
+    if "extends" not in data:
+        return None
+
+    value = data.pop("extends")
+    if value != _EXTENDS_BUILTIN:
+        raise ValueError(f"command '{command_name}': 'extends' must be '{_EXTENDS_BUILTIN}', got {value!r}")
+    if "alias_of" in data:
+        raise ValueError(
+            f"command '{command_name}': 'extends' and 'alias_of' are mutually exclusive; "
+            f"an alias file points at another command instead of defining one"
+        )
+    return str(value)
+
+
+def _blank_valued_keys(data: dict, prefix: str = "") -> list[str]:
+    """Return the dotted path of every key in `data` written with no value, at any depth."""
+    blank: list[str] = []
+    for key, value in data.items():
+        path = f"{prefix}{_yaml_str(key)}"
+        if value is None:
+            blank.append(path)
+        elif isinstance(value, dict):
+            blank.extend(_blank_valued_keys(value, f"{path}."))
+    return blank
+
+
+def _reject_blank_values(data: dict, command_name: str) -> None:
+    """Fail on a key an extending file wrote with no value.
+
+    YAML reads `classification:` with nothing after it as the value `None`, and every parser
+    below reads `None` as "not set, use the default". In a file that stands alone that is
+    harmless -- the default is what a missing key would have given anyway. In a file that
+    extends a bundled one it is not: the `None` overwrites the bundled value, and the default
+    it falls back to is always the weaker answer. `classification:` on a user `git.yaml`
+    turned `git <anything unrecognised>` from DANGEROUS into READONLY, and a bare `push:`
+    under `subcommands:` did the same to `git push`.
+
+    So a blank key is a load error here, in the same spirit as an unrecognised one: half a
+    line typed, or a value commented out while its author thinks, must not read as consent.
+    An entry the author means to leave at its defaults is written `{}`, which merges as the
+    no-op it looks like.
+    """
+    blank = _blank_valued_keys(data)
+    if not blank:
+        return
+    raise ValueError(
+        f"command '{command_name}': extending the bundled definition, so every key must carry a value, "
+        f"but {', '.join(repr(path) for path in blank)} "
+        f"{'is' if len(blank) == 1 else 'are'} null -- which is also what a key written with nothing "
+        f"after it means. A null does not leave the bundled value alone: it replaces it with the "
+        f"default, which is the weaker answer. Write the value, delete the line, or -- for a "
+        f"subcommand or option entry meant to keep its bundled settings -- write '{{}}'"
+    )
+
+
+def _reject_option_alias_shadowing(base: dict, overlay: dict, command_name: str, where: str) -> None:
+    """Fail on a user option written under a name a bundled entry claims as its alias.
+
+    Aliases are expanded after the merge, in file order, so an entry the user adds under an
+    alias spelling does not change the bundled option -- it is a separate definition built
+    from defaults, and whichever of the two the expansion writes last wins. `kubectl.yaml`
+    spells `-n` only as an alias of `--namespace`, so a user entry for `-n` stopped it
+    consuming its value and `kubectl -n prod delete pod x` fell from DANGEROUS to
+    EXTERNAL_EFFECTS. Whether a given option merged or shadowed depended on whether the
+    bundled file happened to also list the alias as a key of its own, which is no rule at all.
+    """
+    claimed: dict[str, str] = {}
+    for name, props in base.items():
+        if not isinstance(props, dict):
+            continue
+        # A user entry for this option may itself rewrite the alias list, and a list replaces
+        # rather than merges. So an author releasing `-n` from `--namespace` and keying `-n`
+        # on its own in the same file is asking for exactly what the merge would produce, and
+        # is not shadowing anything -- the claim has to be read after their rewrite, not before.
+        overlay_props = overlay.get(name)
+        if isinstance(overlay_props, dict) and "aliases" in overlay_props:
+            aliases = overlay_props["aliases"]
+        else:
+            aliases = props.get("aliases")
+        for alias in aliases or []:
+            alias = _yaml_str(alias)
+            if alias != _yaml_str(name):
+                claimed[alias] = _yaml_str(name)
+
+    for name in overlay:
+        primary = claimed.get(_yaml_str(name))
+        if primary is not None:
+            raise ValueError(
+                f"command '{command_name}': '{where}' declares '{name}', which the bundled file spells "
+                f"as an alias of '{primary}'. An entry under an alias shadows the bundled option instead "
+                f"of changing it; write it under '{primary}' instead"
+            )
+
+
+def _read_base_document(builtin_file: Path | None, command_name: str, index_name: str, is_bundled: bool) -> dict:
+    """Read the bundled document an `extends: builtin` file builds on."""
+    if builtin_file is None and is_bundled:
+        raise ValueError(
+            f"command '{command_name}': 'extends: {_EXTENDS_BUILTIN}' is only for a user database file, "
+            f"and this file is itself the bundled definition of '{index_name}'"
+        )
+    if builtin_file is None:
+        raise ValueError(
+            f"command '{command_name}': 'extends: {_EXTENDS_BUILTIN}' has nothing to extend, "
+            f"because the bundled database has no '{index_name}.yaml'"
+        )
+
     try:
-        with open(yaml_file) as f:
-            data = yaml.safe_load(f)
+        base = _read_command_document(builtin_file)
+    except Exception as e:
+        raise ValueError(f"cannot read the bundled definition at {builtin_file}: {e}") from e
 
-        if data is None:
-            raise ValueError("Empty YAML file")
+    if "extends" in base:
+        raise ValueError(f"the bundled definition at {builtin_file} declares 'extends' itself")
 
-        if not isinstance(data, dict):
-            raise ValueError(f"Expected a YAML mapping, got {type(data).__name__}")
+    return base
 
+
+def _merge_command_data(base: dict, overlay: dict, command_name: str, path: str = "") -> dict:
+    """Merge a user document over the bundled document it extends.
+
+    Mappings merge key by key at every depth; a scalar, a list or a `delegates_to` block in
+    the overlay replaces its counterpart outright. So a user file adds to what the bundled
+    file knows and overrides only the fields it names: declaring `push: {risk: LOW}` keeps
+    `push`'s bundled classification and its `--force` override, rather than deleting them.
+
+    The merge never drops a subcommand or an option, which is the guarantee worth having.
+    It is not a blanket "cannot remove": a list is replaced, so `aliases: []` does drop the
+    bundled aliases, and that is the one deliberate way to take something away. The
+    accidental ways are closed elsewhere -- `_reject_blank_values` before this runs, because
+    YAML's `None` for a key with no value is a value like any other here and would delete,
+    and `_parse_delegation_config` for an empty `delegates_to` block.
+    """
+    merged = dict(base)
+    for key, value in overlay.items():
+        existing = merged.get(key)
+        if key in _OPAQUE_MERGE_KEYS or not isinstance(existing, dict) or not isinstance(value, dict):
+            merged[key] = value
+            continue
+        if key in _OPTION_MAP_KEYS:
+            _reject_option_alias_shadowing(existing, value, command_name, f"{path}{_yaml_str(key)}")
+        merged[key] = _merge_command_data(existing, value, command_name, f"{path}{_yaml_str(key)}.")
+    return merged
+
+
+def _load_command_file(
+    yaml_file: Path,
+    builtin_file: Path | None = None,
+    index_name: str | None = None,
+    is_bundled: bool = False,
+) -> CommandDef:
+    """Parse a single YAML command file into a CommandDef.
+
+    `builtin_file` is the bundled file of the same name that `yaml_file` shadows, if there is
+    one. It is read only when `yaml_file` asks for it with `extends: builtin`, so the common
+    case still parses exactly one file. `index_name` is the name the database filed this file
+    under -- its filename stem, which is what the bundled lookup is keyed on, and not
+    necessarily the `command:` inside it. `is_bundled` says `yaml_file` is itself the bundled
+    definition, so there is nothing above it to extend.
+    """
+    try:
+        data = _read_command_document(yaml_file)
+
+        if "command" not in data:
+            raise ValueError("missing required field 'command'")
         command_name = _yaml_str(data["command"])
+
+        if _take_extends(data, command_name) is not None:
+            # Validate the user's own document first, so a key that is both misspelled and
+            # blank is reported as the misspelling it is. Reading it twice is cheap, and the
+            # merged document would otherwise answer "give it a value" for a key that has no
+            # value to give.
+            _parse_command_def(dict(data), command_name)
+            _reject_blank_values(data, command_name)
+            base = _read_base_document(builtin_file, command_name, index_name or yaml_file.stem, is_bundled)
+            data = _merge_command_data(base, data, command_name)
+
         return _parse_command_def(data, command_name)
     except Exception as e:
         raise ValueError(f"Error loading {yaml_file}: {e}") from e

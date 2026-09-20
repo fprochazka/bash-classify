@@ -513,6 +513,22 @@ Step 5: classification
 
 YAML files, one per command or command family. Loaded from a `commands/` directory.
 
+### Where files are loaded from
+
+Two directories, in this order: the bundled `src/bash_classify/commands/`, then the user's own `~/.config/bash-classify/commands/` (or `$BASH_CLASSIFY_CONFIG_DIR/commands/` when that variable is set). A user file whose name no bundled file uses simply adds a command. A user file that shares its name with a bundled one resolves in one of two ways, and the file itself chooses:
+
+- **Without `extends`** -- the default -- the user file *replaces* the bundled definition entirely. Nothing of the bundled file survives: not its subcommands, not its options, not its base classification.
+- **With `extends: builtin`** the user file is *merged over* the bundled one. Mappings merge key by key at every depth, so `subcommands`, `options`, `global_options`, and the fields of a single subcommand or option present in both files, all merge. A scalar, a list and a `delegates_to` block replace their bundled counterpart outright. The guarantee is that merging never drops a bundled subcommand or option; it is not a blanket "cannot remove", because a list is replaced, so `aliases: []` does drop the bundled aliases and is the one deliberate way to take something away.
+
+An extending file is held to four rules that a replacing file is not, because each one would otherwise resolve towards the weaker verdict:
+
+- **Nothing to extend is an error.** `extends: builtin` in a file whose name the bundled database does not carry is a load error naming the file and the command, never a silent replacement. The lookup is keyed on the *filename*, so `zzmytool.yaml` is filed under `zzmytool` whatever its `command:` says. `extends` is likewise meaningless when an explicit commands directory is passed to `load_database`, because the file is then itself the bundled definition, and that has its own message rather than being a no-op.
+- **A key written with no value is an error.** YAML reads `classification:` with nothing after it as the value `None`, and every parser reads `None` as "not set, use the default", so it replaces the bundled value rather than leaving it alone. The default is always the weaker answer: a blank `classification:` took `git <anything unrecognised>` from `DANGEROUS` to `READONLY`, a blank `delegates_to:` took `xargs rm -rf` the same way, and a bare `subcommands:` erased every subcommand in the file. A subcommand or option entry meant to keep its bundled settings is written `{}`, which merges as a no-op; `delegates_to: {}` is not in that class and is an error of its own, because an empty block parses as "does not delegate" and losing a delegation lowers the verdict the same way. In a replacing file a blank key deletes nothing, so `-i:` there still means "an option with all defaults", which the format has always accepted even though no bundled file uses the spelling.
+- **An option under a bundled alias spelling is an error.** Aliases are expanded after the merge, in file order, so an entry written under a name the bundled file spells as an alias of another option is a separate definition built from defaults, not a change to the bundled one. `kubectl.yaml` files `-n` only as an alias of `--namespace`; an entry under `-n` cost it `takes_value` and dropped `kubectl -n prod delete pod x` from `DANGEROUS` to `EXTERNAL_EFFECTS`. The entry goes under the primary name.
+- **A subcommand that collides with a bundled alias is an error,** from the same alias-collision check that applies to any file.
+
+Only the bundled files are validated against `schemas/command.schema.json`, by `tests/test_schema.py`, which is to say wherever the suite runs and never at load time. The loader therefore enforces the schema's key allowlists itself, at all four levels the schema closes with `additionalProperties: false`: command, subcommand, option and `delegates_to`. A key the loader does not recognise is a load error naming the file, the object it sits on, the unrecognised spelling and the accepted ones. Resolution is lazy: a command is parsed when it is first asked for, and an extending command reads its two files then and not before.
+
 ### Example: `commands/kubectl.yaml`
 
 ```yaml
@@ -970,6 +986,7 @@ When command-level delegation resolves at least one inner command (and no option
 | Field | Type | Description |
 |---|---|---|
 | `command` | `string` | Binary name |
+| `extends` | `builtin` | User database only: merge this file over the bundled definition of the same name instead of replacing it |
 | `classification` | `enum` | Default classification for the command (when no subcommand matched) |
 | `global_options` | `map` | Options that appear before subcommands and are stripped before matching |
 | `subcommands` | `map` | Nested subcommand definitions (recursive structure) |
