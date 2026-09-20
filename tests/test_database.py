@@ -543,3 +543,117 @@ class TestLazyDatabaseBehavesLikeADict:
         assert "zzz-not-a-real-command" in list(database)
         assert "zzz-not-a-real-command" in dict(database.items())
         assert database["zzz-not-a-real-command"].command == "zzz-not-a-real-command"
+
+
+class TestUnknownKeysAreRejected:
+    """A key the loader does not know is a typo, and a silent typo is the dangerous kind.
+
+    Only the bundled files are schema-validated in CI; a user database is read by this loader
+    alone. `clasification: READONLY` used to leave the command at its default and say nothing,
+    and the misspelling of a key that lowers a classification fails in the unsafe direction.
+    """
+
+    def test_unknown_command_level_key_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\nclasification: READONLY\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*command 'tool'.*unknown field.*clasification"):
+            db["tool"]
+
+    def test_the_message_lists_the_accepted_keys(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\nclasification: READONLY\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="accepted:.*classification.*"):
+            db["tool"]
+
+    def test_unknown_subcommand_level_key_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\nsubcommands:\n  sub:\n    riskk: LOW\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*subcommand 'sub'.*unknown field.*riskk"):
+            db["tool"]
+
+    def test_a_subcommand_may_not_carry_command_level_only_keys(self, tmp_path: Path) -> None:
+        """`global_options` belongs to the binary; under a subcommand it would never be read."""
+        (tmp_path / "tool.yaml").write_text("command: tool\nsubcommands:\n  sub:\n    global_options:\n      -x: {}\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="subcommand 'sub'.*unknown field.*global_options"):
+            db["tool"]
+
+    def test_unknown_option_level_key_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\noptions:\n  -i: {overides: DANGEROUS}\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*option '-i'.*unknown field.*overides"):
+            db["tool"]
+
+    def test_unknown_global_option_level_key_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\nglobal_options:\n  -i: {takes_values: true}\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="option '-i'.*unknown field.*takes_values"):
+            db["tool"]
+
+    def test_unknown_delegation_key_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\ndelegates_to:\n  mode: rest_are_argv\n  seperator: --\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*delegates_to.*unknown field.*seperator"):
+            db["tool"]
+
+    def test_a_non_mapping_options_container_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\noptions:\n  - -i\n  - -v\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*'options' must be a mapping.*got list"):
+            db["tool"]
+
+    def test_a_non_mapping_global_options_container_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\nglobal_options:\n  - -i\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="'global_options' must be a mapping.*got list"):
+            db["tool"]
+
+    def test_a_non_mapping_subcommands_container_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\nsubcommands:\n  - push\n  - pull\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="'subcommands' must be a mapping.*got list"):
+            db["tool"]
+
+    def test_an_empty_delegates_to_block_is_rejected(self, tmp_path: Path) -> None:
+        """An absent key says "does not delegate"; an empty block must not say it by accident.
+
+        The schema has always required `mode`, so this is the loader agreeing with it. It
+        matters because the parser used to return None for any falsy value, which is the same
+        answer as "no delegation" -- and losing a delegation always lowers the verdict.
+        """
+        (tmp_path / "tool.yaml").write_text("command: tool\ndelegates_to: {}\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="tool.yaml.*delegates_to.*missing required field 'mode'"):
+            db["tool"]
+
+    def test_an_empty_list_delegates_to_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\ndelegates_to: []\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="delegates_to.*expected a mapping, got list"):
+            db["tool"]
+
+    def test_an_empty_delegates_to_on_an_option_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\noptions:\n  -exec: {delegates_to: {}}\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="delegates_to.*missing required field 'mode'"):
+            db["tool"]
+
+    def test_an_absent_delegates_to_is_still_how_a_command_says_it_does_not_delegate(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\nclassification: READONLY\n")
+        assert load_database(tmp_path)["tool"].delegates_to is None
+
+    def test_a_non_mapping_delegates_to_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\ndelegates_to:\n  - rest_are_argv\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="delegates_to.*expected a mapping, got list"):
+            db["tool"]
+
+    def test_a_non_mapping_subcommand_entry_is_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "tool.yaml").write_text("command: tool\nsubcommands:\n  sub: READONLY\n")
+        db = load_database(tmp_path)
+        with pytest.raises(ValueError, match="subcommand 'sub'.*expected a mapping, got str"):
+            db["tool"]
+
+    def test_every_bundled_file_still_loads(self, database: dict[str, CommandDef]) -> None:
+        """The allowlists mirror the schema, so the bundled database must pass them unchanged."""
+        assert all(isinstance(definition, CommandDef) for definition in database.values())

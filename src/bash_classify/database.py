@@ -272,6 +272,75 @@ _ALIAS_FORBIDDEN_KEYS = frozenset(
     }
 )
 
+# The keys each kind of object accepts. These mirror the `additionalProperties: false` objects
+# in schemas/command.schema.json, and exist because only the bundled files are schema-validated
+# in CI: a user database is read by this loader alone. An unrecognised key there used to be
+# ignored, so `clasification: READONLY` silently left the command at its default rather than
+# saying anything, and the misspelling of a key that *lowers* a classification is exactly the
+# direction that must not fail quietly.
+_COMMAND_KEYS = frozenset(
+    {
+        "command",
+        "description",
+        "alias_of",
+        "classification",
+        "risk",
+        "strict",
+        "global_options",
+        "options",
+        "subcommands",
+        "subcommand_mode",
+        "delegates_to",
+    }
+)
+
+_SUBCOMMAND_KEYS = frozenset(
+    {
+        "aliases",
+        "classification",
+        "risk",
+        "strict",
+        "options",
+        "subcommands",
+        "subcommand_mode",
+        "delegates_to",
+    }
+)
+
+_OPTION_KEYS = frozenset(
+    {
+        "takes_value",
+        "aliases",
+        "overrides",
+        "risk",
+        "captures_directory",
+        "names_output_path",
+        "before_subcommand_only",
+        "delegates_to",
+    }
+)
+
+_DELEGATION_KEYS = frozenset(
+    {
+        "mode",
+        "separator",
+        "terminator",
+        "flag",
+        "strip_assignments",
+        "skip_leading_positionals",
+        "min_classification",
+    }
+)
+
+
+def _reject_unknown_keys(data: object, known: frozenset[str], subject: str) -> None:
+    """Fail on any key `known` does not list, naming both the typo and the accepted keys."""
+    if not isinstance(data, dict):
+        raise ValueError(f"{subject}: expected a mapping, got {type(data).__name__}")
+    unknown = sorted(str(key) for key in data.keys() - known)
+    if unknown:
+        raise ValueError(f"{subject}: unknown field(s) {', '.join(unknown)}; accepted: {', '.join(sorted(known))}")
+
 
 def _parse_command_def(data: dict, command_name: str, is_subcommand: bool = False) -> CommandDef:
     """Parse a raw YAML dict into a CommandDef structure.
@@ -286,6 +355,11 @@ def _parse_command_def(data: dict, command_name: str, is_subcommand: bool = Fals
             f"use an alias_of file for a command-level alias"
         )
 
+    if is_subcommand:
+        _reject_unknown_keys(data, _SUBCOMMAND_KEYS, f"subcommand '{command_name}'")
+    else:
+        _reject_unknown_keys(data, _COMMAND_KEYS, f"command '{command_name}'")
+
     alias_of = data.get("alias_of")
     if alias_of is not None:
         conflicting = sorted(_ALIAS_FORBIDDEN_KEYS & data.keys())
@@ -299,7 +373,7 @@ def _parse_command_def(data: dict, command_name: str, is_subcommand: bool = Fals
     classification = _parse_classification(data.get("classification"))
     risk = _parse_risk(data.get("risk"))
 
-    global_options = _parse_options(data.get("global_options", {}))
+    global_options = _parse_options(data.get("global_options", {}), "global_options")
     options = _parse_options(data.get("options", {}))
     subcommands = _parse_subcommands(data.get("subcommands", {}))
     delegates_to = _parse_delegation_config(data.get("delegates_to"))
@@ -341,16 +415,21 @@ def _parse_subcommand_mode(value: str | None) -> SubcommandMode:
     return SubcommandMode(value)
 
 
-def _parse_options(raw: dict | None) -> dict[str, OptionDef]:
+def _parse_options(raw: dict | None, field: str = "options") -> dict[str, OptionDef]:
     """Parse an options map, expanding aliases so each alias maps to the same OptionDef."""
     if not raw:
         return {}
+
+    if not isinstance(raw, dict):
+        raise ValueError(f"'{field}' must be a mapping of option name to definition, got {type(raw).__name__}")
 
     options: dict[str, OptionDef] = {}
 
     for name, props in raw.items():
         if props is None:
             props = {}
+
+        _reject_unknown_keys(props, _OPTION_KEYS, f"option '{name}'")
 
         option_def = OptionDef(
             takes_value=props.get("takes_value", False),
@@ -393,6 +472,9 @@ def _parse_subcommands(raw: dict | None) -> dict[str, CommandDef]:
     if not raw:
         return {}
 
+    if not isinstance(raw, dict):
+        raise ValueError(f"'subcommands' must be a mapping of subcommand name to definition, got {type(raw).__name__}")
+
     subcommands: dict[str, CommandDef] = {}
 
     for name, props in raw.items():
@@ -423,9 +505,24 @@ def _parse_subcommands(raw: dict | None) -> dict[str, CommandDef]:
 
 
 def _parse_delegation_config(raw: dict | None) -> DelegationConfig | None:
-    """Parse a delegates_to configuration."""
-    if not raw:
+    """Parse a delegates_to configuration.
+
+    An absent key is the only way to say "this command does not delegate". A key that is
+    present but carries nothing to act on -- `{}`, or an empty list -- used to return `None`
+    just the same, which reads as that same statement without anyone having made it. It is
+    the costly direction: dropping `xargs`'s delegation makes `xargs rm -rf` READONLY instead
+    of DANGEROUS. The schema has always required `mode` here; this is the loader agreeing.
+    """
+    if raw is None:
         return None
+
+    _reject_unknown_keys(raw, _DELEGATION_KEYS, "delegates_to")
+
+    if "mode" not in raw:
+        raise ValueError(
+            "delegates_to: missing required field 'mode'; omit the key entirely for a command that "
+            "does not delegate, because an empty block reads as one that does not either"
+        )
 
     mode = DelegationMode(raw["mode"])
     min_class = _parse_classification(raw.get("min_classification"))

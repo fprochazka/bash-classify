@@ -71,6 +71,8 @@ options:                            # options that affect classification
 
 ### Field Reference
 
+Every key below is the only spelling the loader accepts at that level. A key it does not know is a load error naming the file, the command or option it sits on, the unrecognised spelling and the accepted ones. That matters most outside this repo: only the bundled files are validated against the JSON Schema in CI, so in a user database this check is the only thing standing between `clasification: READONLY` and a command that silently keeps its default classification.
+
 #### Top-level fields
 
 | Field | Type | Default | Description |
