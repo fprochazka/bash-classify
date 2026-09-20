@@ -427,3 +427,79 @@ class TestExtractionDestinations:
     def test_wget_directory_prefix(self, database: dict[str, CommandDef]) -> None:
         assert database["wget"].options["-P"].captures_directory is True
         assert database["wget"].options["--directory-prefix"].captures_directory is True
+
+
+class TestLazyDatabaseViews:
+    """`CommandDatabase` populates lazily, so `dict`'s own views would report only what was read.
+
+    `len()`, `in` and `[key]` were already right; `.items()`, `.values()` and `.keys()` read the
+    underlying storage and came back empty on a fresh instance. A consumer iterating the database
+    to build a report got nothing and no error.
+    """
+
+    def test_views_see_every_command_before_anything_is_read(self) -> None:
+        database = load_database()
+        assert len(database.items()) == len(database)
+        assert len(database.values()) == len(database)
+        assert len(database.keys()) == len(database)
+
+    def test_items_resolve_to_definitions(self) -> None:
+        database = load_database()
+        by_name = dict(database.items())
+        assert by_name["git"].command == "git"
+        assert {name for name, _ in database.items()} == set(database)
+
+
+class TestLazyDatabaseBehavesLikeADict:
+    """The laziness must not be visible through any dict operation, not only the views.
+
+    `copy()` returned `{}`, `== {}` was True while `len()` said 168, `pop("git")` raised
+    KeyError while `"git" in db` was True, and `popitem()` and `reversed()` were empty. Each of
+    those reads the underlying storage, which holds only what has been parsed so far.
+    """
+
+    def test_equality_is_asked_before_anything_is_read(self) -> None:
+        """On a fresh instance the cache is empty, so `dict.__eq__` would call it equal to `{}`."""
+        assert load_database() != {}
+        assert load_database().__eq__({}) is False
+
+    def test_copy_and_equality_see_everything(self) -> None:
+        database = load_database()
+        assert len(database.copy()) == len(database)
+        assert database == dict(database.items())
+
+    def test_pop_and_delete_work_on_an_unread_command(self) -> None:
+        database = load_database()
+        size = len(database)
+        assert "git" in database
+        assert database.pop("git").command == "git"
+        assert "git" not in database
+        assert len(database) == size - 1
+        assert database.pop("git", None) is None
+
+    def test_popitem_and_reversed_see_unread_commands(self) -> None:
+        database = load_database()
+        key, value = database.popitem()
+        assert isinstance(value, CommandDef)
+        assert key not in database
+        assert list(reversed(load_database())) == list(reversed(list(load_database())))
+
+    def test_the_unoverridden_half_of_dict_is_documented_not_fixed(self) -> None:
+        """The class docstring names what is index-backed; this pins the boundary it draws.
+
+        `update`, `|` and `repr` are C implementations that bypass `__setitem__` and read the
+        cache, and the docstring says so rather than claiming the class is a dict. A caller who
+        needs them is told to build a plain dict with `dict(db.items())` first.
+        """
+        database = load_database()
+        assert repr(database) == "{}"
+        database.update({"zzz-not-real": CommandDef(command="zzz-not-real")})
+        assert "zzz-not-real" not in list(database)
+        assert dict(load_database().items())["git"].command == "git"
+
+    def test_assignment_registers_the_command(self) -> None:
+        database = load_database()
+        database["zzz-not-a-real-command"] = CommandDef(command="zzz-not-a-real-command")
+        assert "zzz-not-a-real-command" in list(database)
+        assert "zzz-not-a-real-command" in dict(database.items())
+        assert database["zzz-not-a-real-command"].command == "zzz-not-a-real-command"

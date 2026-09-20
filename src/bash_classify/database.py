@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
+from collections.abc import ItemsView, Iterator, KeysView, ValuesView
 from pathlib import Path
 
 import yaml
@@ -25,16 +25,29 @@ def get_user_commands_dir() -> Path:
 
 
 class CommandDatabase(dict[str, CommandDef]):
-    """Lazy-loading command database that behaves as a dict.
+    """Lazy-loading command database, read through the `Mapping` half of `dict`.
 
-    YAML files are only parsed when a specific command is first accessed.
-    From the outside, this is indistinguishable from a regular dict.
+    YAML files are only parsed when a specific command is first accessed. The index of names is
+    built up front, and the dict storage underneath is only the cache of what has been parsed,
+    so anything that reads that storage directly sees a partial answer.
+
+    The read surface is index-backed and safe to use: `len`, `in`, `iter`, `reversed`, `[]`,
+    `get`, `keys`, `values`, `items`, `copy` and `==` against another mapping. So is the small
+    mutating surface the class overrides: `[] =`, `del`, `pop`, `popitem`, `setdefault`, `clear`.
+
+    The rest of `dict` is **not** overridden and still reads the cache: `update`, `|`, `|=`,
+    `repr`, `json.dumps`, `copy.copy` (which would share `_files` by reference) and `fromkeys`.
+    `popitem` also pops in index order rather than `dict`'s insertion-LIFO. Nothing in the
+    package uses any of those; a caller that needs one should build a plain dict first, with
+    `dict(db.items())`.
     """
 
     def __init__(self, builtin_dir: Path, user_dir: Path | None = None):
         super().__init__()
-        # Map command name -> yaml file path (cheap: just filename listing)
-        self._files: dict[str, Path] = {}
+        # Map command name -> yaml file path, or None for a definition assigned directly.
+        # This is the index every dict operation answers from; the dict storage below it is
+        # only the cache of what has been parsed so far (cheap: just a filename listing).
+        self._files: dict[str, Path | None] = {}
 
         # Index built-in files
         if builtin_dir.is_dir():
@@ -53,12 +66,18 @@ class CommandDatabase(dict[str, CommandDef]):
             return super().__getitem__(key)
         except KeyError:
             pass
-        if key not in self._files:
+        path = self._files.get(key)
+        if path is None:
             raise KeyError(key)
         # Lazy load and cache in the underlying dict
-        command_def = _load_command_file(self._files[key])
+        command_def = _load_command_file(path)
         super().__setitem__(key, command_def)
         return command_def
+
+    def __setitem__(self, key: str, value: CommandDef) -> None:
+        # Register in the index too, or `__iter__` and `__len__` would not see the new command.
+        self._files.setdefault(key, None)
+        dict.__setitem__(self, key, value)
 
     def get(self, key: str, default: CommandDef | None = None) -> CommandDef | None:  # type: ignore[override]
         try:
@@ -74,6 +93,79 @@ class CommandDatabase(dict[str, CommandDef]):
 
     def __len__(self) -> int:
         return len(self._files)
+
+    # Everything below exists because `dict`'s own implementations read the underlying storage,
+    # which holds only what has been loaded so far: `.items()` on a fresh database was empty
+    # while `len()` said 160-odd, `.copy()` returned `{}`, `== {}` was True, and `pop("git")`
+    # raised KeyError while `"git" in db` was True. Each now goes through `__iter__` and
+    # `__getitem__`, so it sees every indexed command and loads it on demand. The views stay
+    # lazy; the ones that have to produce a whole dict materialise, which is the same work a
+    # real dict already did. This is the surface the class docstring lists, and no more -- the
+    # C implementations of `update`, `|`, `|=` and `repr` bypass all of it.
+    def keys(self) -> KeysView[str]:
+        return KeysView(self)
+
+    def values(self) -> ValuesView[CommandDef]:
+        return ValuesView(self)
+
+    def items(self) -> ItemsView[str, CommandDef]:
+        return ItemsView(self)
+
+    def __reversed__(self) -> Iterator[str]:
+        return reversed(list(self._files))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, CommandDatabase):
+            return self._files.keys() == other._files.keys() and all(self[k] == other[k] for k in self._files)
+        if isinstance(other, dict):
+            return dict(self.items()) == other
+        return NotImplemented
+
+    def __ne__(self, other: object) -> bool:
+        result = self.__eq__(other)
+        return result if result is NotImplemented else not result
+
+    __hash__ = None  # type: ignore[assignment]
+
+    def copy(self) -> dict[str, CommandDef]:
+        return dict(self.items())
+
+    def pop(self, key: str, *default: CommandDef) -> CommandDef:
+        try:
+            value = self[key]
+        except KeyError:
+            if default:
+                return default[0]
+            raise
+        del self[key]
+        return value
+
+    def popitem(self) -> tuple[str, CommandDef]:
+        try:
+            key = next(iter(self._files))
+        except StopIteration:
+            raise KeyError("popitem(): database is empty") from None
+        return key, self.pop(key)
+
+    def __delitem__(self, key: str) -> None:
+        if key not in self._files:
+            raise KeyError(key)
+        del self._files[key]
+        if dict.__contains__(self, key):
+            dict.__delitem__(self, key)
+
+    def clear(self) -> None:
+        self._files.clear()
+        dict.clear(self)
+
+    def setdefault(self, key: str, default: CommandDef | None = None) -> CommandDef:  # type: ignore[override]
+        try:
+            return self[key]
+        except KeyError:
+            if default is None:
+                raise
+            self[key] = default
+            return default
 
 
 def _command_name_from_file(yaml_file: Path) -> str:
