@@ -1,10 +1,18 @@
 # $schema: ../../../schemas/command.schema.json
 command: helm
 description: "Kubernetes package manager"
+# An unrecognised subcommand is one this file does not model — a helm plugin such as
+# `helm diff` or `helm secrets` runs its own binary. Helm installs into a cluster,
+# so an unknown subcommand cannot be read as read-only.
+classification: UNKNOWN
 strict: false
 global_options:
+  -h: {overrides: READONLY}
   --help: {overrides: READONLY}
 subcommands:
+  help:
+    classification: READONLY
+    strict: false
   list:
     classification: READONLY
     strict: false

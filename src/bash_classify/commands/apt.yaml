@@ -1,12 +1,29 @@
 # $schema: ../../../schemas/command.schema.json
 command: apt
 description: "Debian package management tool"
+# An unrecognised subcommand is one this file does not model. apt installs and removes
+# system packages, so an unknown subcommand cannot be read as read-only.
+classification: UNKNOWN
 strict: false
 global_options:
+  -h: {overrides: READONLY}
+  # apt honours both spellings at every depth and acts on neither: `apt upgrade -v` and
+  # `apt install -v <pkg>` print `apt <version>` and exit 0 having done nothing. So neither
+  # carries `before_subcommand_only` -- READONLY really is the verdict at any depth. Where a
+  # subcommand takes its own `-v` it declares it, which is what keeps that one out of here.
+  --version: {overrides: READONLY}
+  -v: {overrides: READONLY}
   --help: {overrides: READONLY}
 subcommands:
+  help:
+    classification: READONLY
+    strict: false
   list:
     classification: READONLY
+    # `apt list -v` lists packages -- here `-v` is the subcommand's own verbosity flag and not
+    # apt's `--version`, so it is declared rather than left to the global
+    options:
+      -v: {}
   show:
     classification: READONLY
   search:

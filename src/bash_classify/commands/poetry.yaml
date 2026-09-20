@@ -1,15 +1,27 @@
 # $schema: ../../../schemas/command.schema.json
 command: poetry
 description: "Python dependency management and packaging"
+# An unrecognised subcommand is one this file does not model, not one poetry refuses:
+# poetry installs, publishes and stores registry credentials, and plugins add
+# subcommands of their own, so an unknown one cannot be read as read-only.
+classification: UNKNOWN
 strict: false
 global_options:
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY}
+  -V: {overrides: READONLY}
   --help: {overrides: READONLY}
 subcommands:
+  help:
+    classification: READONLY
+    strict: false
   show:
     classification: READONLY
     strict: false
+  # bare `version` prints, but `version <bump>` rewrites the project file and can tag,
+  # and one classification cannot be conditioned on an operand -- same call as `pnpm version`
   version:
-    classification: READONLY
+    classification: LOCAL_EFFECTS
     strict: false
   search:
     classification: READONLY

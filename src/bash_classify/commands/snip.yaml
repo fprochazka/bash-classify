@@ -63,13 +63,17 @@ subcommands:
 
   # --- snip-native delegating runners ---
   # `snip run -- <cmd> <args>` is the explicit form: classify the inner command.
+  # The DANGEROUS base is what is left when the separator is absent and no inner command
+  # resolves; delegation drops it as soon as one does, so `snip run -- ls` is still READONLY.
   run:
+    classification: DANGEROUS
     strict: false
     delegates_to:
       mode: after_separator
       separator: "--"
   # `snip proxy <cmd> <args>` skips filtering and execs the inner directly.
   proxy:
+    classification: DANGEROUS
     strict: false
     delegates_to:
       mode: rest_are_argv

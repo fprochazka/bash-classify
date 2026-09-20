@@ -1,10 +1,17 @@
 # $schema: ../../../schemas/command.schema.json
 command: go
 description: "Tool for managing Go source code"
+# An unrecognised subcommand is one this file does not model. `go` builds, downloads
+# modules and runs code, so an unknown subcommand cannot be read as read-only.
+classification: UNKNOWN
 strict: false
 global_options:
   --help: {overrides: READONLY}
+  -h: {overrides: READONLY, aliases: [--help]}
 subcommands:
+  help:
+    classification: READONLY
+    strict: false
   build:
     classification: LOCAL_EFFECTS
     risk: LOW

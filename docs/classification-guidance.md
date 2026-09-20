@@ -292,9 +292,29 @@ Some commands do not do work themselves -- they delegate to an inner command. ba
 
 ### Pure-wrapper rule of thumb
 
-For commands that are pure passthroughs -- they do nothing themselves beyond running the inner command (e.g. `env`, `xargs`, `mise exec`, `pnpm exec`) -- **omit `classification`**. The missing base defaults to `READONLY`, which is the identity element for severity-max against the delegated inner: the inner command's classification is what surfaces. Writing `classification: READONLY` explicitly on a pure wrapper is misleading -- it reads as "this command is safe" when the real intent is "inherit from whatever I wrap."
+For commands that are pure passthroughs -- they do nothing themselves beyond running the inner command (e.g. `env`, `xargs`) -- **omit `classification`**, and only when the wrapper invoked with no inner command really is read-only (`xargs` with no arguments runs `echo`; `env` prints the environment). The base is not maxed against the delegated inner: once delegation resolves an inner command the matcher sets the result to `READONLY` outright and takes the answer from the inner alone, so the base is not a floor and not an identity element -- it is the answer for the invocations where delegation resolves nothing. Writing `classification: READONLY` explicitly on a pure wrapper is misleading -- it reads as "this command is safe" when the real intent is "inherit from whatever I wrap."
 
 Only set a non-`READONLY` base when the wrapper itself contributes risk regardless of the inner (e.g. `sudo` is `EXTERNAL_EFFECTS` because it elevates privileges) or when the wrapper also has a meaningful standalone behavior that isn't READONLY.
+
+### The base is what is left when delegation resolves nothing
+
+Command-level delegation drops the wrapper's own base as soon as it resolves an inner command, so the base of a delegating command is never the verdict on the ordinary spelling -- it is the verdict on every spelling the database failed to read. That makes it the fallback, not the description, and for anything that runs an arbitrary program the fallback must not be `READONLY`.
+
+There are more of those spellings than there look to be. `after_separator` resolves nothing when the separator is absent, and it is optional in `pnpm exec`, `npm exec` and `npx`. A command passed in an option value (`npm exec -c '<sh>'`, `mise exec -c '<sh>'`) is not a positional and resolves nothing either. A program word the parser cannot read -- a variable, a substitution -- resolves to nothing usable.
+
+So an exec-shaped wrapper gets `classification: DANGEROUS`. It costs nothing on the spelling that works, and it is the difference between a prompt and a silent auto-approve on the ones that do not. `kubectl exec` and `npx` were already written this way.
+
+### The base also classifies every subcommand the file does not model
+
+`classification` is documented as "base classification when no subcommand matches", and that covers two different invocations: the bare command, and one naming a subcommand this file has never heard of. A file that omits the base gives both of them `READONLY`, and for a tool that installs, publishes, authenticates or executes, the second of those is a hole -- the unmodelled subcommand is exactly the one nobody thought about.
+
+Pick the base from what the tool does with a word it does not recognise:
+
+- It runs it. `pnpm <word>` runs the package.json script of that name and otherwise execs the word; `yarn <word>` and `mise <word>` are the same shape. The base is `DANGEROUS`, the same as the `run` subcommand it is shorthand for.
+- It refuses it, but the file models only part of a large surface. `npm`, `uv`, `docker`, `helm`, `apt`, `cargo` and friends. The base is `UNKNOWN`: the honest statement is "this database does not model that subcommand", and `UNKNOWN` says exactly that while still forcing a prompt.
+- It refuses it and the file is the whole surface. Leave the base off.
+
+Bare `npm` then prompts, where it used to be auto-allowed. That is the cost, and it is the cheaper of the two ways to be wrong: bare `npm` prints usage, while `npm token create` does not. Pay it back where it is worth paying: declare the informational spellings (`--version`, `-v`, `--help`, `-h`, and the `help`/`version` subcommands where the tool has them) so the everyday read-only calls stay `LOW`. Declare only the ones the tool really has -- `-v` is `--version` for `npm`, `pnpm`, `yarn`, `docker` and `apt`, and `--verbose` for `pip`, `uv`, `poetry`, `cargo` and `mise`, and marking a verbosity flag READONLY hands every command that carries it a free pass.
 
 ### `rest_are_argv`
 
@@ -347,6 +367,8 @@ delegates_to:
 Everything after a separator token forms the inner command.
 
 **kubectl exec:** `kubectl exec -it my-pod -- cat /etc/config` -- inner command is `["cat", "/etc/config"]`
+
+Use this mode only when the tool *requires* the separator (`mise exec` errors without it, because it reads every leading positional as a `TOOL@VERSION`). Where the separator is optional -- `pnpm exec`, `npm exec` -- `after_separator` resolves nothing on the spelling that omits it, and `rest_are_argv` is the right mode.
 
 ```yaml
 subcommands:
@@ -439,7 +461,7 @@ Some commands default to a higher classification when used without a recognized 
 
 - **kubectl** -- base `EXTERNAL_EFFECTS` (bare `kubectl` without a known subcommand should not be auto-allowed)
 - **terraform** -- base `DANGEROUS` (unknown terraform subcommands could modify infrastructure)
-- **docker** -- no explicit base classification, so commands like `docker unknown-thing` fall through as UNKNOWN
+- **docker** -- base `UNKNOWN` (a subcommand this file does not model may be a CLI plugin, and `docker unknown-thing` must not fall through as READONLY)
 
 ### Shell builtins hardcoded in the matcher
 

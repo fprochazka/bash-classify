@@ -1,8 +1,15 @@
 # $schema: ../../../schemas/command.schema.json
 command: docker
 description: "Container application platform"
+# An unrecognised subcommand is one this file does not model — a CLI plugin such as
+# `docker scout`, or a subcommand not listed below. Docker starts containers and
+# writes to the daemon, so an unknown one cannot be read as read-only.
+classification: UNKNOWN
 strict: false
 global_options:
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY, before_subcommand_only: true}
+  -v: {overrides: READONLY, before_subcommand_only: true}
   --help: {overrides: READONLY}
   --host: {takes_value: true, aliases: [-H]}
   --config: {takes_value: true}
@@ -17,6 +24,9 @@ global_options:
   --debug: {}
 
 subcommands:
+  help:
+    classification: READONLY
+    strict: false
   ps:
     classification: READONLY
     strict: false

@@ -1,8 +1,14 @@
 # $schema: ../../../schemas/command.schema.json
 command: pip
 description: "Python package installer"
+# An unrecognised subcommand is one this file does not model. pip installs and uninstalls
+# packages, running their setup code, so an unknown subcommand is not read-only.
+classification: UNKNOWN
 strict: false
 global_options:
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY, before_subcommand_only: true}
+  -V: {overrides: READONLY, before_subcommand_only: true}
   --help: {overrides: READONLY}
 subcommands:
   list:

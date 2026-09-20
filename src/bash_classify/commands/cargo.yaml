@@ -1,10 +1,23 @@
 # $schema: ../../../schemas/command.schema.json
 command: cargo
 description: "Rust package manager and build tool"
+# `cargo <word>` falls back to executing `cargo-<word>` from PATH, so an unrecognised
+# subcommand is either a plugin this file does not model or nothing at all — and
+# a plugin can do anything cargo can.
+classification: UNKNOWN
 strict: false
 global_options:
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY, before_subcommand_only: true}
+  -V: {overrides: READONLY, before_subcommand_only: true}
   --help: {overrides: READONLY}
 subcommands:
+  help:
+    classification: READONLY
+    strict: false
+  version:
+    classification: READONLY
+    strict: false
   build:
     classification: LOCAL_EFFECTS
     risk: LOW

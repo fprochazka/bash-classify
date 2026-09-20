@@ -112,12 +112,13 @@ class TestBuildAndTest:
         assert result.classification == Classification.LOCAL_EFFECTS
 
     def test_npm_test(self, database):
+        """`npm test` runs the package.json `test` script -- arbitrary code, like every sibling."""
         result = classify_expression("npm test", database)
-        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.classification == Classification.DANGEROUS
 
     def test_npm_run_build(self, database):
         result = classify_expression("npm run build", database)
-        assert result.classification == Classification.LOCAL_EFFECTS
+        assert result.classification == Classification.DANGEROUS
 
     def test_npm_install(self, database):
         result = classify_expression("npm install", database)

@@ -1,6 +1,11 @@
 # $schema: ../../../schemas/command.schema.json
 command: pnpm
 description: "Fast, disk space efficient Node.js package manager"
+# `pnpm <word>` is not an error when `<word>` is not a pnpm command: pnpm runs the
+# package.json script of that name, and failing that execs `<word>` as a binary
+# (verified on pnpm 10.6.3: `pnpm echo hi` prints `hi`). So an unrecognised subcommand
+# is arbitrary code, exactly like `pnpm run`, and must not fall through to READONLY.
+classification: DANGEROUS
 strict: false
 global_options:
   --help: {overrides: READONLY}
@@ -218,17 +223,18 @@ subcommands:
     strict: false
 
   # --- Arbitrary command execution with package context ---
-  # `pnpm exec [--] <cmd> [args...]` runs arbitrary commands with node_modules/.bin on PATH
+  # `pnpm exec [--] <cmd> [args...]` runs arbitrary commands with node_modules/.bin on PATH.
+  # The separator is optional, so the inner command is the rest of argv, not what follows a `--`.
+  # The DANGEROUS base is what is left when no inner command resolves — `pnpm exec` with the
+  # command in an option value (`-c '<sh>'`), or behind a token this database cannot read.
+  # It never applies to the ordinary spelling: command-level delegation drops the wrapper's
+  # own base as soon as it resolves an inner command, so `pnpm exec eslint` is still READONLY.
   exec:
+    aliases: [x]
+    classification: DANGEROUS
     strict: false
     delegates_to:
-      mode: after_separator
-      separator: "--"
-  x:
-    strict: false
-    delegates_to:
-      mode: after_separator
-      separator: "--"
+      mode: rest_are_argv
   # `pnpm dlx <pkg>` downloads and runs a package from the registry
   dlx:
     classification: EXTERNAL_EFFECTS

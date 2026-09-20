@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from bash_classify.matcher import _is_terminator, _strip_quotes, match_command
 from bash_classify.models import Classification, CommandDef, CommandInvocation, OptionDef, Risk, SubcommandMode
 
@@ -460,11 +462,14 @@ class TestStripQuotes:
 
 class TestDefaultClassificationWhenNotSet:
     def test_command_without_classification_defaults_to_readonly(self, database: dict[str, CommandDef]) -> None:
-        """A command with no top-level classification should default to READONLY."""
-        # apt has subcommands but no top-level classification
-        result = match_command(_make_invocation(["apt"]), database)
+        """A definition with no top-level classification defaults to READONLY."""
+        command_def = CommandDef(
+            command="toolwithoutbase",
+            subcommands={"status": CommandDef(command="status", classification=Classification.READONLY)},
+        )
+        result = match_command(_make_invocation(["toolwithoutbase"]), {"toolwithoutbase": command_def})
         assert result.classification == Classification.READONLY
-        assert result.matched_rule == "apt"
+        assert result.matched_rule == "toolwithoutbase"
 
     def test_apt_help_readonly(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["apt", "--help"]), database)
@@ -478,18 +483,17 @@ class TestDefaultClassificationWhenNotSet:
         result = match_command(_make_invocation(["apt", "install", "vim"]), database)
         assert result.classification == Classification.DANGEROUS
 
-    def test_docker_bare_readonly(self, database: dict[str, CommandDef]) -> None:
-        """docker with no subcommand should be READONLY (no top-level classification)."""
-        result = match_command(_make_invocation(["docker"]), database)
-        assert result.classification == Classification.READONLY
+    @pytest.mark.parametrize("binary", ["apt", "docker", "npm", "helm"])
+    def test_package_manager_bare_is_not_readonly(self, binary: str, database: dict[str, CommandDef]) -> None:
+        """A package manager's base governs every subcommand it does not model, so it is not READONLY.
 
-    def test_npm_bare_readonly(self, database: dict[str, CommandDef]) -> None:
-        result = match_command(_make_invocation(["npm"]), database)
-        assert result.classification == Classification.READONLY
-
-    def test_helm_bare_readonly(self, database: dict[str, CommandDef]) -> None:
-        result = match_command(_make_invocation(["helm"]), database)
-        assert result.classification == Classification.READONLY
+        The base is the only verdict available for `docker some-plugin` or `npm token create`,
+        and those are not read-only. It costs a prompt on the bare invocation, which prints
+        usage and nothing else — the cheaper of the two ways to be wrong.
+        """
+        result = match_command(_make_invocation([binary]), database)
+        assert result.classification == Classification.UNKNOWN
+        assert result.risk == Risk.HIGH
 
     def test_systemctl_bare_dangerous(self, database: dict[str, CommandDef]) -> None:
         result = match_command(_make_invocation(["systemctl"]), database)

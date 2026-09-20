@@ -1,12 +1,25 @@
 # $schema: ../../../schemas/command.schema.json
 command: yarn
 description: "JavaScript package manager"
+# `yarn <word>` is shorthand for `yarn run <word>`: it runs the package.json script of that
+# name, or a node_modules/.bin binary (verified on yarn 1.22.22). An unrecognised subcommand
+# is therefore arbitrary project code, the same as `yarn run`, and gets the same DANGEROUS base.
+#
+# It deliberately does NOT delegate to the word as if it were a binary, the way `npx` does.
+# A script name shadows a binary of the same name, so a package.json script called `ls` would
+# inherit the READONLY of `ls` while running anything at all. `npx` may delegate because it
+# resolves only binaries; `yarn` resolves scripts first, and this file cannot read package.json.
+classification: DANGEROUS
 strict: false
 global_options:
-  --help: {overrides: READONLY}
-options:
   --version: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  -v: {overrides: READONLY}
+  --help: {overrides: READONLY}
 subcommands:
+  help:
+    classification: READONLY
+    strict: false
   install:
     classification: LOCAL_EFFECTS
     risk: LOW
@@ -25,14 +38,19 @@ subcommands:
   upgrade:
     classification: LOCAL_EFFECTS
     strict: false
+  # `yarn run <name>` resolves <name> against package.json scripts before node_modules/.bin,
+  # so the word is not reliably a binary name and is not delegated to: `yarn run eslint` may
+  # be a script that does anything, and delegating would hand it the READONLY of `eslint`.
   run:
+    classification: DANGEROUS
+    strict: false
+  # `yarn exec <cmd>` resolves binaries only -- no package.json script can shadow the word --
+  # so it delegates, the same as `pnpm exec`, `npm exec` and `npx`.
+  exec:
     classification: DANGEROUS
     strict: false
     delegates_to:
       mode: rest_are_argv
-  exec:
-    classification: DANGEROUS
-    strict: false
   dlx:
     classification: DANGEROUS
     strict: false
@@ -55,11 +73,13 @@ subcommands:
   publish:
     classification: DANGEROUS
     strict: false
+  # `yarn build` and `yarn test` are the script shorthand, i.e. `yarn run build` / `yarn run
+  # test`, so they run the same package.json code and carry the same classification as it
   build:
-    classification: LOCAL_EFFECTS
+    classification: DANGEROUS
     strict: false
   test:
-    classification: LOCAL_EFFECTS
+    classification: DANGEROUS
     strict: false
   set:
     classification: LOCAL_EFFECTS

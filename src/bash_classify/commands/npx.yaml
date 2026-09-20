@@ -12,8 +12,14 @@ options:
   --yes: {}
   -y: {aliases: [--yes]}
   --no: {}
-  --package: {takes_value: true}
-  -p: {takes_value: true, aliases: [--package]}
+  # `--package <spec>` puts that package's bin directory on the PATH of the command that
+  # follows, fetching it from the registry when it is not installed -- and `npm help exec`
+  # says `--yes` is assumed when stdin is not a TTY, which is a hook's situation. So the
+  # word after it is not the program the database thinks it is, and the verdict cannot come
+  # from delegating to that word. An override on the option survives the delegation, which
+  # a `min_classification` on the delegation would not do.
+  --package: {takes_value: true, overrides: DANGEROUS}
+  -p: {takes_value: true, overrides: DANGEROUS, aliases: [--package]}
   --call: {takes_value: true}
   -c: {takes_value: true, aliases: [--call]}
 subcommands:

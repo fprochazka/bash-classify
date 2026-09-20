@@ -1,8 +1,13 @@
 # $schema: ../../../schemas/command.schema.json
 command: pipx
 description: "Install and run Python CLI tools in isolation"
+# An unrecognised subcommand is one this file does not model. pipx installs and runs
+# CLI tools from PyPI, so an unknown subcommand cannot be read as read-only.
+classification: UNKNOWN
 strict: false
 global_options:
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY, before_subcommand_only: true}
   --help: {overrides: READONLY}
 subcommands:
   install:

@@ -112,18 +112,22 @@ subcommands:
       mode: flag_value_is_expression
       flag: -c
   proxy:
+    classification: DANGEROUS
     strict: false
     delegates_to:
       mode: rest_are_argv
   err:
+    classification: DANGEROUS
     strict: false
     delegates_to:
       mode: rest_are_argv
   test:
+    classification: DANGEROUS
     strict: false
     delegates_to:
       mode: rest_are_argv
   summary:
+    classification: DANGEROUS
     strict: false
     delegates_to:
       mode: rest_are_argv

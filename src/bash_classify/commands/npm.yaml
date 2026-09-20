@@ -1,10 +1,21 @@
 # $schema: ../../../schemas/command.schema.json
 command: npm
 description: "Node.js package manager"
+# npm rejects a subcommand it does not know (`npm echo hi` -> Unknown command), so an
+# unrecognised one runs nothing — but it is also not safe to read as READONLY. npm ships
+# subcommands this file does not model that publish, deprecate, manage auth tokens or
+# exec (`npm explore <pkg> -- <cmd>`), and nothing here can tell those from a typo.
+classification: UNKNOWN
 strict: false
 global_options:
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY}
+  -v: {overrides: READONLY}
   --help: {overrides: READONLY}
 subcommands:
+  help:
+    classification: READONLY
+    strict: false
   ls:
     classification: READONLY
     strict: false
@@ -34,12 +45,51 @@ subcommands:
     classification: LOCAL_EFFECTS
     risk: LOW
     strict: false
+  # `npm run <name>` runs the package.json script of that name -- arbitrary code, chosen by
+  # a word this database cannot resolve. `pnpm run`, `yarn run`, `mise run`, `uv run` and
+  # `poetry run` are all DANGEROUS for that reason and this is the same call, so it is the
+  # same answer. `start`, `stop`, `restart` and `test` run the script of that name too.
   run:
-    classification: LOCAL_EFFECTS
+    aliases: [run-script]
+    classification: DANGEROUS
+    strict: false
+  start:
+    classification: DANGEROUS
+    strict: false
+  stop:
+    classification: DANGEROUS
+    strict: false
+  restart:
+    classification: DANGEROUS
     strict: false
   test:
-    classification: LOCAL_EFFECTS
+    classification: DANGEROUS
     strict: false
+  # `npm exec [--] <cmd> [args...]` (alias `npm x`) runs an arbitrary binary with
+  # node_modules/.bin on PATH, fetching the package from the registry when it is not
+  # installed. The separator is optional, so the inner command is the rest of argv.
+  # The DANGEROUS base is what is left when no inner command resolves — `npm exec -c '<sh>'`
+  # passes the command as an option value — and is dropped as soon as one does.
+  exec:
+    aliases: [x]
+    classification: DANGEROUS
+    strict: false
+    delegates_to:
+      mode: rest_are_argv
+    options:
+      # `--package <spec>` puts that package's bin directory on the PATH of the command that
+      # follows, fetching it from the registry when it is not installed -- and `npm help exec`
+      # says `--yes` is assumed when stdin is not a TTY, which is a hook's situation. So the
+      # word after it is not the program the database thinks it is, and the verdict cannot come
+      # from delegating to that word. An override on the option survives the delegation, which
+      # a `min_classification` on the delegation would not do.
+      --package: {takes_value: true, overrides: DANGEROUS}
+      -p: {takes_value: true, overrides: DANGEROUS, aliases: [--package]}
+      --call: {takes_value: true}
+      -c: {takes_value: true, aliases: [--call]}
+      --yes: {}
+      -y: {aliases: [--yes]}
+      --no: {}
   build:
     classification: LOCAL_EFFECTS
     strict: false

@@ -1,8 +1,15 @@
 # $schema: ../../../schemas/command.schema.json
 command: uv
 description: "An extremely fast Python package manager"
+# An unrecognised subcommand is one this file does not model, not one uv refuses:
+# uv installs, publishes and runs tools, and there is no reading of an unknown
+# subcommand that makes it read-only.
+classification: UNKNOWN
 strict: false
 global_options:
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY, before_subcommand_only: true}
+  -V: {overrides: READONLY, before_subcommand_only: true}
   --help: {overrides: READONLY}
 subcommands:
   run:
@@ -39,8 +46,10 @@ subcommands:
     strict: false
     options:
       --dry-run: {overrides: READONLY}
+  # bare `version` prints, but `version <bump>` rewrites the project file and can tag,
+  # and one classification cannot be conditioned on an operand -- same call as `pnpm version`
   version:
-    classification: READONLY
+    classification: LOCAL_EFFECTS
     strict: false
   sync:
     classification: LOCAL_EFFECTS

@@ -1,8 +1,15 @@
 # $schema: ../../../schemas/command.schema.json
 command: mise
 description: "Dev tools, env vars, and task runner (asdf/nvm/rbenv replacement)"
+# `mise <word>` is shorthand for `mise run <word>`: it runs the task of that name, which is
+# a user-defined shell script (verified: `mise echo hi` answers "no tasks defined", not
+# "unknown command"). An unrecognised subcommand is therefore arbitrary code, the same as
+# `mise run`, and gets the same DANGEROUS base.
+classification: DANGEROUS
 strict: false
 global_options:
+  --version: {overrides: READONLY, before_subcommand_only: true}
+  -V: {overrides: READONLY, before_subcommand_only: true}
   --help: {overrides: READONLY}
   -h: {overrides: READONLY}
   -C: {takes_value: true, captures_directory: true}
@@ -525,14 +532,19 @@ subcommands:
     strict: false
 
   # --- Arbitrary command / task executors ---
-  # `mise exec [tool@ver]... -- <cmd>` runs an arbitrary command with tools on PATH
+  # `mise exec [tool@ver]... -- <cmd>` runs an arbitrary command with tools on PATH.
+  # Unlike `pnpm exec` and `npm exec`, mise really does require the separator — it reads every
+  # leading positional as a TOOL@VERSION and errors without a `--` — so after_separator is the
+  # right mode here. The DANGEROUS base covers what the separator form leaves out: `mise exec
+  # -c '<sh>'` passes the command as an option value and runs it. Delegation drops the base as
+  # soon as it resolves an inner command, so `mise exec -- ls` is still READONLY.
   exec:
+    aliases: [x]
+    classification: DANGEROUS
     strict: false
-    delegates_to:
-      mode: after_separator
-      separator: "--"
-  x:
-    strict: false
+    options:
+      -c: {takes_value: true}
+      --command: {takes_value: true, aliases: [-c]}
     delegates_to:
       mode: after_separator
       separator: "--"
