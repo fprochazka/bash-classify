@@ -14,6 +14,7 @@ from .models import (
     DelegationConfig,
     DelegationMode,
     InnerCommandResult,
+    OptionDef,
     Risk,
     SubcommandMode,
 )
@@ -209,13 +210,47 @@ def match_command(
     else:
         final_risk = base_risk
 
-    # Global options that appear after the subcommand (e.g., `kubectl apply --help`)
-    # are not caught by _strip_global_options. Check for them here and apply overrides.
+    # Global options that appear after the subcommand (e.g. `kubectl apply --help`) are not
+    # caught by _strip_global_options, which stops at the first non-option token. Check for them
+    # here -- but an override that LOWERS the verdict is ignored once the invocation has an
+    # operand, because an operand means the binary is dispatching and the token may not be the
+    # binary's own. The `--help` in `docker run -v /:/host alpine sh -c '<script>' --help` is
+    # the container's and the command still runs; in `yarn chmod 777 /etc/passwd --help` it is
+    # the child command's; and `docker run -v x:y img cmd` carries a `-v` that is a volume
+    # mount, not `docker --version`. A `--help` with nothing to operate on is the binary's own,
+    # which is the case this pass exists for.
+    #
+    # An override that RAISES the verdict is applied either way. Reading the token as the
+    # operand's is the cautious guess only when the option would make the command look safer;
+    # when it would make it look more dangerous, ignoring it is the reckless one. `gws auth
+    # export --unmasked --format json` prints plaintext OAuth tokens whichever of the two the
+    # `--unmasked` belongs to.
+    #
+    # This covers `global_options` only. An override declared under a subcommand's own `options:`
+    # is matched in `_classify_options` and still lowers past an operand, so `git branch new -v`
+    # and `git tag v9 -v` read READONLY while creating a branch or a tag. That is how master
+    # behaves too. Extending the rule there would also catch the spellings where a flag plus an
+    # operand really is a read -- `git branch -l main` lists branches matching `main` -- so it
+    # needs per-option knowledge this does not have, and is left alone deliberately.
     if command_def.global_options:
         for opt in unknown_options[:]:
             opt_key = opt.split("=", 1)[0] if "=" in opt else opt
             global_opt_def = command_def.global_options.get(opt_key)
             if global_opt_def is not None:
+                # Both guards drop the same thing: an override that would make the command look
+                # safer on the strength of a token that may not be the binary's. `_option_lowers_
+                # the_verdict` decides that, and an escalating override is applied either way --
+                # including one on a marked flag, which is the shape the marker exists for
+                # (`docker compose down -v` destroys named volumes).
+                #
+                # This pass only ever sees options that follow a non-option token. A marked flag
+                # stops being the binary's there by declaration; an unmarked one does once the
+                # invocation has an operand. Either way the option is left in `unknown_options`,
+                # so strict mode still sees it for what it is.
+                if (global_opt_def.before_subcommand_only or remaining_positional) and (
+                    _option_lowers_the_verdict(global_opt_def, final_classification, final_risk)
+                ):
+                    continue
                 unknown_options.remove(opt)
                 if global_opt_def.overrides is not None:
                     all_overrides.append((opt_key, global_opt_def.overrides))
@@ -383,6 +418,17 @@ def _handle_dangerous_builtin(invocation: CommandInvocation) -> CommandResult:
         inner_commands=[],
         classification_reason=f"shell builtin (always {Classification.DANGEROUS.value})",
     )
+
+
+def _option_lowers_the_verdict(option: OptionDef, classification: Classification, risk: Risk) -> bool:
+    """Would applying this option's overrides make the command look safer than it looks now?
+
+    An option that declares neither is not an override at all -- it is a flag the file lists so
+    that strict mode does not call it unknown -- and it never lowers anything.
+    """
+    if option.overrides is not None and option.overrides.severity() < classification.severity():
+        return True
+    return option.risk is not None and option.risk.severity() < risk.severity()
 
 
 def _strip_global_options(

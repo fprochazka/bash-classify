@@ -167,6 +167,14 @@ class OptionDef:
     risk: Risk | None = None
     captures_directory: bool = False
     names_output_path: bool = False
+    before_subcommand_only: bool = False
+    """The tool honours this option only ahead of its subcommand.
+
+    A `global_options` entry otherwise applies at every depth, and a short flag whose long
+    spelling differs per subcommand is the trap: `docker -v` is `--version`, while
+    `docker compose down -v` is `--volumes` and removes named volumes.
+    """
+
     delegates_to: DelegationConfig | None = None
 
 

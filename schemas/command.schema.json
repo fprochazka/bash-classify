@@ -162,6 +162,10 @@
           "type": "boolean",
           "description": "The tool documents this option's value as a path it writes (`curl -o`, `sort -o`). It lands in `write_paths`, and a sensitive-path hit on it is reported with source `argv_write`. Do not set it on an option whose value is read, or on one that writes only in some modes (`tar -f` writes when creating and reads when extracting)."
         },
+        "before_subcommand_only": {
+          "type": "boolean",
+          "description": "Only meaningful in `global_options`: the tool honours this option ahead of its subcommand and not after one. A `global_options` entry otherwise applies at every subcommand depth, so an override there has to be valid and mean the same thing at every depth. A short flag whose long spelling differs per subcommand is the trap: `docker -v` is `--version`, while `docker compose down -v` is `--volumes` and removes named volumes."
+        },
         "delegates_to": {
           "$ref": "#/$defs/DelegationConfig"
         }

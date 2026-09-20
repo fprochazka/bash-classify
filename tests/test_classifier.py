@@ -1547,3 +1547,158 @@ class TestEndOfOptionsMarkerIsNotAlwaysAMarker:
         """`timeout -- 5 ls` is accepted by a real timeout: skip the marker, then the duration."""
         result = classify_expression("timeout -- 5 ls", database=database)
         assert [invocation.command for invocation, via in iter_invocations(result) if via] == [["ls"]]
+
+
+class TestGlobalOptionDoesNotReachAnOperandsTokens:
+    """`--help: {overrides: READONLY}` must not be triggered by a token the binary passes on.
+
+    Every file in the database declares `--help` as an override to READONLY, and an override
+    replaces the base outright. So one appended token used to discard the base: `pnpm exec rm
+    -rf / --help` came back READONLY/LOW, which is the bundled hook's auto-approve condition.
+    The token is not the binary's -- `docker run ... sh -c '<script>' --help` hands it to the
+    container, where the script still runs -- and the database cannot tell a tool that honours a
+    trailing `--help` from one that forwards it. So the re-check now fires only on an invocation
+    with no operands at all, which is the `kubectl apply --help` case it was written for.
+    """
+
+    APPENDED_HELP = (
+        "rm -rf / --help",
+        "npx rm -rf / --help",
+        "docker run --rm -v /:/host alpine sh -c 'rm -rf /host/etc' --help",
+        "docker run alpine --help",
+    )
+
+    @pytest.mark.parametrize("expression", APPENDED_HELP)
+    def test_appended_help_does_not_re_approve(self, expression: str, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(expression, database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    # Guards, not coverage: every one of these passes on master too. They pin the invocations
+    # the narrowed re-check must keep answering, so a future narrowing cannot take them with it.
+    OWN_OPTION = (
+        ("pnpm --help", Classification.READONLY, Risk.LOW),
+        ("rm --help", Classification.READONLY, Risk.LOW),
+        ("kubectl apply --help", Classification.READONLY, Risk.LOW),
+        ("pnpm publish --dry-run", Classification.READONLY, Risk.LOW),
+        # `-v` here is a volume mount and nothing in the invocation is docker's own option
+        ("docker run --rm -v /tmp:/app alpine cat /app/x", Classification.DANGEROUS, Risk.HIGH),
+    )
+
+    @pytest.mark.parametrize(("expression", "classification", "risk"), OWN_OPTION)
+    def test_the_binarys_own_option_still_applies(
+        self, expression: str, classification: Classification, risk: Risk, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(expression, database=database)
+        assert (result.classification, result.risk) == (classification, risk)
+
+
+class TestGlobalOptionThatRaisesTheVerdict:
+    """The narrowed re-check is asymmetric on purpose: it drops a lowering override, never a raising one.
+
+    Reading a post-operand token as the operand's is the cautious guess only when the option
+    would make the command look safer. When it would make it look more dangerous, ignoring it is
+    the reckless guess. `gws auth export --unmasked` prints plaintext OAuth tokens and client
+    secrets, and `--format json` -- the spelling the tool's own docs use on nearly every line --
+    is enough to put an operand in the invocation.
+    """
+
+    ESCALATING = (
+        "gws auth export --unmasked",
+        "gws auth export --unmasked --format json",
+        "gws auth export personal --unmasked",
+        "gws auth export --unmasked --output /tmp/x",
+    )
+
+    @pytest.mark.parametrize("expression", ESCALATING)
+    def test_an_escalating_global_option_survives_an_operand(
+        self, expression: str, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(expression, database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+    def test_a_lowering_global_option_still_stops_at_an_operand(self, database: dict[str, CommandDef]) -> None:
+        """The other half of the same rule, so neither direction can be changed without the other."""
+        assert classify_expression("rm -rf / --help", database=database).classification == Classification.DANGEROUS
+        assert classify_expression("rm --help", database=database).classification == Classification.READONLY
+
+    def test_an_option_that_lowers_only_the_risk_is_gated_too(self) -> None:
+        """ "Lowers" is about the risk as well as the classification, not only the classification.
+
+        The risk clause decides whenever the two classifications are equal, and the database
+        reaches it: `mise token` is READONLY with `risk: HIGH` because it prints a forge token,
+        and `mise --help` is `{overrides: READONLY, risk: LOW}`, so the comparison is READONLY
+        against READONLY and it is the risk that makes `--help` the lowering option. The
+        synthetic case pins the other shape, an option carrying a risk and no classification.
+        The database reaches it too, through `mise token`, which
+        `TestSubcommandGroupBase.test_mise_token_prints_a_credential` pins where that risk floor
+        is declared.
+        """
+        from bash_classify.models import OptionDef  # only this test builds a definition by hand
+
+        synthetic = {
+            "demo": CommandDef(
+                command="demo",
+                classification=Classification.LOCAL_EFFECTS,
+                risk=Risk.HIGH,
+                strict=False,
+                global_options={"--quiet": OptionDef(risk=Risk.LOW)},
+            )
+        }
+        assert classify_expression("demo --quiet", database=synthetic).risk == Risk.LOW
+        assert classify_expression("demo target --quiet", database=synthetic).risk == Risk.HIGH
+
+
+class TestOptionValidOnlyBeforeTheSubcommand:
+    """`before_subcommand_only` says a flag is the binary's ahead of its subcommand and not after.
+
+    A `global_options` entry otherwise applies at every subcommand depth, which is the assumption
+    that made `docker compose down -v` -- `--volumes`, which removes the named volumes -- read as
+    `docker --version`. The database rows are pinned next to the declarations they belong to;
+    this is the mechanism on its own.
+    """
+
+    def _database(self, *, marked: bool, overrides: Classification = Classification.READONLY) -> dict[str, CommandDef]:
+        from bash_classify.models import OptionDef
+
+        return {
+            "demo": CommandDef(
+                command="demo",
+                classification=Classification.DANGEROUS,
+                strict=False,
+                global_options={"-v": OptionDef(overrides=overrides, before_subcommand_only=marked)},
+                subcommands={
+                    # strict=False so that the leftover flag does not escalate on its own and
+                    # mask what the marker did
+                    "sub": CommandDef(command="sub", classification=Classification.LOCAL_EFFECTS, strict=False)
+                },
+            )
+        }
+
+    def test_marked_flag_is_honoured_before_the_subcommand(self) -> None:
+        result = classify_expression("demo -v", database=self._database(marked=True))
+        assert result.classification == Classification.READONLY
+
+    def test_marked_flag_is_ignored_after_the_subcommand(self) -> None:
+        """The subcommand keeps its own verdict; the flag does not lower it to READONLY."""
+        result = classify_expression("demo sub -v", database=self._database(marked=True))
+        assert result.classification == Classification.LOCAL_EFFECTS
+
+    def test_without_the_marker_it_reaches_every_depth(self) -> None:
+        """The behaviour the marker opts out of, so the two cannot be confused."""
+        result = classify_expression("demo sub -v", database=self._database(marked=False))
+        assert result.classification == Classification.READONLY
+
+    def test_the_marker_never_suppresses_an_escalating_override(self) -> None:
+        """It drops an override that makes the command look safer, and only that one.
+
+        Both guards on this pass answer the same question, and the marker is no exception --
+        the invocation it was written for, `docker compose down -v`, is itself the dangerous
+        reading. An editor reaching for the marker to say "this flag is destructive below the
+        subcommand" has to be heard.
+        """
+        marked_escalation = self._database(marked=True, overrides=Classification.DANGEROUS)
+        result = classify_expression("demo sub -v", database=marked_escalation)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH

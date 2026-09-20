@@ -79,7 +79,7 @@ options:                            # options that affect classification
 | `description` | string | -- | Short one-liner describing the tool |
 | `classification` | enum | `READONLY` | Base classification when no subcommand matches |
 | `strict` | boolean | `true` | If true, unrecognized options yield UNKNOWN |
-| `global_options` | map | -- | Options stripped before subcommand matching |
+| `global_options` | map | -- | Options that belong to the binary rather than to one subcommand. Stripped before subcommand matching, and re-checked afterwards, so an entry here **applies at every subcommand depth** -- see [Global options apply at every depth](#global-options-apply-at-every-depth) |
 | `options` | map | -- | Options that affect classification |
 | `subcommands` | map | -- | Nested subcommand definitions (recursive) |
 | `delegates_to` | object | -- | How the command hands off to an inner command |
@@ -112,6 +112,7 @@ subcommands:
 | `overrides` | enum | When present, override classification to this level |
 | `captures_directory` | boolean | The option's value is a directory the command is pointed at: a working directory (`git -C`) or an extraction destination (`tar -C`, `unzip -d`). It lands in the `directories` of the invocation that carries the option, wrapped or not. The expression-level `directories` picks it up only for a top-level invocation. |
 | `names_output_path` | boolean | The option's value is a path the command writes (`curl -o`, `sort -o`). It lands in `write_paths`. |
+| `before_subcommand_only` | boolean | `global_options` only: the tool honours this option ahead of its subcommand and not after one (`docker -v` is `--version`; `docker compose down -v` is `--volumes`). |
 | `delegates_to` | object | This option triggers delegation (e.g. `find -exec`) |
 
 ##### Marking an option as an output path
@@ -123,6 +124,29 @@ subcommands:
 3. A destination named by a positional is out of reach. `cp a b`, `tee out.txt`, `dd of=X` and the prefix of `split` are not options, and nothing in the database describes them.
 
 A consumer uses the field to tell a write to a credential from a mention of one, so a wrong mark is worse than a missing one. When in doubt, leave it off.
+
+### Global options apply at every depth
+
+`global_options` is stripped ahead of subcommand matching, and the leftovers are re-checked against it afterwards so that `kubectl apply --help` works. Both halves mean the same thing: **an entry in `global_options` is claimed to be valid, and to mean the same thing, at every subcommand depth of the file.** Before adding one -- especially an `overrides` -- run it against the real binary *with a subcommand*, not just bare. Bare is the spelling that always works and it proves nothing.
+
+A short flag whose long spelling differs per subcommand is the trap, and `-v` is almost always that flag:
+
+```
+docker -v                 ->  --version, prints and exits
+docker compose down -v    ->  --volumes, removes the named volumes
+```
+
+Declared as a plain global, `overrides: READONLY` on `-v` turns the second line into READONLY/LOW, which the bundled hook auto-approves. The same shape caught `git push -v` and `git commit -v` (`--verbose`, and the push and the commit both happen), `pip install -V` (silently ignored, and the install happens), and `apt upgrade -v`.
+
+Three answers, in order of preference:
+
+1. **The flag really is universal.** `--help` usually is, and `-h` often is -- but not always: `-h` is human-readable for `du` and `df`, no-dereference for `chown`, `chgrp` and `ln`, and a Click-based CLI answers `No such option: -h` at every depth. Declare it only after seeing it work at depth.
+2. **The flag is honoured only ahead of the subcommand.** Mark it `before_subcommand_only: true`. It is then stripped as a global on `docker -v` and ignored on `docker compose down -v`, which is exactly what the tool does. This is what `git`, `docker`, `mise`, `uv`, `cargo`, `pip`, `pip3`, `pipx` and `brew` use for their version flags. `apt` is the counter-example: it honours both spellings at every depth and acts on neither, so it needs no marker -- and where one of its subcommands takes its own `-v`, that subcommand declares it, which is the third answer below applied in reverse.
+3. **The flag does not exist.** Do not declare it. A declaration that does not correspond to a real flag is a free `READONLY` on every command that happens to carry that token.
+
+A *subcommand's* own `options:` need a different kind of care, not less of it. They reach only that subcommand, so the depth question does not arise -- but an `overrides` there still applies wherever the flag appears in the invocation, operands included, and it is not subject to the operand rule below. `git branch` declares `-v` as `overrides: READONLY` because `git branch -v` lists; `git branch <name> -v` creates the branch and reads READONLY all the same. Before writing `overrides: READONLY` on a subcommand's flag, ask whether the same flag means the same thing in that subcommand's *other* mode.
+
+**The operand rule.** A `global_options` override that would make the command look *safer* is ignored once the invocation has an operand, because an operand means the binary is dispatching and the token may not be its own -- `docker run alpine sh -c '<script>' --help` hands the `--help` to the container and the script still runs. An override that would make it look *more dangerous* is applied wherever it appears; guessing the token belongs to the operand is the cautious reading only in one direction. This is why `apt install foo --version` is HIGH while `apt --version` is LOW, and why a `--unmasked` that prints plaintext tokens survives an operand.
 
 #### The `# $schema:` comment
 
