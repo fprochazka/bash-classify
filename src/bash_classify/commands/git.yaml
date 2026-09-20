@@ -1,8 +1,21 @@
 # $schema: ../../../schemas/command.schema.json
 command: git
 description: "Distributed version control system"
+# `git <word>` is not an error when <word> is not a builtin: git runs `git-<word>` from PATH,
+# or the alias of that name from the config -- and an alias whose value starts with `!` is a
+# shell command. So an unrecognised subcommand executes something this database cannot see,
+# which is the same reading `pnpm` and `yarn` get.
+#
+# Git is the command an agent runs most often, so the base has to be paid for: every porcelain
+# command below, plus the read-only plumbing an agent reaches for (`merge-base`, `check-ignore`,
+# `show-ref`, `diff-index`, ...) and the writing plumbing that is ordinary work (`stage`,
+# `sparse-checkout`, `repack`, ...), is declared. What is left on the base is genuinely rare,
+# genuinely destructive (`filter-branch`, `replace`, `prune`, `update-ref`), a server
+# (`daemon`, `http-backend`), a credential helper, or not a git command at all.
+classification: DANGEROUS
 global_options:
   --help: {overrides: READONLY}
+  -v: {overrides: READONLY, aliases: [--version], before_subcommand_only: true}
   -h: {overrides: READONLY}
   -C: {takes_value: true, captures_directory: true}
   --git-dir: {takes_value: true}
@@ -14,6 +27,127 @@ global_options:
   --exec-path: {takes_value: true}
 
 subcommands:
+  # --- read-only plumbing ---
+  check-attr:
+    classification: READONLY
+    strict: false
+  check-ignore:
+    classification: READONLY
+    strict: false
+  check-mailmap:
+    classification: READONLY
+    strict: false
+  check-ref-format:
+    classification: READONLY
+    strict: false
+  cherry:
+    classification: READONLY
+    strict: false
+  count-objects:
+    classification: READONLY
+    strict: false
+  diff-files:
+    classification: READONLY
+    strict: false
+  diff-index:
+    classification: READONLY
+    strict: false
+  fmt-merge-msg:
+    classification: READONLY
+    strict: false
+  interpret-trailers:
+    classification: READONLY
+    strict: false
+  merge-base:
+    classification: READONLY
+    strict: false
+  merge-tree:
+    classification: READONLY
+    strict: false
+  patch-id:
+    classification: READONLY
+    strict: false
+  request-pull:
+    classification: READONLY
+    strict: false
+  show-index:
+    classification: READONLY
+    strict: false
+  show-ref:
+    classification: READONLY
+    strict: false
+  stripspace:
+    classification: READONLY
+    strict: false
+  var:
+    classification: READONLY
+    strict: false
+  verify-pack:
+    classification: READONLY
+    strict: false
+  # `git symbolic-ref <name>` reads the ref it points at and `git symbolic-ref <name> <ref>`
+  # rewrites it -- including `HEAD`. Nothing here can count operands, so one of the two spellings
+  # has to be over-reported, and it is the read: `rev-parse --abbrev-ref HEAD` is the usual way
+  # to ask that question and stays READONLY, while an auto-approved HEAD rewrite is not a cost
+  # this file should carry.
+  symbolic-ref:
+    classification: LOCAL_EFFECTS
+    strict: false
+  # --- plumbing that writes the repository, but is ordinary work ---
+  # `difftool` and `mergetool` both launch whatever `difftool.<tool>.cmd` / `mergetool.<tool>.cmd`
+  # is configured to, which is a shell command, so neither is read-only
+  difftool:
+    classification: LOCAL_EFFECTS
+    strict: false
+  bugreport:
+    classification: LOCAL_EFFECTS
+    strict: false
+  bundle:
+    classification: LOCAL_EFFECTS
+    strict: false
+  commit-graph:
+    classification: LOCAL_EFFECTS
+    strict: false
+  diagnose:
+    classification: LOCAL_EFFECTS
+    strict: false
+  hash-object:
+    classification: LOCAL_EFFECTS
+    strict: false
+  mergetool:
+    classification: LOCAL_EFFECTS
+    strict: false
+  multi-pack-index:
+    classification: LOCAL_EFFECTS
+    strict: false
+  pack-refs:
+    classification: LOCAL_EFFECTS
+    strict: false
+  prune-packed:
+    classification: LOCAL_EFFECTS
+    strict: false
+  read-tree:
+    classification: LOCAL_EFFECTS
+    strict: false
+  repack:
+    classification: LOCAL_EFFECTS
+    strict: false
+  rerere:
+    classification: LOCAL_EFFECTS
+    strict: false
+  sparse-checkout:
+    classification: LOCAL_EFFECTS
+    strict: false
+    subcommands:
+      list:
+        classification: READONLY
+        strict: false
+  update-index:
+    classification: LOCAL_EFFECTS
+    strict: false
+  write-tree:
+    classification: LOCAL_EFFECTS
+    strict: false
   # --- Readonly commands ---
   status:
     classification: READONLY
@@ -31,6 +165,7 @@ subcommands:
     classification: READONLY
     strict: false
   blame:
+    aliases: [annotate]
     classification: READONLY
     strict: false
   shortlog:
@@ -177,6 +312,7 @@ subcommands:
 
   # --- Staging and committing ---
   add:
+    aliases: [stage]
     classification: LOCAL_EFFECTS
     risk: LOW
     options:

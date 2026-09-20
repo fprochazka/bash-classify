@@ -2173,3 +2173,169 @@ class TestExploringACliWithHelpStaysLow:
             ("gh pr zzz", Classification.UNKNOWN),
         ):
             assert classify_expression(expression, database=database).classification == classification, expression
+
+
+class TestGitUnmodelledSubcommand:
+    """`git <word>` runs `git-<word>` from PATH, or an alias, and an alias can start with `!`.
+
+    Git is the command an agent runs most often, so the base is paid for: the porcelain and the
+    plumbing worth reaching for are declared, and what is left on it is rare, destructive, a
+    server, a credential helper, or not a git command.
+    """
+
+    EVERYDAY = (
+        ("git status", Classification.READONLY, Risk.LOW),
+        ("git log --oneline", Classification.READONLY, Risk.LOW),
+        ("git diff", Classification.READONLY, Risk.LOW),
+        ("git add .", Classification.LOCAL_EFFECTS, Risk.LOW),
+        ("git commit -m x", Classification.LOCAL_EFFECTS, Risk.LOW),
+        ("git push", Classification.EXTERNAL_EFFECTS, Risk.MEDIUM),
+        ("git push --force", Classification.DANGEROUS, Risk.HIGH),
+        ("git -C /tmp status", Classification.READONLY, Risk.LOW),
+        ("git --version", Classification.READONLY, Risk.LOW),
+        ("git -v", Classification.READONLY, Risk.LOW),
+        ("git help", Classification.READONLY, Risk.LOW),
+        # read-only plumbing an agent actually reaches for
+        ("git merge-base HEAD main", Classification.READONLY, Risk.LOW),
+        ("git check-ignore -v build/", Classification.READONLY, Risk.LOW),
+        ("git show-ref --heads", Classification.READONLY, Risk.LOW),
+        # `difftool` and `mergetool` both launch a configured shell command, so neither reads
+        ("git difftool", Classification.LOCAL_EFFECTS, Risk.MEDIUM),
+        ("git mergetool", Classification.LOCAL_EFFECTS, Risk.MEDIUM),
+        # `symbolic-ref <name>` reads and `symbolic-ref <name> <ref>` rewrites, including HEAD;
+        # the read is over-reported rather than leaving that write auto-approved
+        ("git symbolic-ref --short HEAD", Classification.LOCAL_EFFECTS, Risk.MEDIUM),
+        ("git symbolic-ref HEAD refs/heads/evil", Classification.LOCAL_EFFECTS, Risk.MEDIUM),
+        ("git sparse-checkout list", Classification.READONLY, Risk.LOW),
+        # `stage` and `annotate` are git's own aliases, so they classify as what they alias
+        ("git stage src/", Classification.LOCAL_EFFECTS, Risk.LOW),
+        ("git annotate f", Classification.READONLY, Risk.LOW),
+        # writing plumbing that is ordinary work
+        ("git sparse-checkout set src", Classification.LOCAL_EFFECTS, Risk.MEDIUM),
+        ("git repack -ad", Classification.LOCAL_EFFECTS, Risk.MEDIUM),
+    )
+
+    @pytest.mark.parametrize(("expression", "classification", "risk"), EVERYDAY)
+    def test_everyday_git_is_unmoved(
+        self, expression: str, classification: Classification, risk: Risk, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(expression, database=database)
+        assert (result.classification, result.risk) == (classification, risk)
+
+    LEFT_ON_THE_BASE = (
+        "git whatever",
+        "git filter-branch --tree-filter 'rm -rf x' HEAD",
+        "git update-ref refs/heads/main HEAD",
+        "git prune",
+        "git daemon",
+        "git credential fill",
+        "git replace a b",
+    )
+
+    @pytest.mark.parametrize("expression", LEFT_ON_THE_BASE)
+    def test_unmodelled_git_subcommand_is_not_low(self, expression: str, database: dict[str, CommandDef]) -> None:
+        result = classify_expression(expression, database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
+
+
+class TestGlobalOptionThatIsOnlyValidBeforeTheSubcommand:
+    """A `global_options` entry applies at every subcommand depth, and `-v` rarely does.
+
+    `docker -v` is `--version`; `docker compose down -v` is `--volumes` and removes the named
+    volumes. Declared as a plain global with `overrides: READONLY`, the first spelling's flag
+    lowered the second one to READONLY/LOW -- the bundled hook's auto-approve condition -- and
+    the operand gate does not help, because `down` takes no operand. The same shape covered
+    `git push -v` and `git commit -v` (`--verbose`, and both really run), `pip install -V`
+    (silently ignored, and the install happens) and `apt upgrade -v`.
+
+    `before_subcommand_only: true` says what the tool does: honoured ahead of the subcommand,
+    ignored after one. Every flag it is set on was run against the real binary at subcommand
+    depth -- which is the check the declaration round did not make -- with one exception worth
+    knowing: `brew` is not installed on the machine this was verified on, so its `--version`
+    rests on documentation.
+
+    The yarn spellings were checked against yarn 1.22.22. `yarn dlx` and `yarn workspaces` are
+    Berry-only, so their flags were not exercised on a yarn that has them.
+    """
+
+    NOT_THE_BINARYS_FLAG = (
+        ("docker compose down -v", Classification.EXTERNAL_EFFECTS),
+        ("git push -v", Classification.UNKNOWN),
+        ("git clean -fdx -v", Classification.DANGEROUS),
+        ("cargo build -V", Classification.UNKNOWN),
+        ("uv run -V rm -rf /", Classification.DANGEROUS),
+        # no operand, so only the marker stops `-V` lowering a publish to READONLY
+        ("uv publish -V", Classification.DANGEROUS),
+    )
+
+    @pytest.mark.parametrize(("expression", "classification"), NOT_THE_BINARYS_FLAG)
+    def test_the_flag_does_not_reach_past_the_subcommand(
+        self, expression: str, classification: Classification, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(expression, database=database)
+        assert result.classification == classification
+        assert result.risk != Risk.LOW
+
+    def test_git_commit_keeps_its_own_verbose(self, database: dict[str, CommandDef]) -> None:
+        """`git commit -v` is git's `--verbose`: the commit happens, so it is not a read."""
+        result = classify_expression("git commit -v", database=database)
+        assert result.classification == Classification.LOCAL_EFFECTS
+
+    BARE_SPELLING = (
+        "git -v",
+        "git --version",
+        "docker -v",
+        "docker --version",
+        "mise -V",
+        "mise --version",
+        "uv --version",
+        "uv -V",
+        "cargo --version",
+        "cargo -V",
+        "pip --version",
+        "pip -V",
+        "pip3 --version",
+        "apt -v",
+        "apt --version",
+        "pipx --version",
+        "brew --version",
+    )
+
+    @pytest.mark.parametrize("expression", BARE_SPELLING)
+    def test_the_bare_spelling_is_still_readonly(self, expression: str, database: dict[str, CommandDef]) -> None:
+        """The cost of the marker is nothing: ahead of a subcommand the flag is still stripped."""
+        result = classify_expression(expression, database=database)
+        assert result.classification == Classification.READONLY, expression
+        assert result.risk == Risk.LOW, expression
+
+    STILL_UNIVERSAL = (
+        "npm ls -v",
+        "pnpm list -v",
+        "yarn -v",
+        "poetry show -V",
+        "docker ps --help",
+        "gh pr -h",
+        "glab mr -h",
+        "kubectl get -h",
+        "go env -h",
+        "ruff check -h",
+        "uv pip list -h",
+        "pip3 list -h",
+        "apt list -h",
+    )
+
+    @pytest.mark.parametrize("expression", STILL_UNIVERSAL)
+    def test_a_genuinely_universal_flag_is_untouched(self, expression: str, database: dict[str, CommandDef]) -> None:
+        """npm, pnpm, yarn and poetry really do short-circuit at depth; `--help` mostly does."""
+        assert classify_expression(expression, database=database).risk == Risk.LOW, expression
+
+    def test_a_flag_the_tool_does_not_have_is_not_declared(self, database: dict[str, CommandDef]) -> None:
+        """The slack CLI is Click-based and answers `No such option: -h` at every depth.
+
+        A declaration for a flag that does not exist is a free READONLY on every command that
+        happens to carry that token -- `slack messages delete -h` deletes the message.
+        """
+        result = classify_expression("slack messages delete -h", database=database)
+        assert result.classification == Classification.DANGEROUS
+        assert result.risk == Risk.HIGH
