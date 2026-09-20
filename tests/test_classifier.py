@@ -1481,3 +1481,69 @@ class TestRedirectAttributionWritePaths:
         echo = result.commands[1]
         assert echo.write_paths == ["~/.ssh/authorized_keys"]
         assert [hit.token for hit in echo.sensitive_paths] == ["~/.ssh/authorized_keys"]
+
+
+class TestEndOfOptionsMarkerBeforeInnerCommand:
+    """`rest_are_argv` must not read the wrapper's own `--` as the inner command.
+
+    Every wrapper in this mode accepts an end-of-options marker before the command it runs.
+    Reading `--` as the program word resolved the inner to UNKNOWN, which looks safe (it is
+    HIGH) but is a misparse: it hides the real command from `sensitive_paths`, from `match`
+    rules and from any consumer that walks `iter_invocations`.
+    """
+
+    MARKER_EXPRESSIONS = (
+        ("sudo -- rm -rf /", ["rm"]),
+        ("xargs -- ls", ["ls"]),
+        ("env -- ls", ["ls"]),
+        ("env -- FOO=bar ls", ["ls"]),
+        ("timeout -- 5 ls", ["ls"]),
+        ("npx -- rm -rf /", ["rm"]),
+        ("pnpm exec -- eslint", ["eslint"]),
+    )
+
+    @pytest.mark.parametrize(("expression", "inner"), MARKER_EXPRESSIONS)
+    def test_inner_command_resolves_past_the_marker(
+        self, expression: str, inner: list[str], database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(expression, database=database)
+        assert [invocation.command for invocation, via in iter_invocations(result) if via] == [inner]
+
+
+class TestEndOfOptionsMarkerIsNotAlwaysAMarker:
+    """`--` is the wrapper's marker only while the wrapper is still reading options.
+
+    These pass on master too -- master read every one of these as `--` because it read *every*
+    `--` that way. They are here as the guard on the other side of the skip, pinning the shapes
+    the skip must not reach, not as coverage of anything the skip added.
+
+    `env` stops parsing options at the first operand -- an assignment -- and `timeout` stops at
+    the duration. Past that point the `--` is the program word, and a real shell agrees: each of
+    these exits 127 with "No such file or directory". So the reading is UNKNOWN, and that is a
+    correct reading rather than a missing feature.
+    """
+
+    NOT_A_MARKER = (
+        ("env FOO=bar -- ls", ["--"]),
+        ("timeout 5 -- ls", ["--"]),
+        # POSIX makes the second `--` the program name, so only one is ever skipped
+        ("sudo -- -- rm -rf /", ["--"]),
+    )
+
+    @pytest.mark.parametrize(("expression", "inner"), NOT_A_MARKER)
+    def test_marker_past_an_operand_is_the_program_word(
+        self, expression: str, inner: list[str], database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(expression, database=database)
+        assert [invocation.command for invocation, via in iter_invocations(result) if via] == [inner]
+
+    @pytest.mark.parametrize(("expression", "risk"), [("env FOO=bar -- ls", Risk.HIGH), ("timeout 5 -- ls", Risk.HIGH)])
+    def test_unresolvable_program_word_is_not_low(
+        self, expression: str, risk: Risk, database: dict[str, CommandDef]
+    ) -> None:
+        assert classify_expression(expression, database=database).risk == risk
+
+    def test_marker_before_the_wrappers_own_operand_still_skips_it(self, database: dict[str, CommandDef]) -> None:
+        """`timeout -- 5 ls` is accepted by a real timeout: skip the marker, then the duration."""
+        result = classify_expression("timeout -- 5 ls", database=database)
+        assert [invocation.command for invocation, via in iter_invocations(result) if via] == [["ls"]]

@@ -274,7 +274,16 @@ Only set a non-`READONLY` base when the wrapper itself contributes risk regardle
 
 ### `rest_are_argv`
 
-All remaining positional args (after the wrapper's own options) form the inner command.
+All remaining positional args (after the wrapper's own options) form the inner command. One leading `--` is the
+wrapper's own end-of-options marker rather than the program word, and is skipped: `sudo -- rm -rf /` delegates to
+`rm`, not to `--`.
+
+That holds only while the `--` comes before any operand of the wrapper itself, because that is the only place the
+wrapper's own option parser is still reading. `env` stops at the first assignment and `timeout` at the duration, so
+in `env FOO=bar -- ls` and `timeout 5 -- ls` the `--` really is the program word and both really do fail with "No
+such file or directory" -- the database says `UNKNOWN` because the shell says 127. `timeout -- 5 ls`, which a real
+`timeout` accepts, skips the marker and then the duration, and resolves to `ls`. Only one marker is skipped: POSIX
+makes the second `--` in `sudo -- -- ls` the program name.
 
 **xargs:** `xargs grep -r foo` -- inner command is `["grep", "-r", "foo"]`
 

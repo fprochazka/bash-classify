@@ -516,3 +516,43 @@ class TestLoadRules:
         with pytest.raises(RulesError) as excinfo:
             load_rules(path)
         assert str(path) in str(excinfo.value)
+
+
+class TestEndOfOptionsMarkerReachesTheRule:
+    """A wrapper's `--` must not hide the command it runs from a deny rule.
+
+    This is the mode's failure that matters most: an empty `matches` with empty
+    `parse_warnings` reads as "nothing blocked ran", so a deny hook allows the call. Before the
+    marker was skipped, the inner command resolved to `--` and every one of these matched
+    nothing at all, which is a deny-hook escape rather than a cosmetic misparse.
+    """
+
+    RULES = "rules:\n  - name: mr-note\n    command: [glab, mr, note]\n"
+
+    MARKER_SPELLINGS = (
+        "sudo -- glab mr note 42 -m hi",
+        "env -- glab mr note 42 -m hi",
+        "timeout -- 30 glab mr note 42 -m hi",
+        "xargs -- glab mr note 42 -m hi",
+        "nohup -- glab mr note 42 -m hi",
+    )
+
+    @pytest.mark.parametrize("expression", MARKER_SPELLINGS)
+    def test_rule_matches_through_the_marker(
+        self, expression: str, tmp_path: Path, database: dict[str, CommandDef]
+    ) -> None:
+        path = tmp_path / "rules.yaml"
+        path.write_text(self.RULES)
+        result = match_expression(expression, load_rules(path), database=database)
+        assert [match.rule for match in result.matches] == ["mr-note"]
+        assert result.parse_warnings == []
+
+    def test_a_marker_that_is_the_program_word_matches_nothing(
+        self, tmp_path: Path, database: dict[str, CommandDef]
+    ) -> None:
+        """`env FOO=bar -- glab ...` runs `--`, not glab, so there is nothing to match."""
+        path = tmp_path / "rules.yaml"
+        path.write_text(self.RULES)
+        result = match_expression("env FOO=bar -- glab mr note 42 -m hi", load_rules(path), database=database)
+        assert result.matches == []
+        assert result.parse_warnings == []

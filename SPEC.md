@@ -943,7 +943,7 @@ The `delegates_to` field defines how a command (or option like `find -exec`) han
 
 | Mode | How the inner argv is extracted | Example |
 |---|---|---|
-| `rest_are_argv` | All remaining positional args after the wrapper's own options are consumed. The first positional arg is the binary, the rest are its arguments. | `xargs grep -r foo` → inner: `["grep", "-r", "foo"]` |
+| `rest_are_argv` | All remaining positional args after the wrapper's own options are consumed. The first positional arg is the binary, the rest are its arguments. One `--` is skipped as the wrapper's own end-of-options marker, but only where it precedes every operand of the wrapper — past that point the wrapper's option parser has stopped and the `--` is the program word, which is why `env FOO=bar -- ls` and `timeout 5 -- ls` exit 127 on a real shell. | `xargs grep -r foo` → inner: `["grep", "-r", "foo"]`; `sudo -- rm -rf /` → inner: `["rm", "-rf", "/"]`; `timeout -- 5 ls` → inner: `["ls"]`; `timeout 5 -- ls` → inner: `["--", "ls"]` |
 | `after_separator` | Everything after the `separator` token forms the inner argv. | `kubectl exec pod -- ls -la` → inner: `["ls", "-la"]` |
 | `terminated_argv` | Tokens after the flag up to `terminator` form the inner argv. `{}` tokens are stripped (they are `find` placeholders). | `find . -exec rm {} \;` → inner: `["rm"]` |
 | `flag_value_is_expression` | The value of the specified `flag` is a complete shell expression string, parsed from scratch through the bash parser (not just tokenized as argv). | `sh -c "ls \| grep foo"` → inner expression: `ls \| grep foo` (two piped commands) |

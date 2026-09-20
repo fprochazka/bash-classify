@@ -580,6 +580,18 @@ def _classify_options(
 
         # End of options marker
         if token == "--":
+            if stop_at_first_positional:
+                # The wrapper's own end-of-options marker: it separates the wrapper's options
+                # from what it runs, so it is not part of the inner command. Reaching it here
+                # means no operand of the wrapper came first, because the branch below breaks
+                # out at the first one -- and that distinction is the whole rule. `env` stops
+                # parsing options at the first assignment and `timeout` at the duration, so in
+                # `env FOO=bar -- ls` and `timeout 5 -- ls` the `--` IS the program word, and
+                # both really do fail with "No such file or directory". One marker only: POSIX
+                # makes the second `--` in `sudo -- -- ls` the program name.
+                i += 1 + command_def.delegates_to.skip_leading_positionals
+                positional.extend(argv[i:])
+                break
             end_of_options = True
             positional.append(token)
             i += 1
@@ -851,7 +863,9 @@ def _handle_delegation(
         inner_argv = list(remaining_positional)
 
         if delegation.strip_assignments:
-            # Strip leading KEY=VALUE tokens
+            # Strip leading KEY=VALUE tokens. A `--` that reaches here is not the wrapper's
+            # marker -- `_classify_options` consumes that one -- so it is the program word and
+            # stays, which is what `env FOO=bar -- ls` does on a real shell.
             while inner_argv and _ASSIGNMENT_RE.match(inner_argv[0]):
                 inner_argv = inner_argv[1:]
 
