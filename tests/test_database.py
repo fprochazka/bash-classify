@@ -381,6 +381,46 @@ class TestUserCommandsDir:
                 os.environ["BASH_CLASSIFY_CONFIG_DIR"] = old
 
 
+class TestTheSuiteIsIsolatedFromTheUserDatabase:
+    """The suite must answer from this repository alone, never from the machine running it.
+
+    `~/.config/bash-classify/commands/` is read by every bare `load_database()`, so without
+    isolation the suite's result depends on files that are not in the repository -- and those
+    files are the machine owner's own tooling, which a failed assertion would print into
+    pytest output and CI logs. `tests/conftest.py` points the whole session at an empty config
+    directory; these pin that it is actually in effect, because every other test in the suite
+    passes either way on a machine whose user database happens to agree with the bundled one.
+    """
+
+    def test_the_config_dir_in_effect_is_empty(self) -> None:
+        import os
+
+        config_dir = Path(os.environ["BASH_CLASSIFY_CONFIG_DIR"])
+        assert config_dir.is_dir()
+        assert not (config_dir / "commands").exists()
+        assert not (config_dir / "sensitive-paths.yaml").exists()
+
+    def test_a_bare_load_database_sees_exactly_the_bundled_files(self) -> None:
+        bundled = {yaml_file.stem for yaml_file in get_default_commands_dir().glob("*.yaml")}
+        assert set(load_database()) == bundled
+
+    def test_the_database_fixture_sees_exactly_the_bundled_files(self, database: dict[str, CommandDef]) -> None:
+        bundled = {yaml_file.stem for yaml_file in get_default_commands_dir().glob("*.yaml")}
+        assert set(database) == bundled
+
+    def test_the_database_fixture_ignores_the_environment_entirely(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Even pointed at a populated user database, the fixture resolves the bundled files."""
+        user_dir = tmp_path / "config" / "commands"
+        user_dir.mkdir(parents=True)
+        (user_dir / "zzdemotool.yaml").write_text("command: zzdemotool\nclassification: READONLY\n")
+        monkeypatch.setenv("BASH_CLASSIFY_CONFIG_DIR", str(tmp_path / "config"))
+
+        assert "zzdemotool" in load_database()  # the environment is honoured where it is asked for
+        assert "zzdemotool" not in load_database(get_default_commands_dir())
+
+
 class TestOutputPathOptions:
     """Options the tool documents as naming a file it writes."""
 
