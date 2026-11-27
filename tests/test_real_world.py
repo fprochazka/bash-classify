@@ -1,5 +1,7 @@
 """Tests based on real-world bash patterns from Claude Code transcripts."""
 
+import pytest
+
 from bash_classify.classifier import classify_expression
 from bash_classify.models import Classification
 
@@ -466,6 +468,25 @@ class TestBuildTools:
     def test_gradle_dry_run(self, database):
         result = classify_expression("gradle --dry-run clean build", database)
         assert result.classification == Classification.READONLY
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "./gradlew build -x test",
+            "./gradlew build --exclude-task test",
+            "./gradlew -x test build",
+            "./gradlew build --exclude-task=test",
+            "./gradlew build -xtest",
+        ],
+    )
+    def test_gradle_excluded_task_is_not_a_task(self, expression, database):
+        result = classify_expression(expression, database)
+        assert result.commands[0].command == ["gradlew", "build"]
+
+    def test_gradle_excluding_publish_does_not_publish(self, database):
+        result = classify_expression("gradle build -x publish", database)
+        assert result.commands[0].command == ["gradle", "build"]
+        assert result.classification == Classification.LOCAL_EFFECTS
 
 
 class TestGlabOptions:

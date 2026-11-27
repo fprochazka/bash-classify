@@ -558,15 +558,25 @@ def _match_all_subcommands(
 
     Returns (matched_names, matched_defs, remaining).
     remaining includes both options and unrecognized positional args.
+
+    The value of an option that takes one is never a goal: in `gradlew build -x test` the `test`
+    names a task to exclude, not one to run.
     """
     matched_names: list[str] = []
     matched_defs: list[CommandDef] = []
     remaining: list[str] = []
 
-    for token in argv:
+    tokens = iter(argv)
+    for token in tokens:
         if token.startswith("-"):
-            # Options pass through for _classify_options later
+            # Options pass through for _classify_options later, and so does the value of one that
+            # takes it as the next token.
             remaining.append(token)
+            opt_def = command_def.options.get(token)
+            if opt_def is not None and opt_def.takes_value:
+                value = next(tokens, None)
+                if value is not None:
+                    remaining.append(value)
         elif token in command_def.subcommands:
             matched = command_def.subcommands[token]
             matched_names.append(matched.command)

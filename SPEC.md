@@ -483,6 +483,8 @@ Each positional argument is matched independently against the **same** top-level
 
 Example: `mvn clean install` matches both `clean` and `install` independently against `mvn`'s subcommand dict.
 
+The value of an option the command declares with `takes_value` under `options:` is not a positional argument, so it is never matched as a goal: in `gradle build -x test` the `test` is the task `-x` excludes, and only `build` is a goal. A value joined to its option (`-xtest`, `--exclude-task=test`) is part of the option token already. The rule does not cover `global_options:`, which are stripped only before the first goal.
+
 **Classification/risk aggregation in `match_all` mode:**
 
 - The final classification is the **maximum severity** across all matched goals.

@@ -992,6 +992,7 @@ class TestMatchAllSubcommandMode:
             options={
                 "-B": OptionDef(),
                 "--dry-run": OptionDef(overrides=Classification.READONLY),
+                "-x": OptionDef(takes_value=True),
             },
         )
 
@@ -1045,6 +1046,19 @@ class TestMatchAllSubcommandMode:
         result = match_command(_make_invocation(["builder", "--dry-run", "clean"]), database)
         assert result.classification == Classification.READONLY
         assert result.risk == Risk.LOW
+
+    def test_an_option_value_is_not_a_goal(self) -> None:
+        """`-x deploy` excludes the goal; the value is consumed by the option, not run."""
+        database = {"builder": self._make_match_all_command()}
+        result = match_command(_make_invocation(["builder", "-x", "deploy", "clean"]), database)
+        assert result.command == ["builder", "clean"]
+        assert (result.classification, result.risk) == (Classification.LOCAL_EFFECTS, Risk.LOW)
+
+    def test_a_flag_without_a_value_does_not_swallow_the_goal_after_it(self) -> None:
+        database = {"builder": self._make_match_all_command()}
+        result = match_command(_make_invocation(["builder", "-B", "deploy"]), database)
+        assert result.command == ["builder", "deploy"]
+        assert result.classification == Classification.EXTERNAL_EFFECTS
 
 
 class TestPresentOptionsAndPositionals:
