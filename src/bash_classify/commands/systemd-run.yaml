@@ -1,0 +1,61 @@
+# $schema: ../../../schemas/command.schema.json
+command: systemd-run
+description: "Run a command as a transient systemd service or scope"
+# The fallback for a spelling whose command the matcher cannot read: it runs an arbitrary program.
+classification: DANGEROUS
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY}
+delegates_to:
+  mode: rest_are_argv
+  # The command runs as a unit of the service manager, outside the calling shell, and without --user under the
+  # system manager.
+  min_classification: EXTERNAL_EFFECTS
+# A unit property can run commands of its own, such as -p ExecStartPre=... or -p ExecStopPost=..., and the matcher
+# never sees them. The floor above still keeps every invocation at EXTERNAL_EFFECTS, so it prompts.
+options:
+  --user: {}
+  --system: {}
+  --scope: {}
+  --unit: {takes_value: true, aliases: [-u]}
+  --property: {takes_value: true, aliases: [-p]}
+  --description: {takes_value: true}
+  --slice: {takes_value: true}
+  --slice-inherit: {}
+  --remain-after-exit: {aliases: [-r]}
+  --send-sighup: {}
+  --service-type: {takes_value: true}
+  --uid: {takes_value: true}
+  --gid: {takes_value: true}
+  --nice: {takes_value: true}
+  --working-directory: {takes_value: true}
+  --same-dir: {aliases: [-d]}
+  --setenv: {takes_value: true, aliases: [-E]}
+  --expand-environment: {takes_value: true}
+  --pty: {aliases: [-t]}
+  --pty-late: {aliases: [-T]}
+  --pipe: {aliases: [-P]}
+  --shell: {aliases: [-S]}
+  --quiet: {aliases: [-q]}
+  --collect: {aliases: [-G]}
+  --wait: {}
+  --no-block: {}
+  --no-ask-password: {}
+  --ignore-failure: {}
+  --background: {takes_value: true}
+  --job-mode: {takes_value: true}
+  --host: {takes_value: true, aliases: [-H]}
+  --machine: {takes_value: true, aliases: [-M]}
+  --capsule: {takes_value: true, aliases: [-C]}
+  --on-active: {takes_value: true}
+  --on-boot: {takes_value: true}
+  --on-startup: {takes_value: true}
+  --on-unit-active: {takes_value: true}
+  --on-unit-inactive: {takes_value: true}
+  --on-calendar: {takes_value: true}
+  --on-clock-change: {}
+  --on-timezone-change: {}
+  --path-property: {takes_value: true}
+  --socket-property: {takes_value: true}
+  --timer-property: {takes_value: true}

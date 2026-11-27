@@ -1,0 +1,18 @@
+# $schema: ../../../schemas/command.schema.json
+command: setsid
+description: "Run a command in a new session"
+# The fallback for a spelling whose command the matcher cannot read: it runs an arbitrary program.
+classification: DANGEROUS
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY}
+  -V: {overrides: READONLY}
+delegates_to:
+  mode: rest_are_argv
+  # The command leaves the terminal's session, so it keeps running after the terminal closes, as under nohup.
+  min_classification: EXTERNAL_EFFECTS
+options:
+  --ctty: {aliases: [-c]}
+  --fork: {aliases: [-f]}
+  --wait: {aliases: [-w]}

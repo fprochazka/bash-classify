@@ -1,0 +1,22 @@
+# $schema: ../../../schemas/command.schema.json
+command: ionice
+description: "Run a command with a modified I/O scheduling class and priority"
+# The fallback for a spelling whose command the matcher cannot read: it runs an arbitrary program.
+classification: DANGEROUS
+global_options:
+  --help: {overrides: READONLY}
+  -h: {overrides: READONLY}
+  --version: {overrides: READONLY}
+  -V: {overrides: READONLY}
+delegates_to:
+  mode: rest_are_argv
+options:
+  --class: {takes_value: true, aliases: [-c]}
+  --classdata: {takes_value: true, aliases: [-n]}
+  # With -p, -P or -u every word after the options is a process, group or user id, not a command, and ionice
+  # changes the I/O priority of those running processes, like kill acts on them. An override survives the
+  # delegation, so the id the matcher takes for a program cannot make the verdict milder.
+  --pid: {takes_value: true, overrides: DANGEROUS, aliases: [-p]}
+  --pgid: {takes_value: true, overrides: DANGEROUS, aliases: [-P]}
+  --uid: {takes_value: true, overrides: DANGEROUS, aliases: [-u]}
+  --ignore: {aliases: [-t]}

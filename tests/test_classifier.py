@@ -1303,6 +1303,83 @@ class TestAliasOfClassification:
             classify_expression("myalias foo", database=db)
 
 
+class TestProcessLaunchers:
+    """`systemd-run`, `setsid` and `ionice` run the command after their own options, which decides the verdict."""
+
+    LAUNCHED = (
+        ("systemd-run --user --scope -q -p MemoryMax=2G --unit build-1 ./gradlew test", "systemd-run", ["gradlew"]),
+        ("systemd-run --unit=build-1 -E FOO=1 --property CPUQuota=50% make", "systemd-run", ["make"]),
+        ("systemd-run --user --wait --collect -- ls", "systemd-run", ["ls"]),
+        ("setsid -f make build", "setsid", ["make"]),
+        ("setsid --wait ls", "setsid", ["ls"]),
+        ("ionice -c3 make", "ionice", ["make"]),
+        ("ionice -c 2 -n 7 make", "ionice", ["make"]),
+        ("ionice --class=idle make", "ionice", ["make"]),
+    )
+
+    @pytest.mark.parametrize(("expression", "launcher", "inner"), LAUNCHED)
+    def test_the_launched_command_is_an_invocation(
+        self, expression: str, launcher: str, inner: list[str], database: dict[str, CommandDef]
+    ) -> None:
+        entries = list(iter_invocations(classify_expression(expression, database)))
+        assert [(via, inv.command[:1]) for inv, via in entries] == [([], [launcher]), ([launcher], inner)]
+
+    @pytest.mark.parametrize(
+        "expression",
+        ["systemd-run --user --scope rm -rf x", "setsid rm -rf x", "ionice -c3 rm -rf x"],
+    )
+    def test_a_dangerous_launched_command_makes_the_expression_dangerous(
+        self, expression: str, database: dict[str, CommandDef]
+    ) -> None:
+        result = classify_expression(expression, database)
+        assert (result.classification, result.risk) == (Classification.DANGEROUS, Risk.HIGH)
+        assert result.commands[0].inner_commands[0].command == ["rm"]
+
+    @pytest.mark.parametrize("expression", ["systemd-run --user --scope cat /tmp/x", "setsid cat /tmp/x"])
+    def test_a_detached_command_is_at_least_an_external_effect(
+        self, expression: str, database: dict[str, CommandDef]
+    ) -> None:
+        """The command runs outside the calling shell: under the service manager, or in a session of its own."""
+        result = classify_expression(expression, database)
+        assert (result.classification, result.risk) == (Classification.EXTERNAL_EFFECTS, Risk.MEDIUM)
+
+    def test_ionice_adds_nothing_to_the_command_it_runs(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression("ionice -c3 cat /tmp/x", database)
+        assert (result.classification, result.risk) == (Classification.READONLY, Risk.LOW)
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "systemd-run --user",
+            "systemd-run --user --no-such-option ls",
+            "setsid",
+            "ionice -p 1234",
+        ],
+    )
+    def test_a_launcher_whose_command_cannot_be_read_is_dangerous(
+        self, expression: str, database: dict[str, CommandDef]
+    ) -> None:
+        """The fallback covers a spelling that runs an arbitrary program the matcher did not resolve."""
+        result = classify_expression(expression, database)
+        assert (result.classification, result.risk) == (Classification.DANGEROUS, Risk.HIGH)
+
+    @pytest.mark.parametrize(
+        "expression", ["ionice -c 3 -p 1234 true", "ionice -c3 -P 1234 true", "ionice --uid 1000 true"]
+    )
+    def test_ionice_on_running_processes_is_dangerous(self, expression: str, database: dict[str, CommandDef]) -> None:
+        """With -p, -P or -u the trailing words are ids of processes whose priority ionice changes, not a command."""
+        result = classify_expression(expression, database)
+        assert (result.classification, result.risk) == (Classification.DANGEROUS, Risk.HIGH)
+
+    def test_a_launched_variable_still_prompts(self, database: dict[str, CommandDef]) -> None:
+        result = classify_expression('systemd-run --user "$CMD"', database)
+        assert result.risk == Risk.HIGH
+
+    @pytest.mark.parametrize("expression", ["systemd-run --help", "setsid -V", "ionice --version"])
+    def test_help_and_version_are_read_only(self, expression: str, database: dict[str, CommandDef]) -> None:
+        assert classify_expression(expression, database).risk == Risk.LOW
+
+
 class TestIterInvocations:
     """`iter_invocations` walks every invocation depth-first with its wrapper chain."""
 
