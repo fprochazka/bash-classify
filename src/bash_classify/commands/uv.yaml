@@ -18,6 +18,60 @@ subcommands:
     delegates_to:
       mode: rest_are_argv
       strip_assignments: true
+    # The options of `uv run` that take a value, the ones `uv run --help` hides included. Without them the matcher
+    # reads the value as the program: uv runs `rm` in `uv run --only-group test rm -rf x`, but the matcher would
+    # classify the command as the `test` builtin.
+    # `--with`, `--with-editable` and `--with-requirements` install packages into the environment the command
+    # runs in, and their executables come first on its PATH, so the word after them is not necessarily the
+    # program that runs. Like `npx --package`, they are never delegated past.
+    options:
+      --allow-insecure-host: {takes_value: true, aliases: [--trusted-host]}
+      --cache-dir: {takes_value: true}
+      --color: {takes_value: true}
+      --config-file: {takes_value: true}
+      --config-setting: {takes_value: true, aliases: [-C, --config-settings]}
+      --config-settings-package: {takes_value: true}
+      --default-index: {takes_value: true}
+      --directory: {takes_value: true}
+      --env-file: {takes_value: true}
+      --exclude-newer: {takes_value: true}
+      --exclude-newer-package: {takes_value: true}
+      --extra: {takes_value: true}
+      --extra-index-url: {takes_value: true}
+      --find-links: {takes_value: true, aliases: [-f]}
+      --fork-strategy: {takes_value: true}
+      --group: {takes_value: true}
+      --index: {takes_value: true}
+      --index-strategy: {takes_value: true}
+      --index-url: {takes_value: true, aliases: [-i]}
+      --keyring-provider: {takes_value: true}
+      --link-mode: {takes_value: true}
+      --max-recursion-depth: {takes_value: true}
+      --no-binary-package: {takes_value: true}
+      --no-build-isolation-package: {takes_value: true}
+      --no-build-package: {takes_value: true}
+      --no-editable-package: {takes_value: true}
+      --no-extra: {takes_value: true}
+      --no-group: {takes_value: true}
+      --no-sources-package: {takes_value: true}
+      --only-group: {takes_value: true}
+      --package: {takes_value: true}
+      --prerelease: {takes_value: true}
+      --prerelease-package: {takes_value: true}
+      --preview-features: {takes_value: true, aliases: [--preview-feature]}
+      --project: {takes_value: true}
+      --python: {takes_value: true, aliases: [-p]}
+      --python-fetch: {takes_value: true}
+      --python-platform: {takes_value: true}
+      --python-preference: {takes_value: true}
+      --refresh-package: {takes_value: true}
+      --reinstall-package: {takes_value: true}
+      --resolution: {takes_value: true}
+      --upgrade-group: {takes_value: true}
+      --upgrade-package: {takes_value: true, aliases: [-P]}
+      --with: {takes_value: true, overrides: DANGEROUS, aliases: [-w]}
+      --with-editable: {takes_value: true, overrides: DANGEROUS}
+      --with-requirements: {takes_value: true, overrides: DANGEROUS}
     subcommands:
       pytest:
         classification: LOCAL_EFFECTS

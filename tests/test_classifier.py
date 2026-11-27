@@ -1380,6 +1380,65 @@ class TestProcessLaunchers:
         assert classify_expression(expression, database).risk == Risk.LOW
 
 
+class TestUvRunOptionValues:
+    """An option of `uv run` that takes a value is skipped with it, so the program is the word after it."""
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "uv run --only-group test pytest tests/a.py",
+            "uv run --group test --extra cli pytest tests/a.py",
+            "uv run --with requests --with-editable ../lib pytest",
+            "uv run -p 3.12 --directory sub --project . --package app pytest",
+            "uv run --python=3.12 --env-file .env pytest",
+            "uv run -w requests -C key=value pytest",
+        ],
+    )
+    def test_the_program_follows_the_option_values(self, expression: str, database: dict[str, CommandDef]) -> None:
+        entries = list(iter_invocations(classify_expression(expression, database)))
+        assert [(via, inv.command[:1]) for inv, via in entries] == [([], ["uv"]), (["uv run"], ["pytest"])]
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "uv run --only-group test rm -rf x",
+            "uv run --with ls rm -rf x",
+            "uv run --preview-features ls rm -rf x",
+            "uv run --preview-feature ls rm -rf x",
+            "uv run --python-preference ls rm -rf x",
+            "uv run --trusted-host ls rm -rf x",
+            "uv run --config-settings ls rm -rf x",
+        ],
+    )
+    def test_an_option_value_does_not_stand_in_for_the_program(
+        self, expression: str, database: dict[str, CommandDef]
+    ) -> None:
+        """Read as the program, the value would classify `rm -rf x` as the `test` builtin or as `ls`.
+
+        `uv run --help` does not list every option that takes a value: `--preview-features` and
+        `--python-preference` are hidden, and `--trusted-host` and `--config-settings` are hidden aliases.
+        """
+        result = classify_expression(expression, database)
+        assert (result.classification, result.risk) == (Classification.DANGEROUS, Risk.HIGH)
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "uv run --with evil-pkg ls",
+            "uv run -w evil-pkg ls",
+            "uv run --with=evil-pkg ls",
+            "uv run --with-editable ../evil ls",
+            "uv run --with-requirements evil.txt ls",
+        ],
+    )
+    def test_a_package_added_to_the_environment_is_never_delegated_past(
+        self, expression: str, database: dict[str, CommandDef]
+    ) -> None:
+        """The added package's executables come first on the PATH, so `ls` may not be the program that runs."""
+        result = classify_expression(expression, database)
+        assert (result.classification, result.risk) == (Classification.DANGEROUS, Risk.HIGH)
+
+
 class TestIterInvocations:
     """`iter_invocations` walks every invocation depth-first with its wrapper chain."""
 
